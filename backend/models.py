@@ -1,5 +1,6 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+import json
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Dict, Any, Union
 from enum import Enum
 from datetime import datetime
 
@@ -20,7 +21,17 @@ class StylistName(str, Enum):
 # Vapi Inbound Tool Call Models
 class ToolFunctionCall(BaseModel):
     name: str
-    arguments: Dict[str, Any]
+    arguments: Union[Dict[str, Any], str] = Field(default_factory=dict)
+
+    @field_validator("arguments", mode="before")
+    @classmethod
+    def parse_arguments(cls, v):
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except Exception:
+                return {}
+        return v or {}
 
 class ToolCallItem(BaseModel):
     id: str

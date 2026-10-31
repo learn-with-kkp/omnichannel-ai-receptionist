@@ -108,6 +108,13 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
         call_id = tool_call.id
         fn_name = tool_call.function.name
         args = tool_call.function.arguments
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except Exception:
+                args = {}
+        elif not isinstance(args, dict):
+            args = {}
 
         logger.info(f"Processing tool call: '{fn_name}' [ID: {call_id}] with args: {args}")
 
