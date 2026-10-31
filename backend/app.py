@@ -6,8 +6,13 @@ import logging
 import time
 import os
 import asyncio
+from pathlib import Path
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 from backend.models import VapiWebhookPayload, VapiToolResponse, ToolResult
 from backend.database import (
