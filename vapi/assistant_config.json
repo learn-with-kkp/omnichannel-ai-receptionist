@@ -79,7 +79,7 @@
           }
         },
         "server": {
-          "url": "https://decade-sticks-setup-furnished.trycloudflare.com/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       },
       {
@@ -124,7 +124,7 @@
           }
         },
         "server": {
-          "url": "https://decade-sticks-setup-furnished.trycloudflare.com/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       },
       {
@@ -146,7 +146,7 @@
           }
         },
         "server": {
-          "url": "https://decade-sticks-setup-furnished.trycloudflare.com/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       },
       {
@@ -176,7 +176,7 @@
           }
         },
         "server": {
-          "url": "https://decade-sticks-setup-furnished.trycloudflare.com/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       },
       {
@@ -198,15 +198,14 @@
           }
         },
         "server": {
-          "url": "https://decade-sticks-setup-furnished.trycloudflare.com/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       }
     ]
   },
   "voice": {
-    "provider": "cartesia",
-    "voiceId": "248be419-c632-4f23-add1-07c49b043202",
-    "model": "sonic-english"
+    "provider": "vapi",
+    "voiceId": "Elliot"
   },
   "firstMessage": "Thank you for calling Luxe Hair and Wellness Salon! My name is Sophia. How can I pamper you today?",
   "endCallMessage": "Thank you for calling Luxe Salon. We look forward to seeing you soon. Have a wonderful day!",
@@ -215,5 +214,5 @@
   "maxDurationSeconds": 600,
   "backchannelingEnabled": true,
   "backgroundDenoisingEnabled": true,
-  "serverUrl": "https://decade-sticks-setup-furnished.trycloudflare.com/webhook/vapi-tools"
+  "serverUrl": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
 }

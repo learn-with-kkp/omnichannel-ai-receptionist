@@ -6,6 +6,7 @@ import logging
 import time
 import os
 import asyncio
+from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 
 from backend.models import VapiWebhookPayload, VapiToolResponse, ToolResult
@@ -106,9 +107,11 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
         logger.info(f"Processing tool call: '{fn_name}' [ID: {call_id}] with args: {args}")
 
         if fn_name == "check_availability":
-            service = args.get("service_name", "Womens Haircut")
+            service = args.get("service_name") or "Womens Haircut"
             target_date = args.get("target_date")
-            stylist = args.get("preferred_stylist", "any")
+            if not target_date or target_date.strip() == "":
+                target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+            stylist = args.get("preferred_stylist") or "any"
 
             slots = check_slots_availability(target_date, service, stylist, tenant_id=resolved_tenant_id)
             if slots:
@@ -124,11 +127,15 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
             results.append(ToolResult(toolCallId=call_id, result=res_text))
 
         elif fn_name == "book_appointment":
-            name = args.get("caller_name", "Valued Guest")
-            phone = args.get("caller_phone", "")
-            service = args.get("service_name", "Womens Haircut")
-            dt = args.get("appointment_datetime", "")
-            stylist = args.get("stylist_name", "Elena")
+            name = args.get("caller_name") or "Valued Guest"
+            phone = args.get("caller_phone") or "+16673070119"
+            service = args.get("service_name") or "Womens Haircut"
+            dt = args.get("appointment_datetime")
+            if not dt or dt.strip() == "":
+                dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT14:00:00")
+            stylist = args.get("stylist_name") or "Elena"
+            if stylist.lower() == "any":
+                stylist = "Elena"
 
             booking = book_new_appointment(name, phone, service, dt, stylist, tenant_id=resolved_tenant_id)
             res_text = (
@@ -240,3 +247,23 @@ def list_appointments(tenant_id: Optional[str] = None):
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
     return {"appointments": rows}
+
+@app.post("/test/quick-booking")
+def quick_test_booking(
+    name: str = "Test Client",
+    service: str = "Womens Haircut",
+    stylist: str = "Elena",
+    phone: str = "+16673070119"
+):
+    """
+    Minimal 1-click test booking endpoint.
+    Instantly writes a booking to SQLite, Excel, and live Google Sheets.
+    """
+    dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT15:00:00")
+    booking = book_new_appointment(name, phone, service, dt, stylist, tenant_id="default_salon")
+    logger.info(f"⚡ [MINIMAL TEST] Quick booking created: {booking['booking_id']}")
+    return {
+        "status": "success",
+        "message": f"Appointment {booking['booking_id']} created and synced to Excel & Google Sheets!",
+        "booking": booking
+    }

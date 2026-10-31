@@ -47,3 +47,4 @@ echo ""
 echo "3. Onboard a New Paying Salon Client   :"
 echo "   python3 scripts/onboard_new_salon.py --name 'Salon Name' --phone '+1234567890'"
 echo "=========================================================="
+

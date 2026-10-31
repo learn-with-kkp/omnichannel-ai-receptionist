@@ -77,6 +77,26 @@ tab_overview, tab_appointments, tab_services, tab_onboard, tab_telephony = st.ta
 
 # --- TAB 1: OVERVIEW & KPIS ---
 with tab_overview:
+    # Minimal 1-Click Testing Action Bar
+    test_col1, test_col2 = st.columns([2, 3])
+    with test_col1:
+        if st.button("⚡ 1-Click Minimal Test: Create Booking Now", type="primary"):
+            try:
+                res = requests.post(f"{API_BASE}/test/quick-booking", timeout=5)
+                if res.status_code == 200:
+                    data = res.json()
+                    st.success(f"🎉 {data.get('message')}")
+                    st.toast("✅ Synced to SQLite, Excel & Google Sheets!", icon="🚀")
+                    st.rerun()
+                else:
+                    st.error("Failed to execute test booking.")
+            except Exception as e:
+                st.error(f"Test error: {e}")
+    with test_col2:
+        st.caption("👈 Click to instantly simulate a voice booking. Watch it appear live below and inside your Google Sheet!")
+
+    st.markdown("---")
+
     conn = get_db()
     c = conn.cursor()
     c.execute("SELECT * FROM appointments WHERE tenant_id = ?", (active_tenant_id,))
