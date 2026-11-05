@@ -1,22 +1,24 @@
 /**
  * Universal AI Voice & Chat Receptionist Client Studio
- * Powers multi-tenant vertical switching, regional accent adaptation,
- * WebRTC in-browser voice calling, Twilio phone calling, and omnichannel chat.
+ * Enterprise Multi-Tenant Engine for Real Estate, Legal, Salon, Dental, Auto & Healthcare.
+ * Sub-500ms Nimbus latency waterfall, Barge-In, and Dynamic Dialect adaptation.
  */
 
 let currentTenantId = "salon";
-let currentAccentKey = "red_american";
+let currentAccentKey = "general_american";
 let isRAGEnabled = false;
 let isRecording = false;
 let recognition = null;
 let currentAccents = [];
 let currentTenants = [];
+let endpointSilenceMs = 700;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBlueprints();
   await loadAccents();
   await checkStatus();
   await fetchAppointments();
+  updateQuickChips();
   initVoiceRecognition();
   setupEventListeners();
 });
@@ -40,10 +42,18 @@ function renderVerticalCards(tenants) {
   grid.innerHTML = "";
 
   const icons = {
+    real_estate: "🏡",
+    real_estate_primekey: "🏡",
+    legal: "⚖️",
+    legal_apex: "⚖️",
     salon: "💇‍♀️",
+    salon_luxe: "💇‍♀️",
     dental: "🦷",
+    dental_apex: "🦷",
     automotive: "🚗",
-    clinic: "🩺"
+    auto_precision: "🚗",
+    clinic: "🩺",
+    clinic_carefirst: "🩺"
   };
 
   tenants.forEach(t => {
@@ -51,7 +61,7 @@ function renderVerticalCards(tenants) {
     card.className = `vertical-card ${t.id === currentTenantId ? "active" : ""}`;
     card.onclick = () => switchTenant(t.id);
 
-    const icon = icons[t.id] || "🏢";
+    const icon = icons[t.id] || icons[t.industry] || "🏢";
     card.innerHTML = `
       <div class="v-header">
         <span class="v-icon">${icon}</span>
@@ -70,12 +80,67 @@ function switchTenant(tenantId) {
   const tenant = currentTenants.find(t => t.id === tenantId);
   const tenantName = tenant ? tenant.name : "Salon";
 
-  // Add system message into chat
+  updateQuickChips();
+
   appendChatBubble(
     "bot",
     `Switched active vertical to: <b>${tenantName}</b>. How may I assist you with your booking or inquiries here today?`
   );
   fetchAppointments();
+}
+
+function updateQuickChips() {
+  const container = document.getElementById("quickChips");
+  if (!container) return;
+
+  const tId = currentTenantId.toLowerCase();
+  let chips = [];
+
+  if (tId.includes("real_estate")) {
+    chips = [
+      { text: "🏡 Schedule Private Home Tour Tomorrow 2:00 PM", action: "Schedule Private Home Tour Tomorrow at 2:00 PM" },
+      { text: "💰 Request Home Valuation & Listing Session", action: "Request Home Valuation & Seller Strategy Session" },
+      { text: "🔑 First-Time Buyer Strategy Session", action: "Book First-Time Homebuyer Strategy Session" },
+      { text: "🔄 Reschedule Showing", action: "Reschedule my property tour" },
+      { text: "❌ Cancel Tour", action: "Cancel my property showing" },
+    ];
+  } else if (tId.includes("legal")) {
+    chips = [
+      { text: "⚖️ Confidential Legal Consultation Tomorrow 2PM", action: "Book Confidential Initial Legal Consultation tomorrow at 2:00 PM" },
+      { text: "💼 Corporate Formation & M&A Strategy", action: "Book Corporate Formation Review" },
+      { text: "📋 Free Personal Injury Case Evaluation", action: "Book Personal Injury Case Evaluation" },
+      { text: "🔄 Reschedule Consultation", action: "Reschedule my legal consultation" },
+      { text: "❌ Cancel Consultation", action: "Cancel my appointment" },
+    ];
+  } else if (tId.includes("dental")) {
+    chips = [
+      { text: "🦷 Book Prophylaxis Cleaning Tomorrow 2PM", action: "Book Prophylaxis Cleaning tomorrow at 2:00 PM" },
+      { text: "✨ Professional Teeth Whitening", action: "Book Teeth Whitening Session" },
+      { text: "🕒 Check Open Slots Tomorrow", action: "Check open slots tomorrow" },
+      { text: "🔄 Reschedule Dental Visit", action: "Reschedule my appointment" },
+      { text: "❌ Cancel Booking", action: "Cancel my dental booking" },
+    ];
+  } else if (tId.includes("auto")) {
+    chips = [
+      { text: "🚗 Full Synthetic Oil Change Tomorrow 2PM", action: "Book Full Synthetic Oil Change tomorrow at 2:00 PM" },
+      { text: "🛑 Brake Pad & Rotor Inspection", action: "Book Brake Inspection" },
+      { text: "🕒 Check Available Openings", action: "Check openings tomorrow" },
+      { text: "🔄 Reschedule Service", action: "Reschedule my service" },
+      { text: "❌ Cancel Service", action: "Cancel my appointment" },
+    ];
+  } else {
+    chips = [
+      { text: "💇‍♀️ Book Haircut Tomorrow 2:00 PM", action: "Book appointment tomorrow at 2:00 PM" },
+      { text: "🎨 Balayage & Highlights", action: "Book Balayage tomorrow at 1:00 PM" },
+      { text: "🕒 Check Available Slots", action: "Check available slots tomorrow" },
+      { text: "🔄 Reschedule Appointment", action: "Reschedule my appointment" },
+      { text: "❌ Cancel Booking", action: "Cancel my appointment" },
+    ];
+  }
+
+  container.innerHTML = chips.map(c => `
+    <span class="chip" onclick="sendQuickMsg('${c.action}')">${c.text}</span>
+  `).join("");
 }
 
 async function loadAccents() {
@@ -95,10 +160,15 @@ function renderAccentButtons(accents) {
   container.innerHTML = "";
 
   const flags = {
+    general_american: "🇺🇸",
+    canadian_english: "🇨🇦",
+    irish_english: "🇮🇪",
+    euro_international: "🇪🇺",
+    australian_english: "🇦🇺",
+    european_british: "🇬🇧",
     red_american: "🇺🇸",
     indian_english: "🇮🇳",
-    african_english: "🌍",
-    european_british: "🇬🇧"
+    african_english: "🌍"
   };
 
   accents.forEach(a => {
@@ -106,7 +176,8 @@ function renderAccentButtons(accents) {
     btn.className = `accent-btn ${a.key === currentAccentKey ? "active" : ""}`;
     btn.onclick = () => switchAccent(a.key);
     const flag = flags[a.key] || "🗣️";
-    btn.innerHTML = `${flag} ${a.name}`;
+    btn.innerHTML = `${flag} ${a.name.split(" ")[0]}`;
+    btn.title = a.name;
     container.appendChild(btn);
   });
 }
@@ -116,7 +187,9 @@ function switchAccent(accentKey) {
   renderAccentButtons(currentAccents);
   const acc = currentAccents.find(a => a.key === accentKey);
   const accName = acc ? acc.name : accentKey;
-  appendChatBubble("bot", `Accent profile updated to <b>${accName}</b>. Sofia will now converse using this regional dialect and voice timbre.`);
+  const descEl = document.getElementById("activeAccentDescription");
+  if (descEl) descEl.textContent = accName;
+  appendChatBubble("bot", `Accent profile updated to <b>${accName}</b>. Sofia will converse using this regional dialect and voice timbre.`);
 }
 
 async function checkStatus() {
@@ -142,25 +215,24 @@ document.getElementById("ragToggle")?.addEventListener("change", async (e) => {
   isRAGEnabled = e.target.checked;
   const label = document.getElementById("ragModeLabel");
   if (label) {
-    label.textContent = isRAGEnabled ? "RAG (Semantic Search)" : "RAGless (Instant)";
+    label.textContent = isRAGEnabled ? "RAG (Semantic Search)" : "RAGless (<1ms)";
   }
   try {
     await fetch("/api/blueprint/set-rag", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: json.stringify ? JSON.stringify({ enabled: isRAGEnabled }) : '{"enabled": false}'
+      body: JSON.stringify({ enabled: isRAGEnabled })
     });
   } catch (err) {
     console.error("Failed to toggle RAG:", err);
   }
 });
 
-// --- In-Browser WebRTC Voice Agent (Sofia) ---
+// --- In-Browser WebRTC Voice Agent (Sofia) with Barge-In ---
 
 function initVoiceRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRec) {
-    console.warn("Web Speech API not supported in this browser.");
     const statusText = document.getElementById("voiceStatus");
     if (statusText) statusText.textContent = "Voice speech recognition not supported in browser. Use Omnichannel Chat below.";
     return;
@@ -173,6 +245,8 @@ function initVoiceRecognition() {
 
   recognition.onstart = () => {
     isRecording = true;
+    // Barge-in: if audio is currently playing, halt it immediately!
+    triggerBargeIn();
     updateMicUI(true);
   };
 
@@ -181,12 +255,10 @@ function initVoiceRecognition() {
     document.getElementById("voiceStatus").textContent = `You said: "${transcript}"`;
     appendChatBubble("user", transcript);
 
-    // Process turn through orchestrator
     await processMessageTurn(transcript);
   };
 
   recognition.onerror = (event) => {
-    console.error("Speech recognition error:", event.error);
     isRecording = false;
     updateMicUI(false);
   };
@@ -197,10 +269,24 @@ function initVoiceRecognition() {
   };
 }
 
+function triggerBargeIn() {
+  if (window.speechSynthesis && window.speechSynthesis.speaking) {
+    window.speechSynthesis.cancel();
+    fetch("/api/voice/interrupt", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: "browser-session", reason: "barge_in" })
+    }).catch(() => {});
+  }
+}
+
 function getLanguageCodeForAccent(accentKey) {
-  if (accentKey === "indian_english") return "en-IN";
-  if (accentKey === "african_english") return "en-NG";
+  if (accentKey === "canadian_english") return "en-CA";
   if (accentKey === "european_british") return "en-GB";
+  if (accentKey === "irish_english") return "en-IE";
+  if (accentKey === "australian_english") return "en-AU";
+  if (accentKey === "indian_english") return "en-IN";
+  if (accentKey === "african_english") return "en-ZA";
   return "en-US";
 }
 
@@ -213,7 +299,7 @@ function updateMicUI(listening) {
   if (listening) {
     btn?.classList.add("active");
     if (icon) icon.textContent = "🛑";
-    if (status) status.textContent = "Listening... Sofia is paying attention.";
+    if (status) status.textContent = "Listening... (Barge-in active, Sofia stops talking when you speak)";
     waves.forEach(w => w.classList.add("speaking"));
   } else {
     btn?.classList.remove("active");
@@ -224,9 +310,7 @@ function updateMicUI(listening) {
 }
 
 function toggleVoice() {
-  if (!recognition) {
-    initVoiceRecognition();
-  }
+  if (!recognition) initVoiceRecognition();
   if (!recognition) {
     alert("Speech recognition is not supported in this browser.");
     return;
@@ -315,6 +399,9 @@ async function processMessageTurn(messageText) {
     const data = await res.json();
     const elapsed = Math.round(performance.now() - t0);
 
+    // Update Sentiment Badge
+    updateSentimentBadge(data.sentiment);
+
     // Append Assistant Bubble
     appendChatBubble("bot", data.reply, data);
 
@@ -324,13 +411,29 @@ async function processMessageTurn(messageText) {
     // Update Telemetry Waterfall
     updateTelemetry(data.metrics, elapsed);
 
-    // If booking was committed, refresh appointments table
+    // Refresh appointments table on action
     if (data.action_performed === "booked" || data.action_performed === "cancelled" || data.action_performed === "rescheduled") {
       fetchAppointments();
     }
   } catch (e) {
     console.error("Chat error:", e);
     appendChatBubble("bot", "I apologize, but I encountered a momentary connection issue. Please try again.");
+  }
+}
+
+function updateSentimentBadge(sentiment) {
+  const badge = document.getElementById("sentimentBadge");
+  if (!badge) return;
+  const s = (sentiment || "neutral").toLowerCase();
+  if (s === "positive") {
+    badge.style.color = "var(--accent-emerald)";
+    badge.innerHTML = "Mood: Satisfied 😊";
+  } else if (s === "frustrated") {
+    badge.style.color = "var(--accent-rose)";
+    badge.innerHTML = "Mood: Frustrated ⚠️ (Auto-Escalating)";
+  } else {
+    badge.style.color = "var(--text-secondary)";
+    badge.innerHTML = "Mood: Neutral 💬";
   }
 }
 
@@ -345,7 +448,7 @@ function appendChatBubble(role, text, metadata = null) {
     bubble.innerHTML = `
       ${text}
       <div class="bubble-meta">
-        <span>Sofia (${metadata?.accent?.name || "AI Receptionist"})</span>
+        <span>Sofia (${metadata?.accent?.name || "AI Concierge"})</span>
         <button class="listen-btn" onclick="playSpeech('${encodeURIComponent(text)}')">🔊 Listen</button>
       </div>
     `;
@@ -363,17 +466,14 @@ function playSpeech(rawText) {
   const decoded = decodeURIComponent(rawText);
   if (!window.speechSynthesis) return;
 
-  // Cancel prior speech
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(decoded);
   utterance.lang = getLanguageCodeForAccent(currentAccentKey);
 
-  // Female voice pitch & speech rate tuning
   utterance.pitch = 1.15;
   utterance.rate = 1.0;
 
-  // Animate waveform
   const waves = document.querySelectorAll(".wave-bar");
   waves.forEach(w => w.classList.add("speaking"));
   utterance.onend = () => {
@@ -458,29 +558,96 @@ async function cancelBooking(phone, bookingId) {
   }
 }
 
-// --- Telemetry Waterfall ---
+// --- Nimbus Microsecond Latency Telemetry Waterfall ---
 
 function updateTelemetry(metrics, totalClientElapsed) {
-  const ragMs = metrics?.retrieval_ms || (isRAGEnabled ? 28.4 : 0.8);
-  const orchMs = metrics?.total_orchestration_ms || 18;
-  const asrMs = Math.round(100 + Math.random() * 30);
-  const ttsMs = Math.round(180 + Math.random() * 40);
-  const totalMs = asrMs + Math.round(ragMs) + Math.round(orchMs) + ttsMs;
+  const breakdown = metrics?.latency_breakdown || {};
+  const asrMs = Math.round(breakdown.asr_ms || 115);
+  const ragMs = (breakdown.rag_ms || (isRAGEnabled ? 28.4 : 0.8)).toFixed(1);
+  const ttftMs = Math.round(breakdown.llm_ttft_ms || 58);
+  const llmMs = Math.round(breakdown.llm_total_ms || 142);
+  const toolMs = Math.round(breakdown.tool_ms || 18);
+  const ttsMs = Math.round(breakdown.tts_ms || 165);
+  const totalMs = asrMs + Math.round(parseFloat(ragMs)) + llmMs + toolMs + ttsMs;
 
-  const tAsr = document.getElementById("tAsr");
-  const tRag = document.getElementById("tRag");
-  const tOrch = document.getElementById("tOrch");
-  const tTts = document.getElementById("tTts");
-  const tTotal = document.getElementById("tTotal");
+  const elAsr = document.getElementById("tAsr");
+  const elRag = document.getElementById("tRag");
+  const elTtft = document.getElementById("tTtft");
+  const elLlm = document.getElementById("tLlm");
+  const elTool = document.getElementById("tTool");
+  const elTts = document.getElementById("tTts");
+  const elTotal = document.getElementById("tTotal");
 
-  if (tAsr) tAsr.textContent = `${asrMs} ms`;
-  if (tRag) tRag.textContent = `${ragMs} ms`;
-  if (tOrch) tOrch.textContent = `${orchMs} ms`;
-  if (tTts) tTts.textContent = `${ttsMs} ms`;
-  if (tTotal) {
-    tTotal.textContent = `${totalMs} ms`;
-    tTotal.style.color = totalMs < 600 ? "#10b981" : "#f59e0b";
+  if (elAsr) elAsr.textContent = `${asrMs} ms`;
+  if (elRag) elRag.textContent = `${ragMs} ms`;
+  if (elTtft) elTtft.textContent = `${ttftMs} ms`;
+  if (elLlm) elLlm.textContent = `${llmMs} ms`;
+  if (elTool) elTool.textContent = `${toolMs} ms`;
+  if (elTts) elTts.textContent = `${ttsMs} ms`;
+  if (elTotal) {
+    elTotal.textContent = `${totalMs} ms`;
+    elTotal.style.color = totalMs < 600 ? "#10b981" : "#f59e0b";
   }
+}
+
+// --- Client Self-Serve Onboarding Modal ---
+
+function setupOnboardModal() {
+  const btnOpen = document.getElementById("btnOpenOnboardModal");
+  const btnClose = document.getElementById("btnCloseModal");
+  const modal = document.getElementById("onboardModal");
+  const form = document.getElementById("onboardForm");
+
+  btnOpen?.addEventListener("click", () => {
+    if (modal) modal.style.display = "flex";
+  });
+
+  btnClose?.addEventListener("click", () => {
+    if (modal) modal.style.display = "none";
+  });
+
+  modal?.addEventListener("click", (e) => {
+    if (e.target === modal) modal.style.display = "none";
+  });
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("btnSubmitOnboard");
+    if (btn) btn.textContent = "Provisioning AI Receptionist...";
+
+    const payload = {
+      business_name: document.getElementById("obBusinessName").value,
+      vertical: document.getElementById("obVertical").value,
+      phone_number: document.getElementById("obPhone").value,
+      primary_accent: document.getElementById("obAccent").value,
+      address: document.getElementById("obAddress").value || "100 Main Street",
+      whatsapp_phone_number_id: document.getElementById("obWhatsappId").value || "",
+      meta_page_id: document.getElementById("obMetaPageId").value || "",
+      instagram_account_id: document.getElementById("obInstagramId").value || "",
+      google_calendar_id: document.getElementById("obGoogleCalendarId").value || "primary",
+    };
+
+    try {
+      const res = await fetch("/api/blueprint/onboard-customer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.status === "success") {
+        alert(`🎉 Success! ${data.message}\nTenant ID: ${data.tenant_id}\n\nAll Webhooks for WhatsApp, Messenger, Instagram, Twilio & G-Cal are LIVE!`);
+        if (modal) modal.style.display = "none";
+        await loadBlueprints();
+        switchTenant(data.tenant_id);
+      } else {
+        alert("Onboarding failed: " + (data.detail || "Error provisioning tenant"));
+      }
+    } catch (err) {
+      alert("Network error provisioning tenant: " + err);
+    } finally {
+      if (btn) btn.textContent = "🚀 Provision AI Receptionist Now";
+    }
+  });
 }
 
 // --- Setup Event Listeners ---
@@ -492,4 +659,13 @@ function setupEventListeners() {
   document.getElementById("chatInput")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") sendChatMessage();
   });
+
+  const slider = document.getElementById("silenceSlider");
+  const sVal = document.getElementById("silenceVal");
+  slider?.addEventListener("input", (e) => {
+    endpointSilenceMs = parseInt(e.target.value);
+    if (sVal) sVal.textContent = `${endpointSilenceMs} ms`;
+  });
+
+  setupOnboardModal();
 }

@@ -162,3 +162,4 @@ async def websocket_chat_endpoint(websocket: WebSocket):
             await websocket.close()
         except Exception:
             pass
+

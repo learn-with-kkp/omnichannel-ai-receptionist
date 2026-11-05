@@ -194,3 +194,4 @@ class NotificationDispatcher:
 
 # Global singleton dispatcher
 notification_dispatcher = NotificationDispatcher()
+

@@ -37,6 +37,7 @@ from backend.routers.voice import router as voice_router
 from backend.routers.chat import router as chat_router
 from backend.routers.messaging import router as messaging_router
 from backend.routers.tenants import router as tenants_router
+from backend.routers.streaming_voice import router as streaming_voice_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("SalonVoiceReceptionist")
@@ -78,6 +79,7 @@ app.include_router(voice_router)
 app.include_router(chat_router)
 app.include_router(messaging_router)
 app.include_router(tenants_router)
+app.include_router(streaming_voice_router)
 
 # Mount Static Web Studio Dashboard
 web_dir = Path(__file__).resolve().parent.parent / "web"

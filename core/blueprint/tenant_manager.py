@@ -3,27 +3,87 @@ Universal Multi-Tenant Business Registry & Vertical Configurations.
 Pre-packages production manifests for Salon, Dental, Automotive, and Medical Clinic.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from core.blueprint.schema import BusinessProfile, ServiceItem, StaffMember, FAQItem, AccentProfile
 
 # 1. Standard Multi-Dialect Voice Profiles (Female Voice: Sofia)
 DEFAULT_ACCENTS: Dict[str, AccentProfile] = {
+    "general_american": AccentProfile(
+        accent_id="general_american",
+        name="General American (Neutral US / West Coast)",
+        flag="🇺🇸",
+        locale="en-US",
+        tts_voice_id="21m00Tcm4TlvDq8ikWAM",  # Rachel / Sofia
+        greeting_template="Hello and welcome to {business_name}! My name is Sofia, your AI receptionist. How can I assist you with scheduling or questions today?",
+        conversational_style="Crisp, modern, corporate neutral, articulate, and welcoming.",
+        sample_phrase="I would be happy to check our availability and book that slot for you right now."
+    ),
+    "canadian_english": AccentProfile(
+        accent_id="canadian_english",
+        name="Canadian English (Polite & Warm)",
+        flag="🇨🇦",
+        locale="en-CA",
+        tts_voice_id="21m00Tcm4TlvDq8ikWAM",
+        greeting_template="Hello there! Welcome to {business_name}. My name is Sofia. Great to have you reach out today! How can I help you book your appointment?",
+        conversational_style="Courteous, polite North American raising, attentive Canadian phrasing, friendly hospitality.",
+        sample_phrase="No problem at all! Let's get that scheduled for you right away, no worries."
+    ),
     "red_american": AccentProfile(
         accent_id="red_american",
         name="Red American / Southern Warmth",
         flag="🇺🇸",
         locale="en-US",
-        tts_voice_id="21m00Tcm4TlvDq8ikWAM",  # ElevenLabs Rachel / Sofia
+        tts_voice_id="21m00Tcm4TlvDq8ikWAM",
         greeting_template="Hey there! Thanks for reaching out to {business_name}. My name is Sofia, your virtual receptionist. How can I help you today, darlin'?",
         conversational_style="Warm, hospitable, friendly southern colloquialisms ('sure thing', 'you bet', 'we'd love to have you').",
         sample_phrase="Sure thing! We'll get that all squared away for you right now."
+    ),
+    "european_british": AccentProfile(
+        accent_id="european_british",
+        name="European / British English (London RP)",
+        flag="🇬🇧",
+        locale="en-GB",
+        tts_voice_id="pFZP5JQG7iQjIQuC4Bku",  # Lily
+        greeting_template="Good day! Thank you for contacting {business_name}. My name is Sofia. Splendid of you to reach out. How may I be of assistance with your appointment today?",
+        conversational_style="Polite Received Pronunciation, crisp diction, British idioms ('splendid', 'brilliant', 'half past', 'sorted').",
+        sample_phrase="Splendid! I have reserved that time for you, and your details are perfectly sorted."
+    ),
+    "irish_english": AccentProfile(
+        accent_id="irish_english",
+        name="Irish English (Dublin Warmth)",
+        flag="🇮🇪",
+        locale="en-IE",
+        tts_voice_id="pFZP5JQG7iQjIQuC4Bku",
+        greeting_template="Hello and welcome to {business_name}! Sofia here to help you out. How are you keeping today, and how can I sort your booking?",
+        conversational_style="Warm, engaging, melodious cadence, helpful and approachable phrasing.",
+        sample_phrase="Grand! That's no trouble at all, I'll have that booked and sorted for you in two seconds."
+    ),
+    "euro_international": AccentProfile(
+        accent_id="euro_international",
+        name="Euro-International English (Continental)",
+        flag="🇪🇺",
+        locale="en-EU",
+        tts_voice_id="pFZP5JQG7iQjIQuC4Bku",
+        greeting_template="Hello and welcome to {business_name}. My name is Sofia. We are delighted to assist international and European clients today. How may I direct your booking?",
+        conversational_style="Clear, measured pace, universally understood English tailored for European business hubs.",
+        sample_phrase="Certainly. I am confirming your reservation across our system now."
+    ),
+    "australian_english": AccentProfile(
+        accent_id="australian_english",
+        name="Australian English (Sydney Friendly)",
+        flag="🇦🇺",
+        locale="en-AU",
+        tts_voice_id="EXAVITQu4vr4xnSDxMaL",
+        greeting_template="G'day! Welcome to {business_name}. Sofia here, how's it going today? How can I help sort your booking?",
+        conversational_style="Breezy, optimistic, cheerful, clear Australian pacing.",
+        sample_phrase="Too easy! Let's lock in that time for you straight away."
     ),
     "indian_english": AccentProfile(
         accent_id="indian_english",
         name="Indian English (Clear & Courteous)",
         flag="🇮🇳",
         locale="en-IN",
-        tts_voice_id="MF3mGyEYCl7XYWbV9V6O",  # ElevenLabs Priya / Aditi
+        tts_voice_id="ThT5KcBeYPX3keUQqHPh",
         greeting_template="Namaste and a very good day to you! Thank you for contacting {business_name}. I am Sofia. Kindly let me know which booking slot or service you would like to arrange today.",
         conversational_style="Polite, respectful, articulated syllables, honorifics ('kindly', 'pleased to help', 'reconfirming your slot').",
         sample_phrase="Kindly share your preferred date and time, and I will check the live available slots right away."
@@ -33,20 +93,10 @@ DEFAULT_ACCENTS: Dict[str, AccentProfile] = {
         name="African English (Warm Cadence)",
         flag="🌍",
         locale="en-ZA",
-        tts_voice_id="EXAVITQu4vr4xnSDxMaL",  # ElevenLabs Bella / Zola
+        tts_voice_id="EXAVITQu4vr4xnSDxMaL",
         greeting_template="Warm greetings! Welcome to {business_name}. My name is Sofia. You are most welcome, and I am here to assist you with your booking. How may I serve you today?",
         conversational_style="Measured, respectful, vibrant and warm hospitality, community-focused phrasing.",
         sample_phrase="You are most welcome! Let us secure this appointment time for you."
-    ),
-    "european_british": AccentProfile(
-        accent_id="european_british",
-        name="European / British English (Crisp RP)",
-        flag="🇬🇧",
-        locale="en-GB",
-        tts_voice_id="ThT5KcBeYPX3keUQqHPh",  # ElevenLabs Dorothy / Freya
-        greeting_template="Good day! Thank you for contacting {business_name}. My name is Sofia. Splendid of you to reach out. How may I be of assistance with your appointment today?",
-        conversational_style="Polite Received Pronunciation, crisp diction, British idioms ('splendid', 'brilliant', 'half past', 'sorted').",
-        sample_phrase="Splendid! I have reserved that time for you, and your details are perfectly sorted."
     ),
 }
 
@@ -176,6 +226,73 @@ CLINIC_PROFILE = BusinessProfile(
     default_accent="red_american"
 )
 
+# 6. Real Estate Agency & Luxury Property Showings
+REAL_ESTATE_PROFILE = BusinessProfile(
+    tenant_id="real_estate_primekey",
+    vertical="real_estate",
+    business_name="PrimeKey Luxury Real Estate & Property Advisory",
+    tagline="Premier Residential Showings, Luxury Listings & Commercial Brokerage",
+    phone_number="+18007775533",
+    address="800 5th Avenue, Suite 24A, New York, NY 10065",
+    timezone="America/New_York",
+    currency="USD",
+    lead_time_hours=2,
+    cancellation_window_hours=6,
+    google_calendar_id="primary",
+    services=[
+        ServiceItem(id="re1", name="Private Home Showing & Property Tour", category="Residential", duration_minutes=60, price=0.0, description="Exclusive walkthrough of listing with licensed luxury specialist. Proof of funds / pre-approval reviewed."),
+        ServiceItem(id="re2", name="Home Valuation & Seller Strategy Session", category="Advisory", duration_minutes=45, price=0.0, description="Comprehensive comparative market analysis (CMA) and listing strategy consultation."),
+        ServiceItem(id="re3", name="First-Time Homebuyer Strategy & Pre-Approval", category="Consultation", duration_minutes=60, price=0.0, description="Buyer intake, financing roadmap, neighborhood profiling, and MLS portal setup."),
+        ServiceItem(id="re4", name="Commercial Real Estate Space Viewing", category="Commercial", duration_minutes=90, price=0.0, description="Guided tour of prime retail, office, or industrial properties with lease term advisory."),
+        ServiceItem(id="re5", name="Luxury Penthouse VIP Viewing", category="Luxury", duration_minutes=75, price=0.0, description="Private escort through high-end waterfront / penthouse portfolio with private broker."),
+    ],
+    staff=[
+        StaffMember(id="rest1", name="Victoria Sterling", role="Managing Listing Broker", qualified_services=["Private Home Showing & Property Tour", "Home Valuation & Seller Strategy Session", "Luxury Penthouse VIP Viewing"]),
+        StaffMember(id="rest2", name="David Vance", role="Senior Commercial & Residential Broker", qualified_services=["Commercial Real Estate Space Viewing", "Private Home Showing & Property Tour"]),
+        StaffMember(id="rest3", name="Chloe Montgomery", role="Buyer Specialist & Relocation Advisor", qualified_services=["First-Time Homebuyer Strategy & Pre-Approval", "Private Home Showing & Property Tour"]),
+    ],
+    faqs=[
+        FAQItem(question="Do I need a pre-approval letter before touring luxury properties?", answer="Yes, private showings for properties above $1.5M require either a lender pre-approval letter or proof of funds."),
+        FAQItem(question="Do you help with corporate and international relocations?", answer="Yes, our international relocation desk assists clients moving between the US, Canada, UK, and European hubs."),
+        FAQItem(question="Are property showings free of charge?", answer="Yes! All residential and commercial showings booked through our AI concierge are 100% complimentary."),
+    ],
+    accent_profiles=DEFAULT_ACCENTS,
+    default_accent="general_american"
+)
+
+# 7. Corporate, Litigation & Estate Law Firm
+LEGAL_PROFILE = BusinessProfile(
+    tenant_id="legal_apex",
+    vertical="legal",
+    business_name="Apex & Partners Legal Advocates & Counsel",
+    tagline="Confidential Legal Representation, M&A Advisory & Litigation Intake",
+    phone_number="+18009994422",
+    address="100 Financial District Blvd, 32nd Floor, Boston, MA 02110",
+    timezone="America/New_York",
+    currency="USD",
+    lead_time_hours=3,
+    cancellation_window_hours=24,
+    google_calendar_id="primary",
+    services=[
+        ServiceItem(id="l1", name="Confidential Initial Legal Consultation", category="General", duration_minutes=45, price=150.0, description="Initial case assessment protected under attorney-client privilege."),
+        ServiceItem(id="l2", name="Corporate Formation & M&A Strategy Review", category="Corporate", duration_minutes=60, price=350.0, description="Review of venture financing, incorporation, shareholder agreements, or M&A contracts."),
+        ServiceItem(id="l3", name="Personal Injury Case Evaluation", category="Litigation", duration_minutes=30, price=0.0, description="Free case evaluation for auto accidents, workplace injury, or liability. Contingency-based."),
+        ServiceItem(id="l4", name="Estate Planning, Wills & Trust Strategy", category="Estate", duration_minutes=60, price=250.0, description="Comprehensive asset protection, revocable living trusts, wills, and health directives."),
+        ServiceItem(id="l5", name="Cross-Border Immigration & Visa Advisory", category="Immigration", duration_minutes=45, price=200.0, description="Consultation for investor visas (E-2/EB-5), corporate transfers (L-1/H-1B), or residency."),
+    ],
+    staff=[
+        StaffMember(id="lst1", name="Attorney Julian Hayes", role="Managing Partner - Corporate & Commercial", qualified_services=["Corporate Formation & M&A Strategy Review", "Confidential Initial Legal Consultation"]),
+        StaffMember(id="lst2", name="Attorney Rebecca Sinclair", role="Senior Litigator - Personal Injury", qualified_services=["Personal Injury Case Evaluation", "Confidential Initial Legal Consultation"]),
+        StaffMember(id="lst3", name="Attorney Arthur Pendelton", role="Trust & Estate Planning Counsel", qualified_services=["Estate Planning, Wills & Trust Strategy", "Confidential Initial Legal Consultation"]),
+    ],
+    faqs=[
+        FAQItem(question="Is this conversation protected under attorney-client privilege?", answer="Yes, all information disclosed to our AI intake receptionist and during legal consultations is kept strictly confidential under attorney-client privilege."),
+        FAQItem(question="Do you charge upfront fees for personal injury cases?", answer="No, our personal injury practice works on a contingency basis—no recovery, no legal fees."),
+    ],
+    accent_profiles=DEFAULT_ACCENTS,
+    default_accent="general_american"
+)
+
 
 class TenantManager:
     """Manages active tenant profiles and vertical switching."""
@@ -191,6 +308,10 @@ class TenantManager:
             "auto_precision": AUTOMOTIVE_PROFILE,
             "clinic": CLINIC_PROFILE,
             "clinic_carefirst": CLINIC_PROFILE,
+            "real_estate": REAL_ESTATE_PROFILE,
+            "real_estate_primekey": REAL_ESTATE_PROFILE,
+            "legal": LEGAL_PROFILE,
+            "legal_apex": LEGAL_PROFILE,
         }
         self.active_tenant_id = "salon"
 
@@ -213,13 +334,13 @@ class TenantManager:
         return unique
 
     def get_accent(self, accent_key: Optional[str] = None) -> AccentProfile:
-        k = (accent_key or "red_american").lower()
+        k = (accent_key or "general_american").lower()
         if k in DEFAULT_ACCENTS:
             return DEFAULT_ACCENTS[k]
         for acc_k, acc_v in DEFAULT_ACCENTS.items():
             if acc_k in k or k in acc_k:
                 return acc_v
-        return DEFAULT_ACCENTS["red_american"]
+        return DEFAULT_ACCENTS["general_american"]
 
     def list_accents(self) -> List[AccentProfile]:
         return list(DEFAULT_ACCENTS.values())
@@ -230,7 +351,94 @@ class TenantManager:
             {"id": "dental", "name": "Apex Dental Clinic", "vertical": "Dental / Orthodontics", "services_count": str(len(DENTAL_PROFILE.services))},
             {"id": "automotive", "name": "Precision Motor Works", "vertical": "Auto Repair / Tires", "services_count": str(len(AUTOMOTIVE_PROFILE.services))},
             {"id": "clinic", "name": "CareFirst Family Medical", "vertical": "Doctor / Clinic", "services_count": str(len(CLINIC_PROFILE.services))},
+            {"id": "real_estate", "name": "PrimeKey Luxury Real Estate", "vertical": "Real Estate / Showings", "services_count": str(len(REAL_ESTATE_PROFILE.services))},
+            {"id": "legal", "name": "Apex & Partners Legal Counsel", "vertical": "Law Firm / Legal Intake", "services_count": str(len(LEGAL_PROFILE.services))},
         ]
+
+    def onboard_custom_tenant(
+        self,
+        tenant_id: str,
+        business_name: str,
+        vertical: str,
+        phone_number: str,
+        address: str,
+        currency: str = "USD",
+        services: Optional[List[Dict[str, Any]]] = None,
+        staff: Optional[List[Dict[str, Any]]] = None,
+        whatsapp_phone_number_id: str = "",
+        meta_page_id: str = "",
+        instagram_account_id: str = "",
+        google_calendar_id: str = "primary",
+        primary_accent: str = "general_american"
+    ) -> BusinessProfile:
+        """Dynamically instantiates and registers a new customer tenant."""
+        tid = tenant_id.lower().strip().replace(" ", "_")
+        service_items = []
+        if services:
+            for i, s in enumerate(services):
+                service_items.append(ServiceItem(
+                    id=f"{tid}_s{i+1}",
+                    name=s.get("name", "Consultation"),
+                    category=s.get("category", "General"),
+                    duration_minutes=int(s.get("duration_minutes", 45)),
+                    price=float(s.get("price", 50.0)),
+                    description=s.get("description", "Standard consultation")
+                ))
+        else:
+            # Default starter service
+            service_items.append(ServiceItem(
+                id=f"{tid}_s1",
+                name="Initial Consultation",
+                category="General",
+                duration_minutes=45,
+                price=50.0,
+                description="Initial consultation and onboarding session."
+            ))
+
+        staff_items = []
+        if staff:
+            for i, st in enumerate(staff):
+                staff_items.append(StaffMember(
+                    id=f"{tid}_st{i+1}",
+                    name=st.get("name", "Specialist"),
+                    role=st.get("role", "Specialist"),
+                    qualified_services=[s.name for s in service_items]
+                ))
+        else:
+            staff_items.append(StaffMember(
+                id=f"{tid}_st1",
+                name="Front Desk Specialist",
+                role="Specialist",
+                qualified_services=[s.name for s in service_items]
+            ))
+
+        new_profile = BusinessProfile(
+            tenant_id=tid,
+            vertical=vertical,
+            business_name=business_name,
+            tagline=f"Premier {vertical.replace('_', ' ').title()} Services",
+            phone_number=phone_number,
+            address=address,
+            currency=currency,
+            google_calendar_id=google_calendar_id or "primary",
+            services=service_items,
+            staff=staff_items,
+            accent_profiles=DEFAULT_ACCENTS,
+            default_accent=primary_accent
+        )
+
+        self.tenants[tid] = new_profile
+
+        # Also persist into SQLite
+        try:
+            from backend.database import create_tenant
+            db_services = [(s.name, s.duration_minutes, int(s.price)) for s in service_items]
+            db_stylists = [st.name for st in staff_items]
+            create_tenant(tid, business_name, phone_number, address, db_services, db_stylists)
+        except Exception:
+            pass
+
+        return new_profile
 
 
 tenant_manager = TenantManager()

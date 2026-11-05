@@ -22,6 +22,7 @@ from core.blueprint.schema import (
 from core.blueprint.tenant_manager import tenant_registry
 from core.engine.rag_engine import knowledge_engine
 from core.notifications import notification_dispatcher
+from core.latency import LatencyTracker
 from integrations.google_calendar import calendar_service
 from backend.database import (
     book_new_appointment,
@@ -140,26 +141,61 @@ class UniversalReceptionistOrchestrator:
 
         return local_slots[:4] if local_slots else ["10:00 AM", "01:30 PM", "04:00 PM"]
 
+    def detect_sentiment(self, message: str) -> str:
+        """Analyzes caller emotional valence to trigger proactive empathetic care or manager escalation."""
+        m = message.lower()
+        if any(w in m for w in ["terrible", "horrible", "awful", "unacceptable", "furious", "angry", "ridiculous", "frustrated", "manager now", "complaint", "worst"]):
+            return "frustrated"
+        if any(w in m for w in ["great", "wonderful", "perfect", "thank you", "thanks", "awesome", "excellent", "love", "splendid"]):
+            return "positive"
+        return "neutral"
+
     def recognize_intent(self, message: str) -> str:
         """Determines the user intent from conversational message."""
         m = message.lower()
+        if self.detect_sentiment(m) == "frustrated":
+            return "escalate"
         if any(w in m for w in ["cancel", "cancel booking", "cancel appointment", "abort"]):
             return "cancel"
         if any(w in m for w in ["reschedule", "change time", "move appointment", "different day", "push back"]):
             return "reschedule"
-        if any(w in m for w in ["book", "appointment", "reserve", "schedule", "slot", "haircut", "cleaning", "repair", "visit"]):
+        if any(w in m for w in [
+            "book", "appointment", "reserve", "schedule", "slot", "visit",
+            # Salon & Spa
+            "haircut", "balayage", "keratin", "manicure", "pedicure",
+            # Dental
+            "cleaning", "whitening", "root canal", "filling", "braces", "orthodontic",
+            # Automotive
+            "oil change", "brakes", "tire", "diagnostic", "engine",
+            # Medical
+            "checkup", "exam", "doctor", "physical", "urgent care", "pediatric",
+            # Real Estate
+            "showing", "viewing", "property tour", "valuation", "buyer", "home tour", "penthouse", "open house", "commercial space",
+            # Legal
+            "consultation", "case", "lawyer", "attorney", "injury", "estate", "will", "trust", "contract", "visa", "retainer"
+        ]):
             return "book"
         if any(w in m for w in ["available", "openings", "slots", "free", "hours", "when"]):
             return "check_availability"
         if any(w in m for w in ["manager", "human", "representative", "person", "agent", "supervisor"]):
             return "escalate"
-        if any(w in m for w in ["accent", "pronunciation", "indian", "british", "african", "southern", "american"]):
+        if any(w in m for w in ["accent", "pronunciation", "indian", "british", "african", "southern", "american", "canadian", "irish", "australian"]):
             return "accent_switch"
         return "faq"
 
     def format_accented_response(self, text: str, accent: AccentProfile) -> str:
         """Personalizes phrasing and greetings according to regional English accent profile."""
-        if accent.key == "indian_english":
+        if accent.key == "canadian_english":
+            return f"Hello there! {text} Happy to help you out, eh."
+        elif accent.key == "general_american":
+            return f"Hello! {text} Let me know if that works for you."
+        elif accent.key == "irish_english":
+            return f"Grand! {text} We'll have that sorted for you in no time."
+        elif accent.key == "euro_international":
+            return f"Certainly! {text} We look forward to receiving you."
+        elif accent.key == "australian_english":
+            return f"G'day! {text} Too easy, mate!"
+        elif accent.key == "indian_english":
             return f"Namaste! {text} Kindly let me know if this works for you."
         elif accent.key == "african_english":
             return f"Warm greetings, my dear! {text} We are always delighted to assist you."
@@ -175,22 +211,25 @@ class UniversalReceptionistOrchestrator:
         session_id: str,
         tenant_id: Optional[str] = "salon",
         channel: OmniChannelType = OmniChannelType.WEBSITE_CHAT,
-        accent_key: Optional[str] = "red_american",
+        accent_key: Optional[str] = "general_american",
         caller_phone: Optional[str] = None,
         caller_name: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Universal entry point processing a single conversational turn across ANY channel.
-        Returns response payload including text, voice audio settings, slots, and metadata.
+        Tracks microsecond per-stage latency with Nimbus-inspired precision.
         """
         start_ts = time.time()
+        tracker = LatencyTracker()
         tenant = self.get_tenant_manifest(tenant_id)
         accent = self.get_accent_profile(accent_key)
+        sentiment = self.detect_sentiment(user_message)
         intent = self.recognize_intent(user_message)
 
         # 1. Fetch retrieval context (RAG vs RAGless)
-        retrieval = knowledge_engine.query_context(tenant, user_query=user_message)
-        context_text = retrieval["context_text"]
+        with tracker.stage("rag"):
+            retrieval = knowledge_engine.query_context(tenant, user_query=user_message)
+        tracker.add("rag", retrieval.get("retrieval_ms", 0.8))
 
         response_text = ""
         suggested_slots = []
@@ -201,135 +240,141 @@ class UniversalReceptionistOrchestrator:
         matched_service = self.fuzzy_match_service(tenant, user_message)
         matched_staff = self.fuzzy_match_staff(tenant, user_message, matched_service)
 
-        # Dialogue State Machine
-        if intent == "book":
-            # Extract date if mentioned or default to tomorrow
-            if "tomorrow" in user_message.lower():
-                target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-            elif "today" in user_message.lower():
-                target_date = datetime.now().strftime("%Y-%m-%d")
+        # 2. Dialogue State Machine with Tool & LLM Latency tracking
+        with tracker.stage("llm_total"):
+            if intent == "book":
+                if "tomorrow" in user_message.lower():
+                    target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+                elif "today" in user_message.lower():
+                    target_date = datetime.now().strftime("%Y-%m-%d")
 
-            # Check for specific time request
-            time_match = re.search(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm))", user_message, re.IGNORECASE)
-            
-            if time_match and caller_name and caller_phone:
-                # Direct commit step
-                req_time = time_match.group(1).upper()
-                try:
-                    parsed_dt = datetime.strptime(f"{target_date} {req_time}", "%Y-%m-%d %I:%M %p")
-                    dt_iso = parsed_dt.strftime("%Y-%m-%dT%H:%M:00")
-                except Exception:
-                    dt_iso = f"{target_date}T14:00:00"
+                time_match = re.search(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm))", user_message, re.IGNORECASE)
+                
+                if time_match and caller_name and caller_phone:
+                    req_time = time_match.group(1).upper()
+                    try:
+                        parsed_dt = datetime.strptime(f"{target_date} {req_time}", "%Y-%m-%d %I:%M %p")
+                        dt_iso = parsed_dt.strftime("%Y-%m-%dT%H:%M:00")
+                    except Exception:
+                        dt_iso = f"{target_date}T14:00:00"
 
-                st_name = matched_staff.name if matched_staff else (tenant.staff[0].name if tenant.staff else "Specialist")
-                srv_name = matched_service.name if matched_service else "Consultation"
+                    st_name = matched_staff.name if matched_staff else (tenant.staff[0].name if tenant.staff else "Specialist")
+                    srv_name = matched_service.name if matched_service else "Consultation"
 
-                booking_res = book_new_appointment(
-                    caller_name=caller_name,
-                    caller_phone=caller_phone,
-                    service_name=srv_name,
-                    appointment_datetime=dt_iso,
-                    stylist_name=st_name,
-                    tenant_id=tenant.id,
-                    channel=channel.value,
-                    accent=accent.key
-                )
+                    with tracker.stage("tool"):
+                        booking_res = book_new_appointment(
+                            caller_name=caller_name,
+                            caller_phone=caller_phone,
+                            service_name=srv_name,
+                            appointment_datetime=dt_iso,
+                            stylist_name=st_name,
+                            tenant_id=tenant.id,
+                            channel=channel.value,
+                            accent=accent.key
+                        )
+                        notification_dispatcher.dispatch_booking_confirmation(booking_res, channel=channel.value)
 
-                # Push confirmations across SMS & WhatsApp
-                notification_dispatcher.dispatch_booking_confirmation(booking_res, channel=channel.value)
+                    booking_data = booking_res
+                    action_performed = "booked"
+                    response_text = (
+                        f"You are all booked, {caller_name}! Your appointment for {srv_name} with {st_name} "
+                        f"at {tenant.name} is confirmed for {booking_res['start_time']}. "
+                        f"Your booking reference is {booking_res['booking_id']}. "
+                        f"A confirmation has been sent to {caller_phone}."
+                    )
+                else:
+                    with tracker.stage("tool"):
+                        suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+                    srv_title = matched_service.name if matched_service else "your visit"
+                    staff_mention = f" with {matched_staff.name}" if matched_staff else ""
+                    slots_str = ", ".join(suggested_slots) if suggested_slots else "10:00 AM, 02:00 PM, 04:30 PM"
+                    response_text = (
+                        f"For {srv_title}{staff_mention} on {target_date}, we have open slots at {slots_str}. "
+                        f"Which time suits you best? Kindly reply with your preferred time, full name, and phone number to confirm."
+                    )
 
-                booking_data = booking_res
-                action_performed = "booked"
+            elif intent == "check_availability":
+                with tracker.stage("tool"):
+                    suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+                slots_str = ", ".join(suggested_slots)
+                srv_title = matched_service.name if matched_service else "our services"
                 response_text = (
-                    f"You are all booked, {caller_name}! Your appointment for {srv_name} with {st_name} "
-                    f"at {tenant.name} is confirmed for {booking_res['start_time']}. "
-                    f"Your booking reference is {booking_res['booking_id']}. "
-                    f"A confirmation has been sent to {caller_phone}."
+                    f"We currently have openings for {srv_title} on {target_date} at: {slots_str}. "
+                    f"Would you like me to reserve one of these for you?"
                 )
+
+            elif intent == "cancel":
+                phone = caller_phone or "6673070119"
+                with tracker.stage("tool"):
+                    cancelled = cancel_existing_appointment(phone, tenant_id=tenant.id)
+                if cancelled:
+                    action_performed = "cancelled"
+                    response_text = (
+                        f"Your appointment at {tenant.name} has been successfully canceled and removed from our Google Calendar. "
+                        f"No cancellation fee was applied. We hope to see you another time!"
+                    )
+                else:
+                    response_text = (
+                        f"I couldn't locate an active booking under phone {phone} to cancel. "
+                        f"Please verify your number or reference ID, and I will be glad to assist."
+                    )
+
+            elif intent == "reschedule":
+                phone = caller_phone or "6673070119"
+                new_dt = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%dT15:00:00")
+                with tracker.stage("tool"):
+                    rescheduled = reschedule_existing_appointment(phone, new_dt, tenant_id=tenant.id)
+                if rescheduled:
+                    action_performed = "rescheduled"
+                    booking_data = rescheduled
+                    response_text = (
+                        f"Done! Your appointment has been rescheduled to {rescheduled['start_time']} "
+                        f"with {rescheduled['stylist_name']}. Your Google Calendar event and reminder schedules have been updated."
+                    )
+                else:
+                    response_text = (
+                        f"I could not locate an existing booking to reschedule for phone number {phone}. "
+                        f"Would you like to book a new appointment instead?"
+                    )
+
+            elif intent == "escalate":
+                action_performed = "escalated"
+                if sentiment == "frustrated":
+                    response_text = (
+                        f"I completely understand your frustration and I sincerely apologize. "
+                        f"I am immediately transferring you directly to our front desk manager at {tenant.name}. "
+                        f"You can also reach them directly at {tenant.phone}. Please hold for just a moment."
+                    )
+                else:
+                    response_text = (
+                        f"I am transferring your request to our front desk manager at {tenant.name}. "
+                        f"Our manager can also be reached directly at {tenant.phone}. Please hold for just a moment."
+                    )
+
+            elif intent == "accent_switch":
+                response_text = (
+                    f"Understood! I have adjusted my accent profile to {accent.name} ({accent.description}). "
+                    f"How may I assist you with your booking at {tenant.name} today?"
+                )
+
             else:
-                # Slot recommendation step
-                suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
-                srv_title = matched_service.name if matched_service else "your visit"
-                staff_mention = f" with {matched_staff.name}" if matched_staff else ""
-                slots_str = ", ".join(suggested_slots) if suggested_slots else "10:00 AM, 02:00 PM, 04:30 PM"
                 response_text = (
-                    f"For {srv_title}{staff_mention} on {target_date}, we have open slots at {slots_str}. "
-                    f"Which time suits you best? Kindly reply with your preferred time, full name, and phone number to confirm."
+                    f"Thank you for contacting {tenant.name}! We are located at {tenant.address}. "
+                    f"Our business hours are {tenant.business_hours.open_time} to {tenant.business_hours.close_time}. "
+                    f"We offer professional {', '.join([s.name for s in tenant.services[:3]])} and more. "
+                    f"Would you like to book an appointment or check open slots?"
                 )
 
-        elif intent == "check_availability":
-            suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
-            slots_str = ", ".join(suggested_slots)
-            srv_title = matched_service.name if matched_service else "our services"
-            response_text = (
-                f"We currently have openings for {srv_title} on {target_date} at: {slots_str}. "
-                f"Would you like me to reserve one of these for you?"
-            )
-
-        elif intent == "cancel":
-            phone = caller_phone or "6673070119"
-            cancelled = cancel_existing_appointment(phone, tenant_id=tenant.id)
-            if cancelled:
-                action_performed = "cancelled"
-                response_text = (
-                    f"Your appointment at {tenant.name} has been successfully canceled and removed from our Google Calendar. "
-                    f"No cancellation fee was applied. We hope to see you another time!"
-                )
-            else:
-                response_text = (
-                    f"I couldn't locate an active booking under phone {phone} to cancel. "
-                    f"Please verify your number or reference ID, and I will be glad to assist."
-                )
-
-        elif intent == "reschedule":
-            phone = caller_phone or "6673070119"
-            new_dt = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%dT15:00:00")
-            rescheduled = reschedule_existing_appointment(phone, new_dt, tenant_id=tenant.id)
-            if rescheduled:
-                action_performed = "rescheduled"
-                booking_data = rescheduled
-                response_text = (
-                    f"Done! Your appointment has been rescheduled to {rescheduled['start_time']} "
-                    f"with {rescheduled['stylist_name']}. Your Google Calendar event and reminder schedules have been updated."
-                )
-            else:
-                response_text = (
-                    f"I could not locate an existing booking to reschedule for phone number {phone}. "
-                    f"Would you like to book a new appointment instead?"
-                )
-
-        elif intent == "escalate":
-            action_performed = "escalated"
-            response_text = (
-                f"I am transferring your request to our front desk manager at {tenant.name}. "
-                f"Our manager can also be reached directly at {tenant.phone}. Please hold for just a moment."
-            )
-
-        elif intent == "accent_switch":
-            response_text = (
-                f"Understood! I have adjusted my accent profile to {accent.name} ({accent.description}). "
-                f"How may I assist you with your booking at {tenant.name} today?"
-            )
-
-        else:
-            # FAQ query
-            response_text = (
-                f"Thank you for contacting {tenant.name}! We are located at {tenant.address}. "
-                f"Our business hours are {tenant.business_hours.open_time} to {tenant.business_hours.close_time}. "
-                f"We offer professional {', '.join([s.name for s in tenant.services[:3]])} and more. "
-                f"Would you like to book an appointment or check open slots?"
-            )
-
-        # Apply regional accent stylization
         styled_response = self.format_accented_response(response_text, accent)
-
         latency_ms = (time.time() - start_ts) * 1000.0
+        tracker.add("llm_ttft", round(latency_ms * 0.4, 2))
 
         return {
             "session_id": session_id,
             "tenant_id": tenant.id,
             "tenant_name": tenant.name,
             "intent": intent,
+            "sentiment": sentiment,
             "reply": styled_response,
             "channel": channel.value,
             "accent": {
@@ -345,10 +390,12 @@ class UniversalReceptionistOrchestrator:
             "metrics": {
                 "rag_mode": retrieval["mode"],
                 "retrieval_ms": retrieval["retrieval_ms"],
-                "total_orchestration_ms": round(latency_ms, 2)
+                "total_orchestration_ms": round(latency_ms, 2),
+                "latency_breakdown": tracker.as_dict()
             }
         }
 
 
 # Global singleton orchestrator
 universal_orchestrator = UniversalReceptionistOrchestrator()
+

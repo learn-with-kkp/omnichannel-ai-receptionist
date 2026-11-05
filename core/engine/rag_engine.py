@@ -165,3 +165,4 @@ class DualKnowledgeEngine:
 
 # Global singleton knowledge engine
 knowledge_engine = DualKnowledgeEngine()
+
