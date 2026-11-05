@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universal AI Voice & Chat Receptionist | Multi-Vertical Blueprint</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <div class="logo-badge">🎙️</div>
+        <div>
+          <h1 class="brand-title">Universal AI Voice & Chat Receptionist</h1>
+          <p class="brand-subtitle">Enterprise Omnichannel Blueprint for Salons, Dental, Auto & Healthcare</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <div class="status-chip" id="gcalStatusBadge">
+          <span class="dot online"></span> Google Calendar Synced
+        </div>
+        <div class="status-chip">
+          <span class="dot active"></span> Latency &lt;600ms
+        </div>
+        <div class="status-chip">
+          <span class="dot online"></span> Twilio / Meta Ready
+        </div>
+      </div>
+    </header>
+
+    <!-- Blueprint Vertical Showcase (Plug & Play Architecture) -->
+    <section class="blueprint-bar">
+      <div class="section-label">⚡ Pluggable Industry Blueprint (Zero Code Changes — 1-Click Manifest Switch)</div>
+      <div class="vertical-grid" id="verticalGrid">
+        <!-- Rendered dynamically by app.js -->
+      </div>
+    </section>
+
+    <!-- Accent & Pronunciation Dialect Selector -->
+    <section class="accent-bar">
+      <div>
+        <span class="section-label" style="display:inline-block; margin-bottom:0; margin-right:12px;">Female Voice Dialect (Sofia):</span>
+        <div class="accent-buttons" id="accentButtons" style="display:inline-flex;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+      <div class="rag-toggle-wrapper">
+        <label for="ragToggle">Semantic RAG Retrieval:</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ragToggle">
+          <span class="toggle-slider"></span>
+        </label>
+        <span id="ragModeLabel" style="font-size:11px; color:var(--accent-cyan);">RAGless (Instant)</span>
+      </div>
+    </section>
+
+    <!-- Main Dual Calling & Chat Grid -->
+    <main class="main-grid">
+
+      <!-- Left Column: Voice Interaction Studio -->
+      <div class="card">
+        <h2 class="card-title"><span>🎙️</span> Real-Time Voice Studio</h2>
+        <p class="card-desc">Experience seamless conversational voice with Sofia using WebRTC in-browser or direct phone calling.</p>
+
+        <!-- Channel 1: WebRTC Browser Calling -->
+        <div class="voice-hero">
+          <button class="mic-button" id="micBtn" title="Click to talk with Sofia">
+            <span id="micIcon">🎙️</span>
+          </button>
+          <div class="voice-status-text" id="voiceStatus">Click microphone to speak with Sofia</div>
+          
+          <div class="waveform" id="waveform">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+        </div>
+
+        <!-- Channel 2: "Call My Phone" Outbound Twilio -->
+        <div style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border-color);">
+          <h3 style="font-size:14px; font-weight:700; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+            <span>📞</span> Direct Outbound Call to Your Phone
+          </h3>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+            Enter your mobile number. Sofia will immediately ring your phone and take your booking.
+          </p>
+          <div style="display:grid; grid-template-columns: 1fr 1.2fr auto; gap:10px;">
+            <input type="text" id="outboundName" class="form-input" placeholder="Your Name" value="Kishor">
+            <input type="tel" id="outboundPhone" class="form-input" placeholder="+1234567890" value="+16673070119">
+            <button class="btn-primary" id="btnCallPhone" style="width:auto; white-space:nowrap;">
+              📞 Call Me Now
+            </button>
+          </div>
+          <div id="callFeedback" style="font-size:12px; margin-top:8px; color:var(--accent-cyan);"></div>
+        </div>
+      </div>
+
+      <!-- Right Column: Omnichannel Chat Widget -->
+      <div class="card">
+        <h2 class="card-title"><span>💬</span> Omnichannel Chatbot & Booking</h2>
+        <p class="card-desc">Unified chat engine powering Website, WhatsApp, Facebook Messenger & Instagram.</p>
+
+        <div class="chat-window">
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-bubble bot">
+              Hello! I am Sofia, your AI receptionist. How can I help you today? You can ask to book an appointment, check available slots, or modify an existing booking.
+              <div class="bubble-meta">
+                <span>Sofia (AI Receptionist)</span>
+                <button class="listen-btn" onclick="playSpeech(this.parentElement.parentElement.childNodes[0].textContent)">🔊 Listen</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="quick-chips" id="quickChips">
+            <span class="chip" onclick="sendQuickMsg('Book appointment tomorrow at 2:00 PM')">📅 Book Tomorrow 2:00 PM</span>
+            <span class="chip" onclick="sendQuickMsg('Check available slots tomorrow')">🕒 Check Open Slots</span>
+            <span class="chip" onclick="sendQuickMsg('Reschedule my appointment')">🔄 Reschedule Visit</span>
+            <span class="chip" onclick="sendQuickMsg('Cancel my appointment')">❌ Cancel Booking</span>
+          </div>
+
+          <div class="chat-input-bar">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message (e.g. 'Can I book a haircut tomorrow at 3pm?')...">
+            <button class="chat-send-btn" id="btnSendChat">Send</button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Live Appointments & Google Calendar Two-Way Sync Table -->
+    <section class="data-card">
+      <div class="table-header-row">
+        <div>
+          <h2 class="card-title" style="margin-bottom:2px;"><span>📅</span> Live Appointments & Google Calendar Sync Store</h2>
+          <p style="font-size:13px; color:var(--text-muted);">Atomic two-way persistence across SQLite, Google Calendar, and Excel.</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="chip" onclick="fetchAppointments()">🔄 Refresh</button>
+          <a href="/admin/appointments/excel" class="chip" style="text-decoration:none; color:var(--accent-cyan);" download>
+            📊 Download Excel
+          </a>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Tenant</th>
+              <th>Customer</th>
+              <th>Phone</th>
+              <th>Service</th>
+              <th>Staff</th>
+              <th>Time</th>
+              <th>Channel</th>
+              <th>G-Cal Sync</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="appointmentsTableBody">
+            <tr><td colspan="11" style="text-align:center; color:var(--text-muted);">Loading bookings...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Telemetry & Latency Waterfall -->
+    <footer class="waterfall-card">
+      <div class="section-label">⚡ Real-Time SLO & Latency Telemetry Waterfall</div>
+      <div class="telemetry-row">
+        <div class="telemetry-item">
+          <div class="t-label">ASR Voice Input</div>
+          <div class="t-value" id="tAsr">~120 ms</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="t-label">RAG / Context Assembly</div>
+          <div class="t-value" id="tRag">0.8 ms</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="t-label">Orchestration & G-Cal</div>
+          <div class="t-value" id="tOrch">14 ms</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="t-label">TTS Voice Synthesis</div>
+          <div class="t-value" id="tTts">~210 ms</div>
+        </div>
+        <div class="telemetry-item" style="border-color:var(--border-glow);">
+          <div class="t-label" style="color:var(--accent-cyan);">Total Response E2E</div>
+          <div class="t-value" id="tTotal" style="color:#10b981;">344 ms</div>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

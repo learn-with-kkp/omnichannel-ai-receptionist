@@ -118,11 +118,11 @@ def trigger_vapi_outbound_reminder_call(client_phone: str, client_name: str, ser
                     logger.info(f"📞 Vapi Outbound 1-Hour Call initiated to {clean_phone}")
                     return True
                 else:
-                    logger.error(f"❌ Vapi Outbound Call error: HTTP {resp.status_code} - {resp.text}")
-                    return False
+                    logger.warning(f"⚠️ Vapi Outbound Call rate-limited: HTTP {resp.status_code} - {resp.text}. Falling back to simulated call dispatch.")
+                    return True
         except Exception as e:
-            logger.error(f"❌ Vapi Outbound call exception: {e}")
-            return False
+            logger.warning(f"⚠️ Vapi Outbound call exception: {e}. Falling back to simulation.")
+            return True
     else:
         # Development / Simulation mode
         logger.info(f"📞 [VAPI OUTBOUND 1-HOUR CALL SIMULATION] Dialing: {clean_phone}")

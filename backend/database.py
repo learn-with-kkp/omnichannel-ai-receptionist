@@ -23,6 +23,14 @@ except ImportError:
     )
     from google_sheets_sync import sync_appointment_to_google_sheets
 
+try:
+    from integrations.google_calendar import calendar_service
+except ImportError:
+    try:
+        from ..integrations.google_calendar import calendar_service
+    except Exception:
+        calendar_service = None
+
 DB_PATH = os.getenv("SALON_DB_PATH", "salon_bookings.db")
 DEFAULT_TENANT_ID = "default_salon"
 
@@ -85,6 +93,10 @@ def init_db():
             created_at TEXT NOT NULL,
             whatsapp_24h_sent INTEGER DEFAULT 0,
             call_1h_sent INTEGER DEFAULT 0,
+            google_calendar_event_id TEXT DEFAULT '',
+            channel TEXT DEFAULT 'voice',
+            accent TEXT DEFAULT 'red_american',
+            notes TEXT DEFAULT '',
             FOREIGN KEY (tenant_id) REFERENCES tenants (id)
         )
     """)
@@ -98,6 +110,14 @@ def init_db():
         cursor.execute("ALTER TABLE appointments ADD COLUMN whatsapp_24h_sent INTEGER DEFAULT 0")
     if "call_1h_sent" not in columns:
         cursor.execute("ALTER TABLE appointments ADD COLUMN call_1h_sent INTEGER DEFAULT 0")
+    if "google_calendar_event_id" not in columns:
+        cursor.execute("ALTER TABLE appointments ADD COLUMN google_calendar_event_id TEXT DEFAULT ''")
+    if "channel" not in columns:
+        cursor.execute("ALTER TABLE appointments ADD COLUMN channel TEXT DEFAULT 'voice'")
+    if "accent" not in columns:
+        cursor.execute("ALTER TABLE appointments ADD COLUMN accent TEXT DEFAULT 'red_american'")
+    if "notes" not in columns:
+        cursor.execute("ALTER TABLE appointments ADD COLUMN notes TEXT DEFAULT ''")
 
     # Seed Default Salon if not exists
     cursor.execute("SELECT COUNT(*) FROM tenants WHERE id = ?", (DEFAULT_TENANT_ID,))
@@ -229,6 +249,7 @@ def get_tenant_stylists(tenant_id: str) -> List[str]:
 
 def check_slots_availability(target_date: str, service_name: str, preferred_stylist: str = "any",
                              tenant_id: str = DEFAULT_TENANT_ID) -> List[str]:
+    init_db()
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -279,7 +300,8 @@ def check_slots_availability(target_date: str, service_name: str, preferred_styl
 
 def book_new_appointment(caller_name: str, caller_phone: str, service_name: str, 
                          appointment_datetime: str, stylist_name: str = "Elena",
-                         tenant_id: str = DEFAULT_TENANT_ID) -> Dict[str, Any]:
+                         tenant_id: str = DEFAULT_TENANT_ID, channel: str = "voice",
+                         accent: str = "red_american", notes: str = "") -> Dict[str, Any]:
     init_db()
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -296,10 +318,33 @@ def book_new_appointment(caller_name: str, caller_phone: str, service_name: str,
     booking_id = f"LUXE-{start_dt.strftime('%m%d')}-{cursor.execute('SELECT COUNT(*) FROM appointments').fetchone()[0] + 101}"
     now_str = datetime.now().isoformat()
 
+    # Sync with Google Calendar if enabled
+    gcal_event_id = ""
+    if calendar_service:
+        try:
+            tenant_info = get_tenant(tenant_id)
+            tenant_display = tenant_info.get("name", "Salon")
+            gcal_res = calendar_service.create_event(
+                summary=f"{tenant_display}: {service_name} - {caller_name}",
+                start_time_iso=start_dt.isoformat(),
+                duration_minutes=duration,
+                description=f"Staff: {stylist_name}\nChannel: {channel}\nAccent: {accent}\nNotes: {notes}",
+                location=tenant_info.get("address", ""),
+                attendee_phone=caller_phone
+            )
+            gcal_event_id = gcal_res.get("id", "")
+        except Exception as e:
+            logger.warning(f"Google Calendar event creation bypassed: {e}")
+
     cursor.execute("""
-        INSERT INTO appointments (id, tenant_id, caller_name, caller_phone, service_name, stylist_name, start_time, end_time, status, created_at, whatsapp_24h_sent, call_1h_sent)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, 0, 0)
-    """, (booking_id, tenant_id, caller_name, caller_phone, service_name, stylist_name, start_dt.isoformat(), end_dt.isoformat(), now_str))
+        INSERT INTO appointments (
+            id, tenant_id, caller_name, caller_phone, service_name, stylist_name,
+            start_time, end_time, status, created_at, whatsapp_24h_sent, call_1h_sent,
+            google_calendar_event_id, channel, accent, notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, 0, 0, ?, ?, ?, ?)
+    """, (booking_id, tenant_id, caller_name, caller_phone, service_name, stylist_name, 
+          start_dt.isoformat(), end_dt.isoformat(), now_str, gcal_event_id, channel, accent, notes))
 
     conn.commit()
     conn.close()
@@ -314,7 +359,10 @@ def book_new_appointment(caller_name: str, caller_phone: str, service_name: str,
         "start_time": start_dt.strftime("%Y-%m-%d %H:%M"),
         "duration_minutes": duration,
         "price": price,
-        "status": "CONFIRMED"
+        "status": "CONFIRMED",
+        "google_calendar_event_id": gcal_event_id,
+        "channel": channel,
+        "accent": accent
     }
 
     # 1. Sync into Local Excel Workbook
@@ -332,10 +380,11 @@ def book_new_appointment(caller_name: str, caller_phone: str, service_name: str,
         "service_name": service_name,
         "stylist_name": stylist_name,
         "start_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
-        "price": f"${price}"
+        "price": f"${price}",
+        "google_calendar_event_id": gcal_event_id
     }
 
-def lookup_by_phone(caller_phone: str, tenant_id: str = DEFAULT_TENANT_ID) -> Optional[Dict[str, str]]:
+def lookup_by_phone(caller_phone: str, tenant_id: str = DEFAULT_TENANT_ID) -> Optional[Dict[str, Any]]:
     init_db()
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -349,14 +398,93 @@ def lookup_by_phone(caller_phone: str, tenant_id: str = DEFAULT_TENANT_ID) -> Op
     conn.close()
     if row:
         start_dt = datetime.fromisoformat(row["start_time"])
+        col_keys = row.keys() if hasattr(row, "keys") else []
         return {
             "booking_id": row["id"],
             "caller_name": row["caller_name"],
+            "caller_phone": row["caller_phone"],
             "service_name": row["service_name"],
             "stylist_name": row["stylist_name"],
-            "start_time": start_dt.strftime("%A, %b %d at %I:%M %p")
+            "start_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
+            "start_time_iso": row["start_time"],
+            "google_calendar_event_id": row["google_calendar_event_id"] if "google_calendar_event_id" in col_keys else ""
         }
     return None
+
+def reschedule_existing_appointment(caller_phone: str, new_datetime: str,
+                                    booking_id: Optional[str] = None,
+                                    new_stylist_name: Optional[str] = None,
+                                    tenant_id: str = DEFAULT_TENANT_ID) -> Optional[Dict[str, Any]]:
+    init_db()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    phone_clean = "".join(filter(str.isdigit, caller_phone))[-7:]
+
+    if booking_id:
+        cursor.execute("SELECT * FROM appointments WHERE id = ? AND tenant_id = ?", (booking_id, tenant_id))
+    else:
+        cursor.execute("""
+            SELECT * FROM appointments 
+            WHERE tenant_id = ? AND caller_phone LIKE ? AND status = 'CONFIRMED'
+            ORDER BY start_time DESC LIMIT 1
+        """, (tenant_id, f"%{phone_clean}%"))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return None
+
+    actual_booking_id = row["id"]
+    service_name = row["service_name"]
+    stylist = new_stylist_name or row["stylist_name"]
+    col_keys = row.keys() if hasattr(row, "keys") else []
+    gcal_event_id = row["google_calendar_event_id"] if "google_calendar_event_id" in col_keys else ""
+
+    dt_clean = new_datetime.replace("Z", "")
+    new_start_dt = datetime.fromisoformat(dt_clean)
+
+    cursor.execute("SELECT duration_minutes, price FROM services WHERE tenant_id = ? AND name = ?", (tenant_id, service_name))
+    srv_row = cursor.fetchone()
+    duration = srv_row[0] if srv_row else 45
+    price = srv_row[1] if srv_row else 75
+    new_end_dt = new_start_dt + timedelta(minutes=duration)
+
+    cursor.execute("""
+        UPDATE appointments 
+        SET start_time = ?, end_time = ?, stylist_name = ?, whatsapp_24h_sent = 0, call_1h_sent = 0
+        WHERE id = ?
+    """, (new_start_dt.isoformat(), new_end_dt.isoformat(), stylist, actual_booking_id))
+    conn.commit()
+    conn.close()
+
+    # Sync with Google Calendar if event exists
+    if calendar_service and gcal_event_id:
+        try:
+            tenant_info = get_tenant(tenant_id)
+            calendar_service.update_event(
+                event_id=gcal_event_id,
+                summary=f"{tenant_info.get('name', 'Salon')}: {service_name} - {row['caller_name']}",
+                start_time_iso=new_start_dt.isoformat(),
+                duration_minutes=duration,
+                description=f"Rescheduled. Staff: {stylist}"
+            )
+        except Exception as e:
+            logger.warning(f"Google Calendar update bypassed: {e}")
+
+    # Update Excel
+    excel_path = os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
+    update_excel_reminders(actual_booking_id, status="CONFIRMED (RESCHEDULED)", filepath=excel_path)
+
+    return {
+        "booking_id": actual_booking_id,
+        "caller_name": row["caller_name"],
+        "caller_phone": row["caller_phone"],
+        "service_name": service_name,
+        "stylist_name": stylist,
+        "start_time": new_start_dt.strftime("%A, %b %d at %I:%M %p"),
+        "price": f"${price}",
+        "google_calendar_event_id": gcal_event_id
+    }
 
 def cancel_existing_appointment(caller_phone: str, booking_id: Optional[str] = None,
                                 tenant_id: str = DEFAULT_TENANT_ID) -> bool:
@@ -366,20 +494,37 @@ def cancel_existing_appointment(caller_phone: str, booking_id: Optional[str] = N
     phone_clean = "".join(filter(str.isdigit, caller_phone))[-7:]
 
     if booking_id:
-        cursor.execute("UPDATE appointments SET status = 'CANCELLED' WHERE id = ? AND tenant_id = ?", (booking_id, tenant_id))
+        cursor.execute("SELECT id, google_calendar_event_id FROM appointments WHERE id = ? AND tenant_id = ?", (booking_id, tenant_id))
     else:
         cursor.execute("""
-            UPDATE appointments SET status = 'CANCELLED' 
+            SELECT id, google_calendar_event_id FROM appointments 
             WHERE tenant_id = ? AND caller_phone LIKE ? AND status = 'CONFIRMED'
+            ORDER BY start_time DESC LIMIT 1
         """, (tenant_id, f"%{phone_clean}%"))
+    row = cursor.fetchone()
 
+    if not row:
+        conn.close()
+        return False
+
+    target_id = row["id"]
+    col_keys = row.keys() if hasattr(row, "keys") else []
+    gcal_event_id = row["google_calendar_event_id"] if "google_calendar_event_id" in col_keys else ""
+
+    cursor.execute("UPDATE appointments SET status = 'CANCELLED' WHERE id = ?", (target_id,))
     updated = cursor.rowcount > 0
     conn.commit()
     conn.close()
 
     if updated:
+        if calendar_service and gcal_event_id:
+            try:
+                calendar_service.delete_event(gcal_event_id)
+            except Exception as e:
+                logger.warning(f"Google Calendar delete bypassed: {e}")
+
         excel_path = os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
-        update_excel_reminders(booking_id or "", status="CANCELLED", filepath=excel_path)
+        update_excel_reminders(target_id, status="CANCELLED", filepath=excel_path)
 
     return updated
 

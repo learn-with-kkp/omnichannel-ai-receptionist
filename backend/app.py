@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, Dict, Any
 import logging
@@ -20,6 +21,7 @@ from backend.database import (
     check_slots_availability,
     book_new_appointment,
     lookup_by_phone,
+    reschedule_existing_appointment,
     cancel_existing_appointment,
     get_tenant_by_inbound_phone,
     get_tenant,
@@ -30,6 +32,11 @@ from backend.database import (
     get_db_connection
 )
 from backend.reminder_service import run_reminder_cycle
+
+from backend.routers.voice import router as voice_router
+from backend.routers.chat import router as chat_router
+from backend.routers.messaging import router as messaging_router
+from backend.routers.tenants import router as tenants_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("SalonVoiceReceptionist")
@@ -46,15 +53,15 @@ async def reminder_background_worker():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    logger.info("Salon SQLite Database & Excel store initialized successfully.")
+    logger.info("Salon Multi-Tenant SQLite Database & Excel store initialized successfully.")
     worker_task = asyncio.create_task(reminder_background_worker())
     yield
     worker_task.cancel()
 
 app = FastAPI(
-    title="Luxe Salon AI Voice Receptionist API",
-    description="High-throughput tool webhook server integrating Vapi and n8n",
-    version="1.0.0",
+    title="Universal AI Voice & Chat Receptionist API",
+    description="Enterprise Multi-Tenant Omnichannel Receptionist for Salon, Dental, Automotive, and Medical verticals",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -66,132 +73,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount Omnichannel Routers
+app.include_router(voice_router)
+app.include_router(chat_router)
+app.include_router(messaging_router)
+app.include_router(tenants_router)
+
+# Mount Static Web Studio Dashboard
+web_dir = Path(__file__).resolve().parent.parent / "web"
+if web_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(web_dir)), name="static")
+
+    @app.get("/")
+    def serve_index():
+        index_path = web_dir / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        return {"service": "Universal AI Voice Receptionist", "status": "online"}
+
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "service": "Salon Voice AI Receptionist", "timestamp": time.time()}
-
-@app.post("/webhook/vapi-tools", response_model=VapiToolResponse)
-async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str] = None):
-    """
-    Synchronous mid-call tool execution router for Vapi.
-    Receives function call requests and dispatches domain logic with multi-tenant routing.
-    """
-    start_ts = time.time()
-    message = payload.message
-    tool_calls = message.toolCalls or []
-
-    if not tool_calls:
-        logger.warning("Webhook received without toolCalls in payload.")
-        return VapiToolResponse(results=[])
-
-    # Dynamic Multi-Tenant Routing
-    if not tenant_id:
-        inbound_phone = ""
-        call_obj = message.call or {}
-        if isinstance(call_obj, dict):
-            phone_obj = call_obj.get("phoneNumber") or {}
-            if isinstance(phone_obj, dict):
-                inbound_phone = phone_obj.get("number", "")
-        tenant = get_tenant_by_inbound_phone(inbound_phone)
-        resolved_tenant_id = tenant.get("id", "default_salon")
-        salon_name = tenant.get("name", "Luxe Salon")
-    else:
-        tenant = get_tenant(tenant_id)
-        resolved_tenant_id = tenant.get("id", "default_salon")
-        salon_name = tenant.get("name", "Luxe Salon")
-
-    logger.info(f"Routed Call to Tenant: {resolved_tenant_id} ('{salon_name}')")
-
-    results = []
-
-    for tool_call in tool_calls:
-        call_id = tool_call.id
-        fn_name = tool_call.function.name
-        args = tool_call.function.arguments
-        if isinstance(args, str):
-            try:
-                args = json.loads(args)
-            except Exception:
-                args = {}
-        elif not isinstance(args, dict):
-            args = {}
-
-        logger.info(f"Processing tool call: '{fn_name}' [ID: {call_id}] with args: {args}")
-
-        if fn_name == "check_availability":
-            service = args.get("service_name") or "Womens Haircut"
-            target_date = args.get("target_date")
-            if not target_date or target_date.strip() == "":
-                target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-            stylist = args.get("preferred_stylist") or "any"
-
-            slots = check_slots_availability(target_date, service, stylist, tenant_id=resolved_tenant_id)
-            if slots:
-                slots_str = ", ".join(slots)
-                stylist_mention = f" with {stylist}" if stylist and stylist != "any" else ""
-                res_text = (
-                    f"For a {service}{stylist_mention} at {salon_name} on {target_date}, "
-                    f"we have openings at {slots_str}. Which of those works best for you?"
-                )
-            else:
-                res_text = f"We are fully booked for {service} on {target_date}. Would you like to check the following day?"
-
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        elif fn_name == "book_appointment":
-            name = args.get("caller_name") or "Valued Guest"
-            phone = args.get("caller_phone") or "+16673070119"
-            service = args.get("service_name") or "Womens Haircut"
-            dt = args.get("appointment_datetime")
-            if not dt or dt.strip() == "":
-                dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT14:00:00")
-            stylist = args.get("stylist_name") or "Elena"
-            if stylist.lower() == "any":
-                stylist = "Elena"
-
-            booking = book_new_appointment(name, phone, service, dt, stylist, tenant_id=resolved_tenant_id)
-            res_text = (
-                f"You're all set, {name}! Your appointment for a {service} with {stylist} is confirmed at {salon_name} for "
-                f"{booking['start_time']}. Your booking reference is {booking['booking_id']}. "
-                f"A confirmation SMS has been sent to {phone}."
-            )
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        elif fn_name == "lookup_appointment":
-            phone = args.get("caller_phone", "")
-            booking = lookup_by_phone(phone, tenant_id=resolved_tenant_id)
-            if booking:
-                res_text = (
-                    f"I found your reservation: {booking['service_name']} with {booking['stylist_name']} "
-                    f"on {booking['start_time']} (Ref: {booking['booking_id']}). How would you like to modify it?"
-                )
-            else:
-                res_text = f"I couldn't find an active reservation under {phone} at {salon_name}. Would you like me to book a new appointment for you?"
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        elif fn_name == "cancel_appointment":
-            phone = args.get("caller_phone", "")
-            booking_id = args.get("booking_id")
-            success = cancel_existing_appointment(phone, booking_id, tenant_id=resolved_tenant_id)
-            if success:
-                res_text = f"Your appointment has been successfully canceled at {salon_name}. No fee was charged. We hope to welcome you another time!"
-            else:
-                res_text = f"I could not locate an active booking to cancel under {phone}. Please check the number and let me know."
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        elif fn_name == "transfer_to_manager":
-            reason = args.get("escalation_reason", "Customer request")
-            logger.info(f"Escalating call to salon manager. Reason: {reason}")
-            res_text = "I'm connecting you directly with our front desk manager right now. Please hold for just a few seconds."
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        else:
-            logger.warning(f"Unknown function requested: {fn_name}")
-            results.append(ToolResult(toolCallId=call_id, result="Function processed successfully."))
-
-    duration_ms = (time.time() - start_ts) * 1000
-    logger.info(f"Completed {len(results)} tool calls in {duration_ms:.2f}ms")
-    return VapiToolResponse(results=results)
+    return {
+        "status": "healthy",
+        "service": "Universal AI Voice Receptionist",
+        "version": "2.0.0",
+        "timestamp": time.time()
+    }
 
 @app.post("/webhook/vapi-end-of-call")
 async def handle_end_of_call(payload: Dict[str, Any]):
@@ -265,17 +172,25 @@ def quick_test_booking(
     name: str = "Test Client",
     service: str = "Womens Haircut",
     stylist: str = "Elena",
-    phone: str = "+16673070119"
+    phone: str = "+16673070119",
+    tenant_id: str = "salon"
 ):
     """
     Minimal 1-click test booking endpoint.
-    Instantly writes a booking to SQLite, Excel, and live Google Sheets.
+    Instantly writes a booking to SQLite, Google Calendar, Excel, and live Google Sheets.
     """
     dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT15:00:00")
-    booking = book_new_appointment(name, phone, service, dt, stylist, tenant_id="default_salon")
+    booking = book_new_appointment(
+        caller_name=name,
+        caller_phone=phone,
+        service_name=service,
+        appointment_datetime=dt,
+        stylist_name=stylist,
+        tenant_id=tenant_id
+    )
     logger.info(f"⚡ [MINIMAL TEST] Quick booking created: {booking['booking_id']}")
     return {
         "status": "success",
-        "message": f"Appointment {booking['booking_id']} created and synced to Excel & Google Sheets!",
+        "message": f"Appointment {booking['booking_id']} created and synced to Google Calendar, Excel & Google Sheets!",
         "booking": booking
     }
