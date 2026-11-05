@@ -273,7 +273,9 @@ def test_social_webhooks():
     assert "sha256=" in res_tw.json()["response_token"]
 
     # 3. TikTok verification
-    res_tt = client.get("/webhook/tiktok?challenge=tiktok_challenge_99&verify_token=omnichannel_secure_token_123")
+    import os
+    token = os.getenv("META_VERIFY_TOKEN", "omnichannel_secure_token_123")
+    res_tt = client.get(f"/webhook/tiktok?challenge=tiktok_challenge_99&verify_token={token}")
     assert res_tt.status_code == 200
     assert res_tt.text == "tiktok_challenge_99"
 

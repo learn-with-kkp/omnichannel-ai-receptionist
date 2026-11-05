@@ -167,7 +167,8 @@ def test_webrtc_token_generation():
 
 def test_meta_webhook_verification():
     """Test Hub challenge verification for WhatsApp, Messenger, and Instagram."""
-    token = "omnichannel_secure_token_123"
+    import os
+    token = os.getenv("META_VERIFY_TOKEN", "omnichannel_secure_token_123")
 
     # WhatsApp
     wa_res = client.get(f"/webhook/whatsapp?hub.mode=subscribe&hub.challenge=test_wa_challenge&hub.verify_token={token}")

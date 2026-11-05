@@ -152,7 +152,27 @@ def main():
     if tw_secret: updates["TWITTER_API_SECRET"] = tw_secret
     if tw_bearer: updates["TWITTER_BEARER_TOKEN"] = tw_bearer
 
-    # 4. Save and Sync
+    # 4. Meta Threads
+    print_header("4. Meta Threads API")
+    print("Quick Steps: https://developers.facebook.com -> Threads App -> User Token")
+    th_user_id = prompt_input("Enter THREADS_USER_ID", current_env.get("THREADS_USER_ID", ""))
+    th_token = prompt_input("Enter THREADS_ACCESS_TOKEN", current_env.get("THREADS_ACCESS_TOKEN", ""))
+    if th_user_id: updates["THREADS_USER_ID"] = th_user_id
+    if th_token: updates["THREADS_ACCESS_TOKEN"] = th_token
+
+    # 5. Reddit Developer API
+    print_header("5. Reddit API (Script / Bot)")
+    print("Quick Steps: https://www.reddit.com/prefs/apps -> Create App (Script)")
+    rd_client_id = prompt_input("Enter REDDIT_CLIENT_ID", current_env.get("REDDIT_CLIENT_ID", ""))
+    rd_secret = prompt_input("Enter REDDIT_CLIENT_SECRET", current_env.get("REDDIT_CLIENT_SECRET", ""))
+    rd_user = prompt_input("Enter REDDIT_USERNAME", current_env.get("REDDIT_USERNAME", ""))
+    rd_pass = prompt_input("Enter REDDIT_PASSWORD", current_env.get("REDDIT_PASSWORD", ""))
+    if rd_client_id: updates["REDDIT_CLIENT_ID"] = rd_client_id
+    if rd_secret: updates["REDDIT_CLIENT_SECRET"] = rd_secret
+    if rd_user: updates["REDDIT_USERNAME"] = rd_user
+    if rd_pass: updates["REDDIT_PASSWORD"] = rd_pass
+
+    # 6. Save and Sync
     if updates:
         update_env_file(updates)
 
@@ -169,3 +189,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

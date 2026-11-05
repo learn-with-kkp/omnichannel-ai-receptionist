@@ -345,3 +345,112 @@ async def handle_tiktok_incoming(request: Request, tenant_id: Optional[str] = "s
         logger.error(f"Error in TikTok webhook: {e}")
         return {"status": "error", "detail": str(e)}
 
+
+# --- Meta Threads Webhooks ---
+
+@router.get("/webhook/threads")
+def verify_threads_webhook(
+    hub_mode: Optional[str] = Query(None, alias="hub.mode"),
+    hub_verify_token: Optional[str] = Query(None, alias="hub.verify_token"),
+    hub_challenge: Optional[str] = Query(None, alias="hub.challenge")
+):
+    """Meta Webhook Verification for Threads Subscriptions."""
+    from integrations.threads_api import threads_client
+    challenge = threads_client.verify_webhook(hub_mode, hub_verify_token, hub_challenge)
+    if challenge:
+        return Response(content=challenge, media_type="text/plain")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@router.post("/webhook/threads")
+async def handle_threads_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Processes incoming Meta Threads mentions or replies and auto-responds via Threads API.
+    """
+    try:
+        from integrations.threads_api import threads_client
+        data = await request.json()
+        parsed = threads_client.parse_incoming_webhook(data)
+        if parsed and parsed.get("text"):
+            post_id = parsed["post_id"]
+            user_id = parsed["user_id"]
+            user_text = parsed["text"]
+
+            logger.info(f"Incoming Threads mention/reply on {post_id} by {user_id}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"th-{user_id}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.THREADS
+            )
+
+            notification_dispatcher.send_threads_reply(post_id, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Threads webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- Reddit Inbound & Webhook Integration ---
+
+@router.post("/webhook/reddit")
+async def handle_reddit_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Handles incoming Reddit message webhook (or relay service like Zapier/Pipedream/Custom daemon).
+    Payload: {"author": "username", "body": "text", "subject": "optional", "thing_id": "optional"}
+    """
+    try:
+        data = await request.json()
+        sender_username = data.get("author") or data.get("sender") or data.get("from")
+        user_text = data.get("body") or data.get("text")
+        thing_id = data.get("thing_id") or data.get("id")
+
+        if sender_username and user_text:
+            logger.info(f"Incoming Reddit message from u/{sender_username}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"rd-{sender_username}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.REDDIT
+            )
+
+            # Reply to specific comment or private message
+            target = thing_id if (thing_id and (thing_id.startswith("t1_") or thing_id.startswith("t3_"))) else sender_username
+            notification_dispatcher.send_reddit_message(target, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Reddit incoming handler: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+@router.post("/api/reddit/poll-inbox")
+def poll_reddit_inbox(tenant_id: Optional[str] = "salon"):
+    """
+    Actively checks Reddit unread inbox messages, processes bookings, and auto-replies.
+    Useful for serverless cron or periodic execution.
+    """
+    from integrations.reddit_bot import reddit_client
+    unread = reddit_client.get_unread_messages(mark_read=True)
+    replies_sent = []
+
+    for msg in unread:
+        author = msg.get("author")
+        body = msg.get("body")
+        name = msg.get("name") # e.g. t4_xyz
+        if author and body:
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=body,
+                session_id=f"rd-{author}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.REDDIT
+            )
+            res = notification_dispatcher.send_reddit_message(author, orchestration["reply"])
+            replies_sent.append({"to": author, "status": res.get("status")})
+
+    return {"status": "success", "messages_processed": len(replies_sent), "replies": replies_sent}
+
+

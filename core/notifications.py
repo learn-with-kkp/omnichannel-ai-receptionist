@@ -199,6 +199,18 @@ class NotificationDispatcher:
         from integrations.tiktok_msg import tiktok_client
         return tiktok_client.send_direct_message(recipient_open_id=recipient_open_id, text=text)
 
+    def send_threads_reply(self, reply_to_id: str, text: str) -> Dict[str, Any]:
+        """Dispatches reply via Meta Threads API or simulation."""
+        from integrations.threads_api import threads_client
+        return threads_client.send_reply(reply_to_id=reply_to_id, text=text)
+
+    def send_reddit_message(self, recipient_username: str, text: str, subject: str = "Appointment Confirmation") -> Dict[str, Any]:
+        """Dispatches private message or comment reply via Reddit API or simulation."""
+        from integrations.reddit_bot import reddit_client
+        if recipient_username.startswith("t1_") or recipient_username.startswith("t3_"):
+            return reddit_client.reply_to_comment(thing_id=recipient_username, text=text)
+        return reddit_client.send_private_message(recipient_username=recipient_username, subject=subject, text=text)
+
     def dispatch_booking_confirmation(
         self,
         booking_record: Dict[str, Any],
@@ -235,6 +247,10 @@ class NotificationDispatcher:
             results["linkedin"] = self.send_linkedin_message(recipient_id, msg)
         elif channel == "tiktok" and recipient_id:
             results["tiktok"] = self.send_tiktok_dm(recipient_id, msg)
+        elif channel == "threads" and recipient_id:
+            results["threads"] = self.send_threads_reply(recipient_id, msg)
+        elif channel == "reddit" and recipient_id:
+            results["reddit"] = self.send_reddit_message(recipient_id, msg)
 
         return results
 

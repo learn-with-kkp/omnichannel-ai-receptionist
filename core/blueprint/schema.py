@@ -19,6 +19,8 @@ class OmniChannelType(str, Enum):
     TWITTER = "twitter"
     LINKEDIN = "linkedin"
     TIKTOK = "tiktok"
+    THREADS = "threads"
+    REDDIT = "reddit"
 
 
 class BookingStatus(str, Enum):
