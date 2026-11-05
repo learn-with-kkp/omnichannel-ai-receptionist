@@ -111,3 +111,4 @@ def test_universal_db_lifecycle(tmp_path, monkeypatch):
     # List
     all_appts = list_all_appointments(tenant_id="neon_test_tenant")
     assert len(all_appts) == 1
+

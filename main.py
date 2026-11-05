@@ -14,3 +14,4 @@ from backend.app import app
 
 # Top-level ASGI app for Vercel and ASGI servers
 app = app
+
