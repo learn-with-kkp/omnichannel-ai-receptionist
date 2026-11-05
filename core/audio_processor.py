@@ -80,3 +80,4 @@ def calculate_audio_energy(pcm_data: bytes) -> float:
         return rms
     except Exception:
         return 0.0
+

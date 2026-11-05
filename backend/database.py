@@ -119,6 +119,39 @@ def init_db():
     if "notes" not in columns:
         cursor.execute("ALTER TABLE appointments ADD COLUMN notes TEXT DEFAULT ''")
 
+    # 5. Customer Users Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            tenant_id TEXT NOT NULL,
+            plan TEXT DEFAULT 'growth',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        )
+    """)
+
+    # 6. Tenant Omnichannel Integrations Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS tenant_integrations (
+            tenant_id TEXT PRIMARY KEY,
+            whatsapp_phone_number_id TEXT DEFAULT '',
+            whatsapp_business_account_id TEXT DEFAULT '',
+            meta_page_id TEXT DEFAULT '',
+            instagram_account_id TEXT DEFAULT '',
+            google_calendar_id TEXT DEFAULT 'primary',
+            telephony_provider TEXT DEFAULT 'vapi',
+            telephony_number TEXT DEFAULT '',
+            vapi_phone_id TEXT DEFAULT '',
+            vapi_assistant_id TEXT DEFAULT '',
+            webhook_secret TEXT DEFAULT '',
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        )
+    """)
+
     # Seed Default Salon if not exists
     cursor.execute("SELECT COUNT(*) FROM tenants WHERE id = ?", (DEFAULT_TENANT_ID,))
     if cursor.fetchone()[0] == 0:
@@ -579,3 +612,139 @@ def mark_1h_call_sent(booking_id: str):
     conn.close()
     excel_path = os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
     update_excel_reminders(booking_id, call_1h="CALLED", filepath=excel_path)
+
+
+# --- User Authentication & Tenant Integrations Helpers ---
+
+import hashlib
+import secrets
+
+def hash_password(password: str) -> str:
+    """Hashes a password with salt using SHA-256."""
+    salt = secrets.token_hex(8)
+    h = hashlib.sha256(f"{salt}{password}".encode("utf-8")).hexdigest()
+    return f"{salt}:{h}"
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verifies a plain password against stored salt:hash."""
+    try:
+        salt, expected_hash = stored_hash.split(":")
+        calc_hash = hashlib.sha256(f"{salt}{password}".encode("utf-8")).hexdigest()
+        return secrets.compare_digest(calc_hash, expected_hash)
+    except Exception:
+        return False
+
+def create_user(email: str, password: str, company_name: str, tenant_id: str, plan: str = "growth") -> Dict[str, Any]:
+    """Registers a new customer account bound to a tenant workspace."""
+    init_db()
+    conn = get_db_connection()
+    c = conn.cursor()
+    user_id = f"usr_{secrets.token_hex(6)}"
+    p_hash = hash_password(password)
+    now = datetime.now().isoformat()
+
+    c.execute("""
+        INSERT INTO users (id, email, password_hash, company_name, tenant_id, plan, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, email.lower().strip(), p_hash, company_name, tenant_id, plan, now))
+    conn.commit()
+    conn.close()
+
+    return {
+        "id": user_id,
+        "email": email.lower().strip(),
+        "company_name": company_name,
+        "tenant_id": tenant_id,
+        "plan": plan,
+        "created_at": now
+    }
+
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Look up customer account by email."""
+    init_db()
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE email = ? LIMIT 1", (email.lower().strip(),))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """Look up customer account by user id."""
+    init_db()
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM users WHERE id = ? LIMIT 1", (user_id,))
+    row = c.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def save_tenant_integrations(
+    tenant_id: str,
+    whatsapp_phone_number_id: str = "",
+    whatsapp_business_account_id: str = "",
+    meta_page_id: str = "",
+    instagram_account_id: str = "",
+    google_calendar_id: str = "primary",
+    telephony_provider: str = "vapi",
+    telephony_number: str = "",
+    vapi_phone_id: str = "",
+    vapi_assistant_id: str = ""
+) -> Dict[str, Any]:
+    """Saves or updates connected WhatsApp, Meta, Instagram, and telephony parameters."""
+    init_db()
+    conn = get_db_connection()
+    c = conn.cursor()
+    now = datetime.now().isoformat()
+    secret = secrets.token_hex(12)
+
+    c.execute("""
+        INSERT OR REPLACE INTO tenant_integrations (
+            tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
+            meta_page_id, instagram_account_id, google_calendar_id,
+            telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+            webhook_secret, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
+        meta_page_id, instagram_account_id, google_calendar_id,
+        telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+        secret, now
+    ))
+    conn.commit()
+    conn.close()
+    return get_tenant_integrations(tenant_id)
+
+def get_tenant_integrations(tenant_id: str) -> Dict[str, Any]:
+    """Retrieves omnichannel integration credentials for a tenant."""
+    init_db()
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("SELECT * FROM tenant_integrations WHERE tenant_id = ? LIMIT 1", (tenant_id,))
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    return {
+        "tenant_id": tenant_id,
+        "whatsapp_phone_number_id": "",
+        "whatsapp_business_account_id": "",
+        "meta_page_id": "",
+        "instagram_account_id": "",
+        "google_calendar_id": "primary",
+        "telephony_provider": "vapi",
+        "telephony_number": "+18005550199",
+        "vapi_phone_id": "",
+        "vapi_assistant_id": ""
+    }
+
+def update_tenant_plan(tenant_id: str, new_plan: str) -> bool:
+    """Updates customer subscription plan (starter, growth, enterprise)."""
+    init_db()
+    conn = get_db_connection()
+    c = conn.cursor()
+    c.execute("UPDATE users SET plan = ? WHERE tenant_id = ?", (new_plan, tenant_id))
+    updated = c.rowcount > 0
+    conn.commit()
+    conn.close()
+    return updated

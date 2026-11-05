@@ -144,3 +144,4 @@ def handle_barge_in_interruption(payload: InterruptRequest):
         "action": "halt_playback",
         "timestamp": time.time()
     }
+

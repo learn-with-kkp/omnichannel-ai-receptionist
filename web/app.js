@@ -80,6 +80,12 @@ function switchTenant(tenantId) {
   const tenant = currentTenants.find(t => t.id === tenantId);
   const tenantName = tenant ? tenant.name : "Salon";
 
+  const siteBtn = document.getElementById("btnViewTenantSite");
+  if (siteBtn) {
+    siteBtn.href = `/site/${tenantId}`;
+    siteBtn.textContent = `🌐 View ${tenantName} Website`;
+  }
+
   updateQuickChips();
 
   appendChatBubble(
@@ -668,4 +674,127 @@ function setupEventListeners() {
   });
 
   setupOnboardModal();
+}
+
+// --- Hands-On Omnichannel Test Lab ---
+
+let activeLabChannel = "whatsapp";
+
+function switchLabChannel(channel) {
+  activeLabChannel = channel;
+  document.querySelectorAll(".channel-tab-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.channel === channel);
+  });
+
+  const stdView = document.getElementById("standardTestView");
+  const telPanel = document.getElementById("telephonyPanel");
+  const channelLabel = document.getElementById("labChannelLabel");
+
+  if (channel === "telephony") {
+    if (stdView) stdView.style.display = "none";
+    if (telPanel) telPanel.style.display = "block";
+  } else {
+    if (stdView) stdView.style.display = "grid";
+    if (telPanel) telPanel.style.display = "none";
+    const labels = {
+      whatsapp: "Meta WhatsApp Cloud API",
+      messenger: "Meta Messenger Graph API",
+      instagram: "Meta Instagram Direct Messaging API",
+      voice: "Vapi / Twilio Sub-500ms Voice Telephony Turn"
+    };
+    if (channelLabel) channelLabel.textContent = labels[channel] || channel;
+  }
+}
+
+function setLabMessage(msg) {
+  const input = document.getElementById("labMessageInput");
+  if (input) input.value = msg;
+}
+
+async function runOmnichannelLabTest() {
+  const name = document.getElementById("labCallerName")?.value || "Alex Rivera";
+  const phone = document.getElementById("labCallerPhone")?.value || "+16673070119";
+  const message = document.getElementById("labMessageInput")?.value || "Hello";
+  const btn = document.getElementById("btnRunLabTest");
+  const replyEl = document.getElementById("labBotReply");
+  const badgeEl = document.getElementById("labActionBadge");
+  const latencyEl = document.getElementById("labLatencyTag");
+  const inspector = document.getElementById("labJsonInspector");
+
+  if (btn) btn.textContent = "⏳ Simulating Channel Turn...";
+
+  try {
+    const endpoint = activeLabChannel === "voice" ? "/api/testing/voice-call" : `/api/testing/${activeLabChannel}`;
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tenant_id: currentTenantId,
+        caller_name: name,
+        caller_phone: phone,
+        message: message,
+        accent: currentAccentKey
+      })
+    });
+    const data = await res.json();
+
+    const reply = data.bot_reply || data.bot_speech || "No response received";
+    if (replyEl) replyEl.textContent = reply;
+    if (badgeEl) {
+      badgeEl.textContent = `Action: ${data.action_performed || "dialogue"}`;
+      badgeEl.className = data.action_performed?.includes("escalat") ? "badge cancelled" : "badge confirmed";
+    }
+    const ms = data.latency_ms || data.client_elapsed_ms || 320;
+    if (latencyEl) latencyEl.textContent = `Latency: ${ms} ms`;
+
+    // Render payload in JSON inspector
+    const rawPayload = data.meta_payload || data.messenger_payload || data.instagram_payload || data.metrics || data;
+    if (inspector) inspector.textContent = JSON.stringify(rawPayload, null, 2);
+
+    // Refresh appointments table in case a booking occurred
+    if (data.booking || data.action_performed?.includes("book") || data.action_performed?.includes("cancel")) {
+      fetchAppointments();
+    }
+  } catch (err) {
+    if (replyEl) replyEl.textContent = `Interaction error: ${err.message}`;
+  } finally {
+    if (btn) btn.textContent = "🚀 Send Simulated Interaction";
+  }
+}
+
+function toggleProvMode(mode) {
+  const countryGrp = document.getElementById("provCountryGroup");
+  const phoneGrp = document.getElementById("provPhoneGroup");
+  if (mode === "byon") {
+    if (countryGrp) countryGrp.style.display = "none";
+    if (phoneGrp) phoneGrp.style.display = "block";
+  } else {
+    if (countryGrp) countryGrp.style.display = "block";
+    if (phoneGrp) phoneGrp.style.display = "none";
+  }
+}
+
+async function runProvisionTelephony() {
+  const mode = document.getElementById("provMode")?.value || "auto";
+  const country = document.getElementById("provCountry")?.value || "US";
+  const customerPhone = document.getElementById("provCustomerPhone")?.value || "";
+  const inspector = document.getElementById("telephonyInspector");
+
+  try {
+    const res = await fetch("/api/testing/provision-phone", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tenant_id: currentTenantId,
+        mode: mode,
+        country: country,
+        customer_phone: customerPhone
+      })
+    });
+    const data = await res.json();
+    if (inspector) inspector.textContent = JSON.stringify(data, null, 2);
+    alert(`🎉 Telephony Line Active!\nAssigned Number: ${data.assigned_phone_number}\nProvider: ${data.provider}\nWebhook: ${data.webhook_url}`);
+  } catch (err) {
+    if (inspector) inspector.textContent = JSON.stringify({ error: err.message }, null, 2);
+  }
 }

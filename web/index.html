@@ -20,6 +20,9 @@
         </div>
       </div>
       <div class="header-badges">
+        <a id="btnViewTenantSite" href="/site/salon" target="_blank" class="chip" style="text-decoration:none; color:var(--accent-cyan); font-weight:600;">
+          🌐 View Customer Website
+        </a>
         <button class="btn-primary" id="btnOpenOnboardModal" style="padding: 6px 14px; font-size:12px; width:auto;">
           🏢 + Onboard New Client
         </button>
@@ -156,6 +159,156 @@
       </div>
 
     </main>
+
+    <!-- Hands-On Omnichannel Testing Suite & Simulator -->
+    <section class="test-lab-card" id="omnichannelLab">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <div>
+          <h2 class="card-title" style="margin-bottom:4px;">
+            <span>🧪</span> Hands-On Omnichannel Test Lab & Payload Inspector
+          </h2>
+          <p class="card-desc">
+            Test live simulated interactions across WhatsApp, Facebook Messenger, Instagram DM, and Voice Telephony.
+          </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="status-chip" style="color:var(--accent-emerald);">● 4 Channels Ready</span>
+        </div>
+      </div>
+
+      <!-- Channel Tabs -->
+      <div class="channel-tabs" id="labChannelTabs">
+        <button class="channel-tab-btn active" data-channel="whatsapp" onclick="switchLabChannel('whatsapp')">
+          <span>🟢</span> WhatsApp Cloud API
+        </button>
+        <button class="channel-tab-btn" data-channel="messenger" onclick="switchLabChannel('messenger')">
+          <span>💬</span> Messenger Graph API
+        </button>
+        <button class="channel-tab-btn" data-channel="instagram" onclick="switchLabChannel('instagram')">
+          <span>📸</span> Instagram Direct
+        </button>
+        <button class="channel-tab-btn" data-channel="voice" onclick="switchLabChannel('voice')">
+          <span>🎙️</span> Voice Telephony Turn
+        </button>
+        <button class="channel-tab-btn" data-channel="telephony" onclick="switchLabChannel('telephony')">
+          <span>📱</span> Telephony Provisioning (Vapi/Twilio)
+        </button>
+      </div>
+
+      <!-- Interactive Test Grid -->
+      <div class="test-grid" id="standardTestView">
+        <!-- Left: Input Control Form -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label class="form-label">Tester Name</label>
+              <input type="text" id="labCallerName" class="form-input" value="Alex Rivera">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone / PSID</label>
+              <input type="text" id="labCallerPhone" class="form-input" value="+16673070119">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Test Inbound Message</label>
+            <textarea id="labMessageInput" class="form-input" rows="2" placeholder="e.g. Can I schedule a private tour tomorrow at 2:00 PM?">Can I check your available slots tomorrow?</textarea>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            <button class="chip" style="font-size:11px;" onclick="setLabMessage('Check available slots tomorrow')">🕒 Check Slots</button>
+            <button class="chip" style="font-size:11px;" onclick="setLabMessage('Book tomorrow at 2:00 PM with first available specialist')">📅 Book 2:00 PM</button>
+            <button class="chip" style="font-size:11px;" onclick="setLabMessage('Reschedule my appointment to Friday at 4:00 PM')">🔄 Reschedule</button>
+            <button class="chip" style="font-size:11px;" onclick="setLabMessage('Cancel my existing appointment')">❌ Cancel</button>
+            <button class="chip" style="font-size:11px; border-color:var(--accent-rose); color:var(--accent-rose);" onclick="setLabMessage('I have been waiting for 20 minutes and nobody is responding, this is terrible!')">😡 Frustrated (Escalation)</button>
+          </div>
+
+          <button class="btn-primary" id="btnRunLabTest" onclick="runOmnichannelLabTest()">
+            🚀 Send Simulated Interaction
+          </button>
+        </div>
+
+        <!-- Right: Bot Output & Outbound Meta Payload Inspector -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="response-card">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:700;">
+                  Sofia Bot Response
+                </span>
+                <span id="labActionBadge" class="badge confirmed">Action: idle</span>
+              </div>
+              <div id="labBotReply" style="font-size:14px; color:var(--text-primary); line-height:1.5;">
+                Select a channel and click "Send Simulated Interaction" to execute an end-to-end turn.
+              </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:8px; border-top:1px solid var(--border-color);">
+              <span id="labLatencyTag" style="font-size:11px; color:var(--accent-emerald); font-family:var(--font-mono);">
+                Latency: -- ms
+              </span>
+              <button class="chip" style="font-size:11px;" onclick="playSpeech(document.getElementById('labBotReply').textContent)">
+                🔊 Speak Response
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">
+                API Outbound JSON Payload
+              </span>
+              <span id="labChannelLabel" style="font-size:10px; color:var(--accent-cyan); font-family:var(--font-mono);">WhatsApp Cloud API</span>
+            </div>
+            <pre class="json-inspector" id="labJsonInspector">{
+  "status": "ready",
+  "message": "Click 'Send Simulated Interaction' to inspect live Meta/Telephony JSON payloads."
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telephony Number Provisioning Panel -->
+      <div id="telephonyPanel" style="display:none; padding-top:12px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div>
+            <h3 style="font-size:15px; font-weight:700; margin-bottom:8px;">📞 Dedicated Telephony Line Provisioning</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+              Choose between an instant cloud-provisioned virtual toll-free / local number (via Vapi / Twilio) or binding the customer's existing business phone.
+            </p>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label class="form-label">Provisioning Mode</label>
+              <select id="provMode" class="form-input" onchange="toggleProvMode(this.value)">
+                <option value="auto">Auto-Provision Dedicated Virtual Number (Twilio / Vapi)</option>
+                <option value="byon">Bring Your Own Number (SIP / Forwarding)</option>
+              </select>
+            </div>
+            <div class="form-group" id="provCountryGroup" style="margin-bottom:12px;">
+              <label class="form-label">Virtual Number Country Region</label>
+              <select id="provCountry" class="form-input">
+                <option value="US">🇺🇸 United States (+1-888)</option>
+                <option value="CA">🇨🇦 Canada (+1-877)</option>
+                <option value="GB">🇬🇧 United Kingdom (+44-800)</option>
+                <option value="AU">🇦🇺 Australia (+61-1800)</option>
+              </select>
+            </div>
+            <div class="form-group" id="provPhoneGroup" style="display:none; margin-bottom:12px;">
+              <label class="form-label">Customer Existing Phone Number</label>
+              <input type="tel" id="provCustomerPhone" class="form-input" placeholder="+16175550199">
+            </div>
+            <button class="btn-primary" onclick="runProvisionTelephony()">
+              ⚡ Provision Phone Line Now
+            </button>
+          </div>
+          <div>
+            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase;">Provisioning Output & Telephony Webhook</span>
+            <pre class="json-inspector" id="telephonyInspector" style="margin-top:8px;">{
+  "status": "ready",
+  "instructions": "Select provisioning mode and click 'Provision Phone Line Now' to generate dedicated virtual telephony credentials."
+}</pre>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <!-- Live Appointments & Google Calendar Two-Way Sync Table -->
     <section class="data-card">

@@ -168,3 +168,4 @@ def test_barge_in_endpoint():
     data = response.json()
     assert data["status"] == "interrupted"
     assert data["action"] == "halt_playback"
+

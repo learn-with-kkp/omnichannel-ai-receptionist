@@ -38,6 +38,8 @@ from backend.routers.chat import router as chat_router
 from backend.routers.messaging import router as messaging_router
 from backend.routers.tenants import router as tenants_router
 from backend.routers.streaming_voice import router as streaming_voice_router
+from backend.routers.auth import router as auth_router
+from backend.routers.testing_suite import router as testing_suite_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("SalonVoiceReceptionist")
@@ -80,6 +82,8 @@ app.include_router(chat_router)
 app.include_router(messaging_router)
 app.include_router(tenants_router)
 app.include_router(streaming_voice_router)
+app.include_router(auth_router)
+app.include_router(testing_suite_router)
 
 # Mount Static Web Studio Dashboard
 web_dir = Path(__file__).resolve().parent.parent / "web"
@@ -92,6 +96,17 @@ if web_dir.exists():
         if index_path.exists():
             return FileResponse(str(index_path))
         return {"service": "Universal AI Voice Receptionist", "status": "online"}
+
+    @app.get("/site/{tenant_id}")
+    def serve_tenant_site(tenant_id: str):
+        """
+        Renders custom customer-facing website embedded with Sofia voice receptionist,
+        service catalog, pricing, and omnichannel launchers.
+        """
+        tenant_site_path = web_dir / "tenant_site.html"
+        if tenant_site_path.exists():
+            return FileResponse(str(tenant_site_path))
+        return {"error": f"Tenant site template not found for {tenant_id}"}
 
 @app.get("/health")
 def health_check():

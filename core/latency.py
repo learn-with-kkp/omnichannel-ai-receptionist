@@ -52,3 +52,4 @@ class LatencyTracker:
         total = sum(v for k, v in self._ms.items() if k != "llm_ttft")
         out["total_ms"] = round(total, 2)
         return out
+
