@@ -298,3 +298,4 @@ async function selectPlan(plan) {
     alert("Error updating plan: " + e);
   }
 }
+

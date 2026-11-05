@@ -243,3 +243,4 @@ def get_testing_suite_status(tenant_id: Optional[str] = "salon"):
             "google_calendar": {"status": "synced", "connected": calendar_service.is_connected() if calendar_service else False}
         }
     }
+

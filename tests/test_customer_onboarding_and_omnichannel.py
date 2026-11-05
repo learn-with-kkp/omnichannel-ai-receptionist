@@ -258,3 +258,4 @@ def test_serve_tenant_site():
     assert res.status_code == 200
     assert "text/html" in res.headers["content-type"]
     assert "Sofia" in res.text
+
