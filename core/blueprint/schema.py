@@ -15,6 +15,10 @@ class OmniChannelType(str, Enum):
     WHATSAPP = "whatsapp"
     MESSENGER = "messenger"
     INSTAGRAM = "instagram"
+    TELEGRAM = "telegram"
+    TWITTER = "twitter"
+    LINKEDIN = "linkedin"
+    TIKTOK = "tiktok"
 
 
 class BookingStatus(str, Enum):

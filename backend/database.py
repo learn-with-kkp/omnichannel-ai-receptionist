@@ -287,10 +287,29 @@ def _init_postgres_schema(db: DBConnectionContext):
             telephony_number TEXT DEFAULT '',
             vapi_phone_id TEXT DEFAULT '',
             vapi_assistant_id TEXT DEFAULT '',
+            telegram_bot_token TEXT DEFAULT '',
+            telegram_chat_id TEXT DEFAULT '',
+            twitter_api_key TEXT DEFAULT '',
+            twitter_bearer_token TEXT DEFAULT '',
+            linkedin_client_id TEXT DEFAULT '',
+            linkedin_access_token TEXT DEFAULT '',
+            tiktok_client_key TEXT DEFAULT '',
+            tiktok_access_token TEXT DEFAULT '',
             webhook_secret TEXT DEFAULT '',
             updated_at TEXT NOT NULL
         )
     """)
+
+    # Dynamic migrations for omnichannel social channels
+    for col in [
+        "telegram_bot_token", "telegram_chat_id", "twitter_api_key",
+        "twitter_bearer_token", "linkedin_client_id", "linkedin_access_token",
+        "tiktok_client_key", "tiktok_access_token"
+    ]:
+        try:
+            db.execute(f"ALTER TABLE tenant_integrations ADD COLUMN IF NOT EXISTS {col} TEXT DEFAULT ''")
+        except Exception:
+            pass
 
     # Seed Default Salon if not exists
     db.execute("SELECT COUNT(*) as count FROM tenants WHERE id = ?", (DEFAULT_TENANT_ID,))
@@ -434,11 +453,30 @@ def _init_sqlite_schema(db: DBConnectionContext):
             telephony_number TEXT DEFAULT '',
             vapi_phone_id TEXT DEFAULT '',
             vapi_assistant_id TEXT DEFAULT '',
+            telegram_bot_token TEXT DEFAULT '',
+            telegram_chat_id TEXT DEFAULT '',
+            twitter_api_key TEXT DEFAULT '',
+            twitter_bearer_token TEXT DEFAULT '',
+            linkedin_client_id TEXT DEFAULT '',
+            linkedin_access_token TEXT DEFAULT '',
+            tiktok_client_key TEXT DEFAULT '',
+            tiktok_access_token TEXT DEFAULT '',
             webhook_secret TEXT DEFAULT '',
             updated_at TEXT NOT NULL,
             FOREIGN KEY (tenant_id) REFERENCES tenants (id)
         )
     """)
+
+    # Dynamic migrations for omnichannel social channels (SQLite fallback)
+    for col in [
+        "telegram_bot_token", "telegram_chat_id", "twitter_api_key",
+        "twitter_bearer_token", "linkedin_client_id", "linkedin_access_token",
+        "tiktok_client_key", "tiktok_access_token"
+    ]:
+        try:
+            db.execute(f"ALTER TABLE tenant_integrations ADD COLUMN {col} TEXT DEFAULT ''")
+        except Exception:
+            pass
 
     # Seed Default Salon if not exists
     db.execute("SELECT COUNT(*) as count FROM tenants WHERE id = ?", (DEFAULT_TENANT_ID,))
@@ -1030,9 +1068,17 @@ def save_tenant_integrations(
     telephony_provider: str = "vapi",
     telephony_number: str = "",
     vapi_phone_id: str = "",
-    vapi_assistant_id: str = ""
+    vapi_assistant_id: str = "",
+    telegram_bot_token: str = "",
+    telegram_chat_id: str = "",
+    twitter_api_key: str = "",
+    twitter_bearer_token: str = "",
+    linkedin_client_id: str = "",
+    linkedin_access_token: str = "",
+    tiktok_client_key: str = "",
+    tiktok_access_token: str = ""
 ) -> Dict[str, Any]:
-    """Saves or updates connected WhatsApp, Meta, Instagram, and telephony parameters."""
+    """Saves or updates connected WhatsApp, Meta, Instagram, Telegram, Twitter, LinkedIn, TikTok, and telephony parameters."""
     init_db()
     now = datetime.now().isoformat()
     secret = secrets.token_hex(12)
@@ -1044,8 +1090,12 @@ def save_tenant_integrations(
                     tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
                     meta_page_id, instagram_account_id, google_calendar_id,
                     telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+                    telegram_bot_token, telegram_chat_id,
+                    twitter_api_key, twitter_bearer_token,
+                    linkedin_client_id, linkedin_access_token,
+                    tiktok_client_key, tiktok_access_token,
                     webhook_secret, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (tenant_id) DO UPDATE SET
                     whatsapp_phone_number_id = EXCLUDED.whatsapp_phone_number_id,
                     whatsapp_business_account_id = EXCLUDED.whatsapp_business_account_id,
@@ -1056,12 +1106,24 @@ def save_tenant_integrations(
                     telephony_number = EXCLUDED.telephony_number,
                     vapi_phone_id = EXCLUDED.vapi_phone_id,
                     vapi_assistant_id = EXCLUDED.vapi_assistant_id,
+                    telegram_bot_token = EXCLUDED.telegram_bot_token,
+                    telegram_chat_id = EXCLUDED.telegram_chat_id,
+                    twitter_api_key = EXCLUDED.twitter_api_key,
+                    twitter_bearer_token = EXCLUDED.twitter_bearer_token,
+                    linkedin_client_id = EXCLUDED.linkedin_client_id,
+                    linkedin_access_token = EXCLUDED.linkedin_access_token,
+                    tiktok_client_key = EXCLUDED.tiktok_client_key,
+                    tiktok_access_token = EXCLUDED.tiktok_access_token,
                     webhook_secret = EXCLUDED.webhook_secret,
                     updated_at = EXCLUDED.updated_at
             """, (
                 tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
                 meta_page_id, instagram_account_id, google_calendar_id,
                 telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+                telegram_bot_token, telegram_chat_id,
+                twitter_api_key, twitter_bearer_token,
+                linkedin_client_id, linkedin_access_token,
+                tiktok_client_key, tiktok_access_token,
                 secret, now
             ))
         else:
@@ -1070,12 +1132,20 @@ def save_tenant_integrations(
                     tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
                     meta_page_id, instagram_account_id, google_calendar_id,
                     telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+                    telegram_bot_token, telegram_chat_id,
+                    twitter_api_key, twitter_bearer_token,
+                    linkedin_client_id, linkedin_access_token,
+                    tiktok_client_key, tiktok_access_token,
                     webhook_secret, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
                 meta_page_id, instagram_account_id, google_calendar_id,
                 telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+                telegram_bot_token, telegram_chat_id,
+                twitter_api_key, twitter_bearer_token,
+                linkedin_client_id, linkedin_access_token,
+                tiktok_client_key, tiktok_access_token,
                 secret, now
             ))
 
@@ -1100,7 +1170,15 @@ def get_tenant_integrations(tenant_id: str) -> Dict[str, Any]:
         "telephony_provider": "vapi",
         "telephony_number": "+18005550199",
         "vapi_phone_id": "",
-        "vapi_assistant_id": ""
+        "vapi_assistant_id": "",
+        "telegram_bot_token": "",
+        "telegram_chat_id": "",
+        "twitter_api_key": "",
+        "twitter_bearer_token": "",
+        "linkedin_client_id": "",
+        "linkedin_access_token": "",
+        "tiktok_client_key": "",
+        "tiktok_access_token": ""
     }
 
 

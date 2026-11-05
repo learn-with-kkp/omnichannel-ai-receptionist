@@ -197,6 +197,110 @@ def test_hands_on_instagram_testing():
     assert "instagram_payload" in data
 
 
+def test_hands_on_telegram_testing():
+    res = client.post("/api/testing/telegram", json={
+        "tenant_id": "salon",
+        "caller_name": "Pavel Durov",
+        "caller_phone": "+16673070119",
+        "message": "Can I book a consultation tomorrow at 10 AM?"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["channel"] == "telegram"
+    assert "bot_reply" in data
+    assert "telegram_payload" in data
+    assert data["telegram_payload"]["chat_id"] == "7729104"
+
+
+def test_hands_on_twitter_testing():
+    res = client.post("/api/testing/twitter", json={
+        "tenant_id": "salon",
+        "caller_name": "Elon Musk",
+        "caller_phone": "+16673070119",
+        "message": "Hey what services do you offer?"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["channel"] == "twitter"
+    assert "bot_reply" in data
+    assert "twitter_payload" in data
+    assert data["twitter_payload"]["recipient_id"] == "90124991"
+
+
+def test_hands_on_linkedin_testing():
+    res = client.post("/api/testing/linkedin", json={
+        "tenant_id": "salon",
+        "caller_name": "Satya Nadella",
+        "caller_phone": "+16673070119",
+        "message": "Inquiring about executive haircut slots on Friday"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["channel"] == "linkedin"
+    assert "bot_reply" in data
+    assert "linkedin_payload" in data
+    assert "urn:li:person" in data["linkedin_payload"]["recipient"]
+
+
+def test_hands_on_tiktok_testing():
+    res = client.post("/api/testing/tiktok", json={
+        "tenant_id": "salon",
+        "caller_name": "Addison Rae",
+        "caller_phone": "+16673070119",
+        "message": "Loved your salon on my FYP! Can I book with Elena?"
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["channel"] == "tiktok"
+    assert "bot_reply" in data
+    assert "tiktok_payload" in data
+    assert data["tiktok_payload"]["to_user_id"] == "tt_open_id_61029"
+
+
+def test_social_webhooks():
+    # 1. Telegram probe
+    res_tg = client.get("/webhook/telegram")
+    assert res_tg.status_code == 200
+    assert res_tg.json()["ready"] is True
+
+    # 2. Twitter CRC verification
+    res_tw = client.get("/webhook/twitter?crc_token=test_crc_token_12345")
+    assert res_tw.status_code == 200
+    assert "sha256=" in res_tw.json()["response_token"]
+
+    # 3. TikTok verification
+    res_tt = client.get("/webhook/tiktok?challenge=tiktok_challenge_99&verify_token=omnichannel_secure_token_123")
+    assert res_tt.status_code == 200
+    assert res_tt.text == "tiktok_challenge_99"
+
+
+def test_save_and_retrieve_all_omnichannel_integrations():
+    payload = {
+        "tenant_id": "salon",
+        "whatsapp_phone_number_id": "wa_live_123",
+        "meta_page_id": "page_live_456",
+        "instagram_account_id": "ig_live_789",
+        "telegram_bot_token": "tg_bot_token_abc",
+        "twitter_api_key": "tw_api_key_def",
+        "twitter_bearer_token": "tw_bearer_ghi",
+        "linkedin_client_id": "li_client_jkl",
+        "linkedin_access_token": "li_token_mno",
+        "tiktok_client_key": "tt_key_pqr",
+        "tiktok_access_token": "tt_token_stu"
+    }
+    res = client.post("/api/auth/integrations", json=payload)
+    assert res.status_code == 200
+    data = res.json()["integrations"]
+    assert data["telegram_bot_token"] == "tg_bot_token_abc"
+    assert data["twitter_bearer_token"] == "tw_bearer_ghi"
+    assert data["linkedin_access_token"] == "li_token_mno"
+    assert data["tiktok_access_token"] == "tt_token_stu"
+
+
 def test_hands_on_voice_call_testing():
     res = client.post("/api/testing/voice-call", json={
         "tenant_id": "salon",

@@ -180,3 +180,168 @@ async def handle_instagram_incoming(request: Request):
         logger.error(f"Error in Instagram webhook: {e}")
         return {"status": "error", "detail": str(e)}
 
+
+# --- Telegram Webhooks ---
+
+@router.get("/webhook/telegram")
+def verify_telegram_webhook():
+    """Telegram Webhook health probe."""
+    return {"status": "ok", "service": "Telegram Webhook Receiver", "ready": True}
+
+
+@router.post("/webhook/telegram")
+async def handle_telegram_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Receives Telegram Bot updates (messages & inline button callback queries).
+    Executes conversational turn and auto-responds via Telegram Bot API.
+    """
+    try:
+        from integrations.telegram_bot import telegram_client
+        data = await request.json()
+        parsed = telegram_client.parse_incoming_update(data)
+        if parsed and parsed.get("text"):
+            chat_id = parsed["chat_id"]
+            user_text = parsed["text"]
+            user_name = parsed["user_name"]
+
+            logger.info(f"Incoming Telegram from {user_name} ({chat_id}): {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"tg-{chat_id}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.TELEGRAM,
+                caller_name=user_name
+            )
+
+            quick_replies = orchestration.get("suggested_slots") or ["Book Appointment", "Check Hours"]
+            notification_dispatcher.send_telegram(chat_id, orchestration["reply"], quick_replies=quick_replies)
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Telegram webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- Twitter / X Account Activity API Webhooks ---
+
+@router.get("/webhook/twitter")
+def verify_twitter_crc(crc_token: Optional[str] = Query(None)):
+    """
+    Twitter Webhook CRC Challenge:
+    Responds to Twitter CRC challenge with HMAC-SHA256 signature.
+    """
+    from integrations.twitter_x import twitter_client
+    if not crc_token:
+        raise HTTPException(status_code=400, detail="Missing crc_token parameter")
+
+    response_token = twitter_client.compute_crc_response(crc_token)
+    logger.info("✅ Twitter Webhook CRC challenge responded successfully.")
+    return {"response_token": response_token}
+
+
+@router.post("/webhook/twitter")
+async def handle_twitter_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Receives Twitter Direct Message events and auto-responds.
+    """
+    try:
+        from integrations.twitter_x import twitter_client
+        data = await request.json()
+        parsed = twitter_client.parse_incoming_dm(data)
+        if parsed and parsed.get("text"):
+            sender_id = parsed["sender_id"]
+            user_text = parsed["text"]
+
+            logger.info(f"Incoming Twitter DM from {sender_id}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"tw-{sender_id}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.TWITTER
+            )
+
+            quick_replies = orchestration.get("suggested_slots") or ["Book Appointment", "Pricing"]
+            notification_dispatcher.send_twitter_dm(sender_id, orchestration["reply"], quick_replies=quick_replies)
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Twitter webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- LinkedIn Messaging Webhooks ---
+
+@router.post("/webhook/linkedin")
+async def handle_linkedin_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Processes incoming LinkedIn Direct Messages and auto-responds.
+    """
+    try:
+        from integrations.linkedin_msg import linkedin_client
+        data = await request.json()
+        parsed = linkedin_client.parse_incoming_message(data)
+        if parsed and parsed.get("text"):
+            sender_urn = parsed["sender"]
+            user_text = parsed["text"]
+
+            logger.info(f"Incoming LinkedIn message from {sender_urn}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"li-{sender_urn}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.LINKEDIN
+            )
+
+            notification_dispatcher.send_linkedin_message(sender_urn, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in LinkedIn webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- TikTok Direct Messaging Webhooks ---
+
+@router.get("/webhook/tiktok")
+def verify_tiktok_webhook(
+    challenge: Optional[str] = Query(None),
+    verify_token: Optional[str] = Query(None)
+):
+    """TikTok webhook verification challenge."""
+    if verify_token and verify_token != VERIFY_TOKEN:
+        raise HTTPException(status_code=403, detail="Verification failed")
+    return Response(content=challenge or "ok", media_type="text/plain")
+
+
+@router.post("/webhook/tiktok")
+async def handle_tiktok_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Processes incoming TikTok Direct Messages and auto-responds.
+    """
+    try:
+        from integrations.tiktok_msg import tiktok_client
+        data = await request.json()
+        parsed = tiktok_client.parse_incoming_dm(data)
+        if parsed and parsed.get("text"):
+            sender_id = parsed["sender_id"]
+            user_text = parsed["text"]
+
+            logger.info(f"Incoming TikTok DM from {sender_id}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"tt-{sender_id}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.TIKTOK
+            )
+
+            notification_dispatcher.send_tiktok_dm(sender_id, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in TikTok webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+

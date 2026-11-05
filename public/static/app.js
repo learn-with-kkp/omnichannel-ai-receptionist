@@ -700,6 +700,10 @@ function switchLabChannel(channel) {
       whatsapp: "Meta WhatsApp Cloud API",
       messenger: "Meta Messenger Graph API",
       instagram: "Meta Instagram Direct Messaging API",
+      telegram: "Telegram Bot API v7.0",
+      twitter: "Twitter / X Direct Message API v2",
+      linkedin: "LinkedIn Messaging API",
+      tiktok: "TikTok Business Messaging API",
       voice: "Vapi / Twilio Sub-500ms Voice Telephony Turn"
     };
     if (channelLabel) channelLabel.textContent = labels[channel] || channel;
@@ -748,7 +752,7 @@ async function runOmnichannelLabTest() {
     if (latencyEl) latencyEl.textContent = `Latency: ${ms} ms`;
 
     // Render payload in JSON inspector
-    const rawPayload = data.meta_payload || data.messenger_payload || data.instagram_payload || data.metrics || data;
+    const rawPayload = data.meta_payload || data.messenger_payload || data.instagram_payload || data.telegram_payload || data.twitter_payload || data.linkedin_payload || data.tiktok_payload || data.metrics || data;
     if (inspector) inspector.textContent = JSON.stringify(rawPayload, null, 2);
 
     // Refresh appointments table in case a booking occurred

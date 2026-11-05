@@ -62,6 +62,10 @@
     .omni-btn.wa { background: #25d366; color: #04101e; }
     .omni-btn.fb { background: #0084ff; color: white; }
     .omni-btn.ig { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); color: white; }
+    .omni-btn.tg { background: #229ed9; color: white; }
+    .omni-btn.tw { background: #000000; color: white; border: 1px solid rgba(255,255,255,0.2); }
+    .omni-btn.li { background: #0a66c2; color: white; }
+    .omni-btn.tt { background: #000000; color: #25f4ee; border: 1px solid #fe2c55; }
     .omni-btn.phone { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); border: 1px solid var(--border-color); }
     .omni-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); }
 
@@ -207,16 +211,28 @@
       <!-- 1-Click Omnichannel Launcher Buttons -->
       <div class="omni-launchers">
         <button class="omni-btn wa" onclick="triggerHandsOnTest('whatsapp')">
-          <span>🟢</span> WhatsApp Us
+          <span>🟢</span> WhatsApp
         </button>
         <button class="omni-btn fb" onclick="triggerHandsOnTest('messenger')">
           <span>💬</span> Messenger
         </button>
         <button class="omni-btn ig" onclick="triggerHandsOnTest('instagram')">
-          <span>📸</span> Instagram DM
+          <span>📸</span> Instagram
+        </button>
+        <button class="omni-btn tg" onclick="triggerHandsOnTest('telegram')">
+          <span>✈️</span> Telegram
+        </button>
+        <button class="omni-btn tw" onclick="triggerHandsOnTest('twitter')">
+          <span>🐦</span> Twitter / X
+        </button>
+        <button class="omni-btn li" onclick="triggerHandsOnTest('linkedin')">
+          <span>💼</span> LinkedIn
+        </button>
+        <button class="omni-btn tt" onclick="triggerHandsOnTest('tiktok')">
+          <span>🎵</span> TikTok
         </button>
         <a href="tel:+16673070119" class="omni-btn phone" id="btnTelLink">
-          <span>📞</span> Call Concierge: <span id="telDisplay">+1 (667) 307-0119</span>
+          <span>📞</span> Call: <span id="telDisplay">+1 (667) 307-0119</span>
         </a>
       </div>
     </section>

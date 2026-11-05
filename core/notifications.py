@@ -34,6 +34,18 @@ class NotificationDispatcher:
         self.whatsapp_phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
         self.meta_page_id = os.getenv("META_PAGE_ID", "")
 
+        # Telegram Bot
+        self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+
+        # Twitter / X API
+        self.twitter_bearer_token = os.getenv("TWITTER_BEARER_TOKEN", "")
+
+        # LinkedIn Messaging
+        self.linkedin_access_token = os.getenv("LINKEDIN_ACCESS_TOKEN", "")
+
+        # TikTok Direct Messaging
+        self.tiktok_access_token = os.getenv("TIKTOK_ACCESS_TOKEN", "")
+
     def is_twilio_configured(self) -> bool:
         return bool(self.twilio_account_sid and self.twilio_auth_token and not self.twilio_account_sid.startswith("your_"))
 
@@ -167,8 +179,33 @@ class NotificationDispatcher:
         logger.info(f"📸 [SIMULATION INSTAGRAM] To IGID: {recipient_igid} | Text: {text}")
         return {"status": "simulated", "channel": "instagram", "recipient": recipient_igid, "content": text}
 
-    def dispatch_booking_confirmation(self, booking_record: Dict[str, Any], channel: str = "voice") -> Dict[str, Any]:
-        """Multi-channel confirmation dispatch upon appointment commit."""
+    def send_telegram(self, chat_id: str, text: str, quick_replies: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Dispatches message via Telegram Bot API or simulation."""
+        from integrations.telegram_bot import telegram_client
+        return telegram_client.send_message(chat_id=chat_id, text=text, quick_replies=quick_replies)
+
+    def send_twitter_dm(self, recipient_id: str, text: str, quick_replies: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Dispatches Direct Message on Twitter / X or simulation."""
+        from integrations.twitter_x import twitter_client
+        return twitter_client.send_direct_message(recipient_id=recipient_id, text=text, quick_replies=quick_replies)
+
+    def send_linkedin_message(self, recipient_urn: str, text: str) -> Dict[str, Any]:
+        """Dispatches direct message via LinkedIn Messaging API or simulation."""
+        from integrations.linkedin_msg import linkedin_client
+        return linkedin_client.send_message(recipient_urn=recipient_urn, text=text)
+
+    def send_tiktok_dm(self, recipient_open_id: str, text: str) -> Dict[str, Any]:
+        """Dispatches direct message via TikTok Business Messaging API or simulation."""
+        from integrations.tiktok_msg import tiktok_client
+        return tiktok_client.send_direct_message(recipient_open_id=recipient_open_id, text=text)
+
+    def dispatch_booking_confirmation(
+        self,
+        booking_record: Dict[str, Any],
+        channel: str = "voice",
+        recipient_id: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Multi-channel confirmation dispatch upon appointment commit across all touchpoints."""
         caller_name = booking_record.get("caller_name", "Valued Guest")
         caller_phone = booking_record.get("caller_phone", "")
         service = booking_record.get("service_name", "Service")
@@ -184,10 +221,20 @@ class NotificationDispatcher:
         )
 
         results = {}
-        # 1. Send SMS
+        # 1. Phone based channels
         if caller_phone:
             results["sms"] = self.send_sms(caller_phone, msg)
             results["whatsapp"] = self.send_whatsapp(caller_phone, msg, quick_replies=["Confirm", "Reschedule", "Cancel"])
+
+        # 2. Social messaging direct replies if specific channel was used
+        if channel == "telegram" and recipient_id:
+            results["telegram"] = self.send_telegram(recipient_id, msg, quick_replies=["Confirm", "Reschedule", "Cancel"])
+        elif channel == "twitter" and recipient_id:
+            results["twitter"] = self.send_twitter_dm(recipient_id, msg, quick_replies=["Confirm", "Reschedule", "Cancel"])
+        elif channel == "linkedin" and recipient_id:
+            results["linkedin"] = self.send_linkedin_message(recipient_id, msg)
+        elif channel == "tiktok" and recipient_id:
+            results["tiktok"] = self.send_tiktok_dm(recipient_id, msg)
 
         return results
 

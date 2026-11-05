@@ -155,6 +155,150 @@ def test_instagram_interaction(payload: ChannelTestRequest):
     }
 
 
+@router.post("/telegram")
+def test_telegram_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On Telegram Simulator:
+    Simulates incoming message or callback button click from Telegram user.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"tg-user-77291",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.TELEGRAM,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    quick_replies = res.get("suggested_slots") or ["Book Appointment", "Check Hours"]
+    telegram_payload = {
+        "chat_id": "7729104",
+        "text": res["reply"],
+        "reply_markup": {
+            "inline_keyboard": [
+                [{"text": slot, "callback_data": slot}] for slot in quick_replies[:4]
+            ]
+        }
+    }
+
+    return {
+        "status": "success",
+        "channel": "telegram",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "telegram_payload": telegram_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/twitter")
+def test_twitter_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On Twitter / X DM Simulator:
+    Simulates incoming direct message from X user with quick reply options.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"tw-user-90124",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.TWITTER,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    twitter_payload = {
+        "recipient_id": "90124991",
+        "message": res["reply"],
+        "quick_reply_options": res.get("suggested_slots") or ["Book Appointment", "Pricing"]
+    }
+
+    return {
+        "status": "success",
+        "channel": "twitter",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "twitter_payload": twitter_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/linkedin")
+def test_linkedin_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On LinkedIn Simulator:
+    Simulates professional direct message inquiry.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"li-urn-li-person-88219",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.LINKEDIN,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    linkedin_payload = {
+        "recipient": "urn:li:person:88219",
+        "messageContent": {"body": res["reply"]}
+    }
+
+    return {
+        "status": "success",
+        "channel": "linkedin",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "linkedin_payload": linkedin_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/tiktok")
+def test_tiktok_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On TikTok Direct Message Simulator:
+    Simulates incoming DM inquiry from TikTok user.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"tt-open-id-61029",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.TIKTOK,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    tiktok_payload = {
+        "to_user_id": "tt_open_id_61029",
+        "msg_type": "text",
+        "content": {"text": res["reply"]}
+    }
+
+    return {
+        "status": "success",
+        "channel": "tiktok",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "tiktok_payload": tiktok_payload,
+        "latency_ms": elapsed
+    }
+
+
 @router.post("/voice-call")
 def test_voice_call_interaction(payload: ChannelTestRequest):
     """
@@ -229,7 +373,7 @@ def provision_telephony_number(payload: PhoneProvisionRequest):
 
 @router.get("/status")
 def get_testing_suite_status(tenant_id: Optional[str] = "salon"):
-    """Returns connectivity health of all 5 channels for a tenant."""
+    """Returns connectivity health of all 9 channels for a tenant."""
     integrations = get_tenant_integrations(tenant_id or "salon")
     return {
         "status": "operational",
@@ -239,6 +383,10 @@ def get_testing_suite_status(tenant_id: Optional[str] = "salon"):
             "whatsapp": {"status": "configured", "phone_id": integrations.get("whatsapp_phone_number_id") or "sandbox_wa_active"},
             "messenger": {"status": "configured", "page_id": integrations.get("meta_page_id") or "sandbox_fb_active"},
             "instagram": {"status": "configured", "account_id": integrations.get("instagram_account_id") or "sandbox_ig_active"},
+            "telegram": {"status": "configured", "bot": integrations.get("telegram_bot_token") or "sandbox_tg_bot_active"},
+            "twitter": {"status": "configured", "handle": "@" + (tenant_id or "salon") + "_ai"},
+            "linkedin": {"status": "configured", "organization": (tenant_id or "salon").title() + " Business"},
+            "tiktok": {"status": "configured", "account": "@" + (tenant_id or "salon") + "_reception"},
             "telephony": {"status": "active", "number": integrations.get("telephony_number") or "+18885550199", "provider": integrations.get("telephony_provider")},
             "google_calendar": {"status": "synced", "connected": calendar_service.is_connected() if calendar_service else False}
         }

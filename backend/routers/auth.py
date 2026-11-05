@@ -19,7 +19,8 @@ from backend.database import (
     get_user_by_id,
     verify_password,
     update_tenant_plan,
-    get_tenant_integrations
+    get_tenant_integrations,
+    save_tenant_integrations
 )
 from core.blueprint.tenant_manager import tenant_registry
 
@@ -47,6 +48,23 @@ class LoginRequest(BaseModel):
 class ChangePlanRequest(BaseModel):
     tenant_id: str
     plan: str
+
+
+class UpdateIntegrationsRequest(BaseModel):
+    tenant_id: str
+    whatsapp_phone_number_id: Optional[str] = ""
+    whatsapp_business_account_id: Optional[str] = ""
+    meta_page_id: Optional[str] = ""
+    instagram_account_id: Optional[str] = ""
+    google_calendar_id: Optional[str] = "primary"
+    telegram_bot_token: Optional[str] = ""
+    telegram_chat_id: Optional[str] = ""
+    twitter_api_key: Optional[str] = ""
+    twitter_bearer_token: Optional[str] = ""
+    linkedin_client_id: Optional[str] = ""
+    linkedin_access_token: Optional[str] = ""
+    tiktok_client_key: Optional[str] = ""
+    tiktok_access_token: Optional[str] = ""
 
 
 def get_current_user_from_token(authorization: Optional[str] = Header(None)) -> Optional[Dict[str, Any]]:
@@ -175,3 +193,25 @@ def update_subscription_plan(payload: ChangePlanRequest):
         "monthly_fee": valid_plans[plan_key],
         "updated": updated
     }
+
+
+@router.post("/integrations")
+def update_tenant_integrations_endpoint(payload: UpdateIntegrationsRequest):
+    """Updates connected omnichannel social accounts for a tenant."""
+    saved = save_tenant_integrations(
+        tenant_id=payload.tenant_id,
+        whatsapp_phone_number_id=payload.whatsapp_phone_number_id or "",
+        whatsapp_business_account_id=payload.whatsapp_business_account_id or "",
+        meta_page_id=payload.meta_page_id or "",
+        instagram_account_id=payload.instagram_account_id or "",
+        google_calendar_id=payload.google_calendar_id or "primary",
+        telegram_bot_token=payload.telegram_bot_token or "",
+        telegram_chat_id=payload.telegram_chat_id or "",
+        twitter_api_key=payload.twitter_api_key or "",
+        twitter_bearer_token=payload.twitter_bearer_token or "",
+        linkedin_client_id=payload.linkedin_client_id or "",
+        linkedin_access_token=payload.linkedin_access_token or "",
+        tiktok_client_key=payload.tiktok_client_key or "",
+        tiktok_access_token=payload.tiktok_access_token or ""
+    )
+    return {"status": "success", "integrations": saved}
