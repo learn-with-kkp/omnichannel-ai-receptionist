@@ -125,6 +125,41 @@ async def twilio_voice_webhook(request: Request):
     return Response(content=twiml, media_type="application/xml")
 
 
+def generate_livekit_access_token(api_key: str, api_secret: str, identity: str, room_name: str) -> str:
+    """Generates valid HS256 LiveKit AccessToken JWT."""
+    import time
+    import json
+    import base64
+    import hmac
+    import hashlib
+
+    header = {"alg": "HS256", "typ": "JWT"}
+    now = int(time.time())
+    payload = {
+        "iss": api_key,
+        "sub": identity,
+        "nbf": now - 5,
+        "exp": now + 86400,
+        "video": {
+            "room": room_name,
+            "roomJoin": True,
+            "canPublish": True,
+            "canSubscribe": True,
+            "canPublishData": True
+        }
+    }
+
+    def b64url(data: bytes) -> str:
+        return base64.urlsafe_b64encode(data).rstrip(b"=").decode("utf-8")
+
+    header_b64 = b64url(json.dumps(header, separators=(",", ":")).encode("utf-8"))
+    payload_b64 = b64url(json.dumps(payload, separators=(",", ":")).encode("utf-8"))
+    signing_input = f"{header_b64}.{payload_b64}".encode("utf-8")
+    signature = hmac.new(api_secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
+    sig_b64 = b64url(signature)
+    return f"{header_b64}.{payload_b64}.{sig_b64}"
+
+
 @router.get("/api/voice/token")
 def generate_webrtc_voice_token(
     identity: Optional[str] = "web-caller",
@@ -141,15 +176,24 @@ def generate_webrtc_voice_token(
 
     tenant = tenant_registry.get_tenant(tenant_id)
     accent_profile = tenant_registry.get_accent(accent)
+    room_name = f"receptionist-{tenant_id}"
 
-    # Generate lightweight session token
-    session_token = f"webrtc-token-{tenant_id}-{identity}-{int(os.getpid())}"
+    # Generate live cryptographically signed LiveKit AccessToken if credentials present
+    if livekit_api_key and livekit_secret and not livekit_api_key.startswith("your_"):
+        session_token = generate_livekit_access_token(
+            api_key=livekit_api_key,
+            api_secret=livekit_secret,
+            identity=identity or "web-caller",
+            room_name=room_name
+        )
+    else:
+        session_token = f"webrtc-token-{tenant_id}-{identity}-{int(os.getpid())}"
 
     return {
         "status": "success",
         "livekit_url": livekit_url,
         "token": session_token,
-        "room_name": f"receptionist-{tenant_id}",
+        "room_name": room_name,
         "identity": identity,
         "tenant": {
             "id": tenant.id,
