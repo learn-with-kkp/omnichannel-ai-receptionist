@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Header, HTTPException, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, Dict, Any
@@ -29,7 +29,9 @@ from backend.database import (
     create_tenant,
     get_tenant_services,
     get_tenant_stylists,
-    get_db_connection
+    get_db_connection,
+    list_all_appointments,
+    get_excel_path
 )
 from backend.reminder_service import run_reminder_cycle
 
@@ -44,6 +46,15 @@ from backend.routers.testing_suite import router as testing_suite_router
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("SalonVoiceReceptionist")
 
+def is_serverless_runtime() -> bool:
+    return bool(
+        os.getenv("VERCEL")
+        or os.getenv("VERCEL_ENV")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+        or os.getenv("LAMBDA_TASK_ROOT")
+        or not os.access(".", os.W_OK)
+    )
+
 async def reminder_background_worker():
     logger.info("Starting background reminder worker (checking every 60s)...")
     while True:
@@ -55,18 +66,40 @@ async def reminder_background_worker():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
-    logger.info("Salon Multi-Tenant SQLite Database & Excel store initialized successfully.")
-    worker_task = asyncio.create_task(reminder_background_worker())
+    try:
+        init_db()
+        logger.info("Salon Multi-Tenant Database initialized successfully.")
+    except Exception as e:
+        logger.error(f"Error initializing database in lifespan: {e}")
+    worker_task = None
+    if not is_serverless_runtime():
+        worker_task = asyncio.create_task(reminder_background_worker())
     yield
-    worker_task.cancel()
+    if worker_task:
+        worker_task.cancel()
 
 app = FastAPI(
     title="Universal AI Voice & Chat Receptionist API",
     description="Enterprise Multi-Tenant Omnichannel Receptionist for Salon, Dental, Automotive, and Medical verticals",
     version="2.0.0",
-    lifespan=lifespan
+    lifespan=None if is_serverless_runtime() else lifespan
 )
+
+@app.middleware("http")
+async def vercel_path_rewrite_middleware(request: Request, call_next):
+    try:
+        matched_path = request.headers.get("x-matched-path")
+        if matched_path and request.scope.get("path") in ("/api/index", "/api/index.py", "/api"):
+            request.scope["path"] = matched_path
+        return await call_next(request)
+    except Exception as exc:
+        import traceback
+        return JSONResponse(status_code=500, content={"error": str(exc), "traceback": traceback.format_exc()})
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    return JSONResponse(status_code=500, content={"error": str(exc), "traceback": traceback.format_exc()})
 
 app.add_middleware(
     CORSMiddleware,
@@ -135,7 +168,7 @@ async def handle_end_of_call(payload: Dict[str, Any]):
 @app.get("/admin/appointments/excel")
 def download_excel_sheet():
     """Download the current live Excel spreadsheet containing all appointments and reminder statuses."""
-    excel_path = os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
+    excel_path = get_excel_path()
     if not os.path.exists(excel_path):
         init_db()
     return FileResponse(
@@ -174,15 +207,7 @@ def onboard_tenant(payload: Dict[str, Any]):
 @app.get("/admin/appointments")
 def list_appointments(tenant_id: Optional[str] = None):
     """Query appointments across all tenants or for a specific salon."""
-    conn = get_db_connection()
-    c = conn.cursor()
-    if tenant_id:
-        c.execute("SELECT * FROM appointments WHERE tenant_id = ? ORDER BY start_time DESC", (tenant_id,))
-    else:
-        c.execute("SELECT * FROM appointments ORDER BY start_time DESC")
-    rows = [dict(r) for r in c.fetchall()]
-    conn.close()
-    return {"appointments": rows}
+    return {"appointments": list_all_appointments(tenant_id)}
 
 @app.post("/test/quick-booking")
 def quick_test_booking(
