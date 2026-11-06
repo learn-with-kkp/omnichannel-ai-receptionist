@@ -206,13 +206,11 @@
     ]
   },
   "voice": {
-    "provider": "11labs",
-    "voiceId": "21m00Tcm4TlvDq8ikWAM",
-    "model": "eleven_turbo_v2_5",
-    "stability": 0.5,
-    "similarityBoost": 0.75
+    "provider": "cartesia",
+    "voiceId": "694f9389-aac1-45b6-b726-9d9369183238",
+    "model": "sonic-3.5"
   },
-  "firstMessage": "Thank you for calling! This call may be recorded for quality and appointment confirmation. My name is Sofia, your AI receptionist. How can I assist you with your booking today?",
+  "firstMessage": "Hi, thanks for calling! This line may be recorded for confirmation. My name is Sofia from the front desk. How can I help you today?",
   "endCallMessage": "Thank you for calling. We have confirmed your details and look forward to welcoming you. Have a wonderful day!",
   "recordingEnabled": true,
   "silenceTimeoutSeconds": 30,

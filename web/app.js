@@ -389,7 +389,7 @@ async function triggerVapiOutboundCall() {
     });
     const data = await res.json();
     if (data.status === "success") {
-      if (feedback) feedback.textContent = `✅ Outbound call placed via Vapi (ID: ${data.call_id})! Sofia will ring you with ElevenLabs voice.`;
+      if (feedback) feedback.textContent = `✅ Outbound call placed via Vapi (ID: ${data.call_id})! Sofia will ring you with her lifelike voice.`;
     } else {
       if (feedback) feedback.textContent = `⚠️ Vapi error: ${data.message || data.detail}`;
     }
