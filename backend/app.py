@@ -135,6 +135,7 @@ if web_dir.exists():
         return {"service": "Universal AI Voice Receptionist", "status": "online"}
 
     @app.get("/site/{tenant_id}")
+    @app.get("/tenant/{tenant_id}")
     def serve_tenant_site(tenant_id: str):
         """
         Renders custom customer-facing website embedded with Sofia voice receptionist,
