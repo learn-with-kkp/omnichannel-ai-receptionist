@@ -15,6 +15,25 @@ import logging
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
 
+try:
+    from langfuse.decorators import observe, langfuse_context
+    from langfuse import Langfuse
+    langfuse_client = Langfuse(
+        public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+        secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+        host=os.getenv("LANGFUSE_HOST", os.getenv("LANGFUSE_BASE_URL", "https://us.cloud.langfuse.com"))
+    )
+    HAS_LANGFUSE = True
+except Exception:
+    HAS_LANGFUSE = False
+    def observe(*args, **kwargs):
+        def decorator(f):
+            return f
+        return decorator
+    langfuse_context = None
+    langfuse_client = None
+
+
 from core.blueprint.schema import (
     BusinessProfile, ServiceItem, StaffMember, AccentProfile,
     AppointmentRequest, OmniChannelType, BookingStatus
@@ -205,6 +224,7 @@ class UniversalReceptionistOrchestrator:
             return f"Splendid! {text} Cheerio."
         return text
 
+    @observe(name="receptionist-turn", as_type="agent")
     def process_conversation_turn(
         self,
         user_message: str,
@@ -225,6 +245,26 @@ class UniversalReceptionistOrchestrator:
         accent = self.get_accent_profile(accent_key)
         sentiment = self.detect_sentiment(user_message)
         intent = self.recognize_intent(user_message)
+
+        if HAS_LANGFUSE and langfuse_context:
+            try:
+                ch_val = channel.value if hasattr(channel, "value") else str(channel)
+                langfuse_context.update_current_trace(
+                    name=f"turn:{intent}",
+                    session_id=session_id,
+                    user_id=caller_phone or caller_name or "guest",
+                    tags=[tenant.id, ch_val, accent.key],
+                    metadata={
+                        "tenant_name": tenant.name,
+                        "sentiment": sentiment,
+                        "intent": intent,
+                        "caller_name": caller_name,
+                        "caller_phone": caller_phone,
+                        "channel": ch_val,
+                    }
+                )
+            except Exception as e:
+                logger.debug(f"Langfuse trace update exception: {e}")
 
         # 1. Fetch retrieval context (RAG vs RAGless)
         with tracker.stage("rag"):
@@ -368,6 +408,12 @@ class UniversalReceptionistOrchestrator:
         styled_response = self.format_accented_response(response_text, accent)
         latency_ms = (time.time() - start_ts) * 1000.0
         tracker.add("llm_ttft", round(latency_ms * 0.4, 2))
+
+        if HAS_LANGFUSE and langfuse_client:
+            try:
+                langfuse_client.flush()
+            except Exception:
+                pass
 
         return {
             "session_id": session_id,

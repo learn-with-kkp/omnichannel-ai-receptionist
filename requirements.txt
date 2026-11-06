@@ -8,3 +8,10 @@ python-dotenv>=1.0.0
 psycopg2-binary>=2.9.9
 python-multipart>=0.0.9
 qdrant-client>=1.10.0
+langfuse>=5.0.0
+boto3>=1.34.0
+google-cloud-storage>=2.14.0
+google-api-python-client>=2.100.0
+google-auth>=2.20.0
+
+

@@ -38,7 +38,10 @@ def sync_appointment_to_google_sheets(appointment: Dict[str, Any], tenant_id: st
                 key_file, scopes=scopes
             )
         elif json_creds_str:
-            creds_dict = json.loads(json_creds_str)
+            creds_dict = json.loads(json_creds_str) if isinstance(json_creds_str, str) else json_creds_str
+            if "private_key" in creds_dict and isinstance(creds_dict["private_key"], str):
+                if "\\n" in creds_dict["private_key"]:
+                    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
             creds = service_account.Credentials.from_service_account_info(
                 creds_dict, scopes=scopes
             )
@@ -47,7 +50,7 @@ def sync_appointment_to_google_sheets(appointment: Dict[str, Any], tenant_id: st
 
     if sheet_id and sheet_id != "your_google_spreadsheet_id_here" and creds:
         try:
-            service = build("sheets", "v4", credentials=creds)
+            service = build("sheets", "v4", credentials=creds, cache_discovery=False)
             
             row = [
                 appointment.get("booking_id"),
@@ -74,7 +77,6 @@ def sync_appointment_to_google_sheets(appointment: Dict[str, Any], tenant_id: st
             logger.error(f"❌ Google Sheets Sync Error: {e}")
             return False
     else:
-        # Development / Simulation mode
-        logger.info(f"📊 [GOOGLE SHEETS SIMULATION] [Tenant: {tenant_id}] Synced booking {appointment.get('booking_id')}")
-        return True
+        logger.warning(f"⚠️ Google Sheets sync bypassed (sheet_id: {sheet_id}, creds present: {creds is not None})")
+        return False
 

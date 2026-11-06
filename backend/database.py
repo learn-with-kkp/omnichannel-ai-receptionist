@@ -769,7 +769,7 @@ def book_new_appointment(
     try:
         sync_appointment_to_google_sheets(booking_record, tenant_id=tenant_id)
     except Exception as e:
-        logger.debug(f"Google sheets sync bypassed: {e}")
+        logger.error(f"❌ Google sheets sync failed: {e}", exc_info=True)
 
     return {
         "booking_id": booking_id,
