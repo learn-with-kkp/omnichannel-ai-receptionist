@@ -19,6 +19,11 @@ def sync_appointment_to_google_sheets(appointment: Dict[str, Any], tenant_id: st
     Appends the appointment record directly to a live Google Sheet.
     Falls back gracefully to simulation mode if Google API credentials are not set.
     """
+    # Guard against automated test suite polluting the production sheet
+    if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING") == "true":
+        logger.info(f"🧪 [TEST RUNNER] Skipped live Google Sheets sync for test booking {appointment.get('booking_id')}")
+        return True
+
     load_dotenv(dotenv_path=env_path)
     sheet_id = get_google_sheet_id()
     key_file = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "credentials/google_service_account.json")
