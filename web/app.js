@@ -237,7 +237,11 @@ document.getElementById("ragToggle")?.addEventListener("change", async (e) => {
   }
 });
 
-// --- In-Browser WebRTC Voice Agent (Sofia) with Infinite-Loop Prevention & Barge-In ---
+// --- In-Browser WebRTC Voice Agent (Sofia) with Smart Silence Detection & Barge-In ---
+
+let speechSilenceTimer = null;
+let currentTranscriptBuffer = "";
+const SILENCE_THRESHOLD_MS = 1800; // Wait 1.8s of silence after speaking before bot responds
 
 function initVoiceRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -248,50 +252,93 @@ function initVoiceRecognition() {
   }
 
   recognition = new SpeechRec();
-  recognition.continuous = false;
-  recognition.interimResults = false;
+  recognition.continuous = true;
+  recognition.interimResults = true;
   recognition.lang = getLanguageCodeForAccent(currentAccentKey);
 
   recognition.onstart = () => {
     isRecording = true;
+    currentTranscriptBuffer = "";
+    if (speechSilenceTimer) {
+      clearTimeout(speechSilenceTimer);
+      speechSilenceTimer = null;
+    }
     triggerBargeIn();
     updateMicUI(true);
   };
 
-  recognition.onresult = async (event) => {
-    // 1. Guard against re-entrant processing or bot's own speech
+  recognition.onresult = (event) => {
+    // Guard against re-entrant processing or bot's own speech
     if (isProcessingTurn || isBotSpeaking) return;
 
-    // 2. IMMEDIATELY stop recognition so speakers cannot feedback into microphone
-    try {
-      recognition.abort();
-    } catch (e) {}
-    isRecording = false;
-    updateMicUI(false);
-
-    const transcript = event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript;
-    if (!transcript || !transcript.trim()) return;
-
-    const statusEl = document.getElementById("voiceStatus");
-    if (statusEl) statusEl.textContent = `You said: "${transcript}"`;
-    appendChatBubble("user", transcript);
-
-    isProcessingTurn = true;
-    try {
-      await processMessageTurn(transcript);
-    } finally {
-      isProcessingTurn = false;
+    let interimTranscript = "";
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      const piece = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        currentTranscriptBuffer += piece + " ";
+      } else {
+        interimTranscript += piece;
+      }
     }
+
+    const liveText = (currentTranscriptBuffer + interimTranscript).trim();
+    if (!liveText) return;
+
+    // Show live streaming speech feedback so user knows they are heard
+    const statusEl = document.getElementById("voiceStatus");
+    if (statusEl) {
+      statusEl.textContent = `🎙️ Listening: "${liveText}" (take your time, waiting for pause...)`;
+    }
+
+    // Reset silence timer on every new word or syllable
+    if (speechSilenceTimer) {
+      clearTimeout(speechSilenceTimer);
+    }
+
+    speechSilenceTimer = setTimeout(async () => {
+      const completeTurn = (currentTranscriptBuffer + interimTranscript).trim();
+      if (!completeTurn || isProcessingTurn) return;
+
+      currentTranscriptBuffer = "";
+      try {
+        recognition.stop();
+      } catch (e) {}
+      isRecording = false;
+      updateMicUI(false);
+
+      if (statusEl) statusEl.textContent = `You said: "${completeTurn}"`;
+      appendChatBubble("user", completeTurn);
+
+      isProcessingTurn = true;
+      try {
+        await processMessageTurn(completeTurn);
+      } finally {
+        isProcessingTurn = false;
+      }
+    }, SILENCE_THRESHOLD_MS);
   };
 
   recognition.onerror = (event) => {
-    isRecording = false;
-    updateMicUI(false);
+    console.warn("Speech recognition error:", event.error);
+    if (event.error !== "no-speech") {
+      isRecording = false;
+      updateMicUI(false);
+    }
   };
 
   recognition.onend = () => {
-    isRecording = false;
-    updateMicUI(false);
+    // If not processing and was still intended to record, don't abruptly close
+    if (!isProcessingTurn && isRecording) {
+      try {
+        recognition.start();
+      } catch (e) {
+        isRecording = false;
+        updateMicUI(false);
+      }
+    } else {
+      isRecording = false;
+      updateMicUI(false);
+    }
   };
 }
 
@@ -351,11 +398,25 @@ function toggleVoice() {
     return;
   }
   if (isRecording) {
-    try { recognition.abort(); } catch (e) {}
+    if (speechSilenceTimer) {
+      clearTimeout(speechSilenceTimer);
+      speechSilenceTimer = null;
+    }
+    const pendingText = currentTranscriptBuffer.trim();
+    currentTranscriptBuffer = "";
+    try { recognition.stop(); } catch (e) {}
     isRecording = false;
     updateMicUI(false);
+    if (pendingText) {
+      const statusEl = document.getElementById("voiceStatus");
+      if (statusEl) statusEl.textContent = `You said: "${pendingText}"`;
+      appendChatBubble("user", pendingText);
+      isProcessingTurn = true;
+      processMessageTurn(pendingText).finally(() => { isProcessingTurn = false; });
+    }
   } else {
     try {
+      currentTranscriptBuffer = "";
       recognition.lang = getLanguageCodeForAccent(currentAccentKey);
       recognition.start();
     } catch (err) {

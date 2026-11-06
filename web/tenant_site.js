@@ -108,19 +108,28 @@ function prefillBooking(serviceOrStaff) {
   }
 }
 
-// --- Voice Recognition & Barge-In for Custom Site ---
+// --- Voice Recognition with Smart Silence Detection & Barge-In for Custom Site ---
+
+let siteSpeechSilenceTimer = null;
+let siteTranscriptBuffer = "";
+const SITE_SILENCE_THRESHOLD_MS = 1800;
 
 function setupSiteVoice() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SpeechRec) return;
 
   recognition = new SpeechRec();
-  recognition.continuous = false;
-  recognition.interimResults = false;
+  recognition.continuous = true;
+  recognition.interimResults = true;
   recognition.lang = "en-US";
 
   recognition.onstart = () => {
     isRecording = true;
+    siteTranscriptBuffer = "";
+    if (siteSpeechSilenceTimer) {
+      clearTimeout(siteSpeechSilenceTimer);
+      siteSpeechSilenceTimer = null;
+    }
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
       fetch("/api/voice/interrupt", {
@@ -132,38 +141,73 @@ function setupSiteVoice() {
     updateSiteMicUI(true);
   };
 
-  recognition.onresult = async (event) => {
+  recognition.onresult = (event) => {
     if (isProcessingTurn || isBotSpeaking) return;
 
-    // Immediately halt recognition so speaker output cannot re-trigger mic
-    try {
-      recognition.abort();
-    } catch(e) {}
-    isRecording = false;
-    updateSiteMicUI(false);
+    let interimTranscript = "";
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      const piece = event.results[i][0].transcript;
+      if (event.results[i].isFinal) {
+        siteTranscriptBuffer += piece + " ";
+      } else {
+        interimTranscript += piece;
+      }
+    }
 
-    const transcript = event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript;
-    if (!transcript || !transcript.trim()) return;
+    const liveText = (siteTranscriptBuffer + interimTranscript).trim();
+    if (!liveText) return;
 
-    document.getElementById("siteVoiceStatus").textContent = `You: "${transcript}"`;
-    appendSiteChatBubble("user", transcript);
+    const statusEl = document.getElementById("siteVoiceStatus");
+    if (statusEl) {
+      statusEl.textContent = `🎙️ Listening: "${liveText}" (waiting for you to finish...)`;
+    }
 
-    isProcessingTurn = true;
-    try {
-      await processSiteTurn(transcript);
-    } finally {
-      isProcessingTurn = false;
+    if (siteSpeechSilenceTimer) {
+      clearTimeout(siteSpeechSilenceTimer);
+    }
+
+    siteSpeechSilenceTimer = setTimeout(async () => {
+      const completeTurn = (siteTranscriptBuffer + interimTranscript).trim();
+      if (!completeTurn || isProcessingTurn) return;
+
+      siteTranscriptBuffer = "";
+      try {
+        recognition.stop();
+      } catch (e) {}
+      isRecording = false;
+      updateSiteMicUI(false);
+
+      if (statusEl) statusEl.textContent = `You: "${completeTurn}"`;
+      appendSiteChatBubble("user", completeTurn);
+
+      isProcessingTurn = true;
+      try {
+        await processSiteTurn(completeTurn);
+      } finally {
+        isProcessingTurn = false;
+      }
+    }, SITE_SILENCE_THRESHOLD_MS);
+  };
+
+  recognition.onerror = (event) => {
+    if (event.error !== "no-speech") {
+      isRecording = false;
+      updateSiteMicUI(false);
     }
   };
 
-  recognition.onerror = () => {
-    isRecording = false;
-    updateSiteMicUI(false);
-  };
-
   recognition.onend = () => {
-    isRecording = false;
-    updateSiteMicUI(false);
+    if (!isProcessingTurn && isRecording) {
+      try {
+        recognition.start();
+      } catch (e) {
+        isRecording = false;
+        updateSiteMicUI(false);
+      }
+    } else {
+      isRecording = false;
+      updateSiteMicUI(false);
+    }
   };
 }
 
@@ -181,11 +225,23 @@ function toggleSiteVoice() {
     return;
   }
   if (isRecording) {
-    try { recognition.abort(); } catch(e) {}
+    if (siteSpeechSilenceTimer) {
+      clearTimeout(siteSpeechSilenceTimer);
+      siteSpeechSilenceTimer = null;
+    }
+    const pendingText = siteTranscriptBuffer.trim();
+    siteTranscriptBuffer = "";
+    try { recognition.stop(); } catch(e) {}
     isRecording = false;
     updateSiteMicUI(false);
+    if (pendingText) {
+      appendSiteChatBubble("user", pendingText);
+      isProcessingTurn = true;
+      processSiteTurn(pendingText).finally(() => { isProcessingTurn = false; });
+    }
   } else {
     try {
+      siteTranscriptBuffer = "";
       recognition.start();
     } catch(e) {
       console.warn("Could not start site voice:", e);
