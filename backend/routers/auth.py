@@ -78,6 +78,7 @@ def get_current_user_from_token(authorization: Optional[str] = Header(None)) -> 
 
 
 @router.post("/signup")
+@router.post("/register")
 def customer_signup(payload: SignupRequest):
     """
     Registers a new business customer, creates their tenant workspace,
@@ -126,6 +127,7 @@ def customer_signup(payload: SignupRequest):
         "status": "success",
         "message": f"Account created for {payload.company_name}!",
         "token": token,
+        "tenant_id": clean_tenant_id,
         "user": user,
         "tenant": tenant.model_dump()
     }

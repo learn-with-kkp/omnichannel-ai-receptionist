@@ -17,6 +17,7 @@ from core.blueprint.schema import OmniChannelType
 from core.blueprint.tenant_manager import tenant_registry
 from core.engine.orchestrator import universal_orchestrator
 from core.notifications import notification_dispatcher
+from backend.database import lookup_tenant_by_integration_id
 
 logger = logging.getLogger("MessagingRouter")
 router = APIRouter(prefix="", tags=["Messaging"])
@@ -82,13 +83,15 @@ async def handle_whatsapp_incoming(request: Request):
             msg_obj = messages[0]
             from_phone = msg_obj.get("from", "")
             user_text = msg_obj.get("text", {}).get("body", "")
+            phone_num_id = value.get("metadata", {}).get("phone_number_id", "")
+            resolved_tenant = lookup_tenant_by_integration_id("whatsapp_phone_number_id", phone_num_id)
 
-            logger.info(f"Incoming Meta WhatsApp from {from_phone}: {user_text}")
+            logger.info(f"Incoming Meta WhatsApp for tenant [{resolved_tenant}] from {from_phone}: {user_text}")
 
             orchestration = universal_orchestrator.process_conversation_turn(
                 user_message=user_text,
                 session_id=from_phone,
-                tenant_id="salon",
+                tenant_id=resolved_tenant,
                 channel=OmniChannelType.WHATSAPP,
                 caller_phone=from_phone
             )
@@ -125,15 +128,17 @@ async def handle_messenger_incoming(request: Request):
         for entry in data.get("entry", []):
             for event in entry.get("messaging", []):
                 sender_id = event.get("sender", {}).get("id")
+                recipient_id = event.get("recipient", {}).get("id", "")
+                resolved_tenant = lookup_tenant_by_integration_id("meta_page_id", recipient_id)
                 message = event.get("message", {})
                 user_text = message.get("text", "")
 
                 if user_text and sender_id:
-                    logger.info(f"Incoming Messenger from PSID {sender_id}: {user_text}")
+                    logger.info(f"Incoming Messenger for tenant [{resolved_tenant}] from PSID {sender_id}: {user_text}")
                     orchestration = universal_orchestrator.process_conversation_turn(
                         user_message=user_text,
                         session_id=sender_id,
-                        tenant_id="salon",
+                        tenant_id=resolved_tenant,
                         channel=OmniChannelType.MESSENGER
                     )
                     quick_replies = orchestration.get("suggested_slots") or ["Book Appointment", "Check Hours"]
@@ -168,15 +173,17 @@ async def handle_instagram_incoming(request: Request):
         for entry in data.get("entry", []):
             for event in entry.get("messaging", []):
                 sender_id = event.get("sender", {}).get("id")
+                recipient_id = event.get("recipient", {}).get("id", "")
+                resolved_tenant = lookup_tenant_by_integration_id("instagram_account_id", recipient_id)
                 message = event.get("message", {})
                 user_text = message.get("text", "")
 
                 if user_text and sender_id:
-                    logger.info(f"Incoming Instagram DM from {sender_id}: {user_text}")
+                    logger.info(f"Incoming Instagram DM for tenant [{resolved_tenant}] from {sender_id}: {user_text}")
                     orchestration = universal_orchestrator.process_conversation_turn(
                         user_message=user_text,
                         session_id=sender_id,
-                        tenant_id="salon",
+                        tenant_id=resolved_tenant,
                         channel=OmniChannelType.INSTAGRAM
                     )
                     notification_dispatcher.send_instagram_dm(sender_id, orchestration["reply"])

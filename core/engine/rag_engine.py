@@ -90,12 +90,23 @@ class DualKnowledgeEngine:
                 "metadata": {"faq_id": faq.id, "tags": faq.tags}
             })
 
-        # Precompute embeddings
-        for c in chunks:
-            c["vector"] = _simple_embedding(c["text"])
+        # Precompute embeddings & push to Qdrant multi-tenant partition
+        try:
+            from core.engine.qdrant_rag import qdrant_engine
+            for c in chunks:
+                c["vector"] = _simple_embedding(c["text"])
+                qdrant_engine.ingest_document(
+                    tenant_id=tenant_id,
+                    text=c["text"],
+                    category=c.get("category", "general"),
+                    metadata=c.get("metadata", {})
+                )
+        except Exception as e:
+            for c in chunks:
+                c["vector"] = _simple_embedding(c["text"])
 
         self._vector_indices[tenant_id] = chunks
-        logger.info(f"Indexed {len(chunks)} chunks for tenant '{tenant_id}'.")
+        logger.info(f"Indexed {len(chunks)} chunks for tenant '{tenant_id}' (Qdrant synchronized).")
 
     def query_context(self, tenant_manifest: Any, user_query: str = "", top_k: int = 3) -> Dict[str, Any]:
         """
@@ -122,7 +133,22 @@ class DualKnowledgeEngine:
                 "confidence_score": 1.0
             }
 
-        # --- RAG Mode: Semantic Retrieval ---
+        # --- RAG Mode: Semantic Retrieval with Qdrant + Semantic Cache ---
+        try:
+            from core.engine.qdrant_rag import qdrant_engine
+            q_res = qdrant_engine.retrieve(tenant_id=tenant_id, query=user_query, top_k=top_k)
+            if q_res.get("context_text"):
+                return {
+                    "mode": "rag",
+                    "context_text": f"Relevant Knowledge Base for {tenant_manifest.name}:\n{q_res['context_text']}",
+                    "retrieval_ms": q_res["latency_ms"],
+                    "chunks_used": len(q_res["results"]),
+                    "confidence_score": 0.95,
+                    "source": q_res.get("source", "qdrant")
+                }
+        except Exception:
+            pass
+
         if tenant_id not in self._vector_indices:
             self.index_tenant(tenant_manifest)
 

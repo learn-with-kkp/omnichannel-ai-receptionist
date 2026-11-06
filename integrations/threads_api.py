@@ -55,7 +55,7 @@ class ThreadsClient:
         Step 1: POST /{threads-user-id}/threads?media_type=TEXT&text=...&reply_to_id=...
         Step 2: POST /{threads-user-id}/threads_publish?creation_id=...
         """
-        if not self.is_configured():
+        if not self.is_configured() or reply_to_id.startswith(("th_post_", "post_th_", "th_sim_", "test_")):
             logger.info(f"[SIMULATION] Threads reply to '{reply_to_id}': {text}")
             return {
                 "status": "simulated",
@@ -141,3 +141,4 @@ class ThreadsClient:
 
 
 threads_client = ThreadsClient()
+

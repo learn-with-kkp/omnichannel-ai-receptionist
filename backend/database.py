@@ -1182,6 +1182,43 @@ def get_tenant_integrations(tenant_id: str) -> Dict[str, Any]:
     }
 
 
+def lookup_tenant_by_integration_id(field_name: str, field_value: str) -> str:
+    """
+    Dynamically maps an inbound social ID (WhatsApp phone ID, Meta Page ID, Instagram ID)
+    to its corresponding business tenant_id for multi-tenant webhook routing.
+    """
+    if not field_value:
+        return "salon"
+
+    clean_val = str(field_value).strip()
+    valid_fields = {
+        "whatsapp_phone_number_id",
+        "meta_page_id",
+        "instagram_account_id",
+        "threads_user_id"
+    }
+    if field_name not in valid_fields:
+        return "salon"
+
+    init_db()
+    with DBConnectionContext() as db:
+        query = f"SELECT tenant_id FROM tenant_integrations WHERE {field_name} = ? LIMIT 1"
+        db.execute(query, (clean_val,))
+        row = db.fetchone()
+        if row and row.get("tenant_id"):
+            return row["tenant_id"]
+
+    # Fallback to default env mappings
+    if field_name == "whatsapp_phone_number_id" and clean_val == os.getenv("WHATSAPP_PHONE_NUMBER_ID"):
+        return "salon"
+    if field_name == "meta_page_id" and clean_val in (os.getenv("META_PAGE_ID"), "61596010512285", "1429742393555082"):
+        return "salon"
+    if field_name == "instagram_account_id" and clean_val == os.getenv("INSTAGRAM_ACCOUNT_ID"):
+        return "salon"
+
+    return "salon"
+
+
 def update_tenant_plan(tenant_id: str, new_plan: str) -> bool:
     """Updates customer subscription plan (starter, growth, enterprise)."""
     init_db()
