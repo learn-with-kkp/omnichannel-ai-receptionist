@@ -197,12 +197,16 @@ async def handle_instagram_incoming(request: Request):
 # --- Telegram Webhooks ---
 
 @router.get("/webhook/telegram")
+@router.get("/api/webhook/telegram")
+@router.get("/api/messaging/telegram/webhook")
 def verify_telegram_webhook():
     """Telegram Webhook health probe."""
     return {"status": "ok", "service": "Telegram Webhook Receiver", "ready": True}
 
 
 @router.post("/webhook/telegram")
+@router.post("/api/webhook/telegram")
+@router.post("/api/messaging/telegram/webhook")
 async def handle_telegram_incoming(request: Request, tenant_id: Optional[str] = "salon"):
     """
     Receives Telegram Bot updates (messages & inline button callback queries).
@@ -239,6 +243,8 @@ async def handle_telegram_incoming(request: Request, tenant_id: Optional[str] = 
 # --- Twitter / X Account Activity API Webhooks ---
 
 @router.get("/webhook/twitter")
+@router.get("/api/webhook/twitter")
+@router.get("/api/messaging/twitter/webhook")
 def verify_twitter_crc(crc_token: Optional[str] = Query(None)):
     """
     Twitter Webhook CRC Challenge:
@@ -254,6 +260,8 @@ def verify_twitter_crc(crc_token: Optional[str] = Query(None)):
 
 
 @router.post("/webhook/twitter")
+@router.post("/api/webhook/twitter")
+@router.post("/api/messaging/twitter/webhook")
 async def handle_twitter_incoming(request: Request, tenant_id: Optional[str] = "salon"):
     """
     Receives Twitter Direct Message events and auto-responds.
@@ -287,6 +295,8 @@ async def handle_twitter_incoming(request: Request, tenant_id: Optional[str] = "
 # --- LinkedIn Messaging Webhooks ---
 
 @router.post("/webhook/linkedin")
+@router.post("/api/webhook/linkedin")
+@router.post("/api/messaging/linkedin/webhook")
 async def handle_linkedin_incoming(request: Request, tenant_id: Optional[str] = "salon"):
     """
     Processes incoming LinkedIn Direct Messages and auto-responds.
@@ -319,6 +329,8 @@ async def handle_linkedin_incoming(request: Request, tenant_id: Optional[str] = 
 # --- TikTok Direct Messaging Webhooks ---
 
 @router.get("/webhook/tiktok")
+@router.get("/api/webhook/tiktok")
+@router.get("/api/messaging/tiktok/webhook")
 def verify_tiktok_webhook(
     challenge: Optional[str] = Query(None),
     verify_token: Optional[str] = Query(None)
@@ -330,6 +342,8 @@ def verify_tiktok_webhook(
 
 
 @router.post("/webhook/tiktok")
+@router.post("/api/webhook/tiktok")
+@router.post("/api/messaging/tiktok/webhook")
 async def handle_tiktok_incoming(request: Request, tenant_id: Optional[str] = "salon"):
     """
     Processes incoming TikTok Direct Messages and auto-responds.
