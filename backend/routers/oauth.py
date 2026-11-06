@@ -130,12 +130,46 @@ def handle_facebook_oauth_callback(
                     except Exception:
                         pass
 
+                    # Discover WhatsApp Business Account and Phone Number ID
+                    waba_url = f"https://graph.facebook.com/v21.0/me?fields=whatsapp_business_accounts{{id,name,phone_numbers{{id,display_phone_number}}}}&access_token={user_token}"
+                    waba_req = urllib.request.Request(waba_url, headers={"User-Agent": "Mozilla/5.0"})
+                    waba_id = ""
+                    phone_number_id = ""
+                    try:
+                        with urllib.request.urlopen(waba_req, timeout=5) as waba_resp:
+                            waba_data = json.loads(waba_resp.read().decode())
+                            waba_accounts = waba_data.get("whatsapp_business_accounts", {}).get("data", [])
+                            if waba_accounts:
+                                first_waba = waba_accounts[0]
+                                waba_id = first_waba.get("id", "")
+                                phone_numbers = first_waba.get("phone_numbers", {}).get("data", [])
+                                if phone_numbers:
+                                    phone_number_id = phone_numbers[0].get("id", "")
+                    except Exception as we:
+                        logger.warning(f"Could not fetch WABA automatically: {we}")
+
+                    # Auto-provision tenant record if not yet registered
+                    from backend.database import get_tenant, create_tenant
+                    existing_tenant = get_tenant(tenant_id)
+                    if not existing_tenant:
+                        page_name = first_page.get("name") or tenant_id.replace("_", " ").title()
+                        create_tenant(
+                            tenant_id=tenant_id,
+                            business_name=page_name,
+                            vertical="salon",
+                            phone=phone_number_id or "+18005550199"
+                        )
+                        logger.info(f"Auto-created new business tenant [{tenant_id}] for '{page_name}'")
+
                     save_tenant_integrations(
                         tenant_id=tenant_id,
                         meta_page_id=page_id,
-                        instagram_account_id=instagram_id
+                        instagram_account_id=instagram_id,
+                        whatsapp_phone_number_id=phone_number_id,
+                        whatsapp_business_account_id=waba_id,
+                        meta_access_token=page_token or user_token
                     )
-                    logger.info(f"Auto-saved Page ID {page_id} and Instagram ID {instagram_id} for tenant {tenant_id}")
+                    logger.info(f"Auto-saved Page ID {page_id}, Instagram ID {instagram_id}, WhatsApp ID {phone_number_id} for tenant {tenant_id}")
         except Exception as e:
             logger.error(f"Failed to complete Meta OAuth exchange: {e}")
 
@@ -161,3 +195,4 @@ def manual_connect_social_accounts(payload: ManualConnectPayload):
         "message": f"Social channels connected for tenant '{payload.tenant_id}'",
         "integrations": get_tenant_integrations(payload.tenant_id)
     }
+
