@@ -8,10 +8,13 @@ let currentTenantId = "salon";
 let currentAccentKey = "general_american";
 let isRAGEnabled = false;
 let isRecording = false;
+let isProcessingTurn = false;
+let isBotSpeaking = false;
 let recognition = null;
 let currentAccents = [];
 let currentTenants = [];
 let endpointSilenceMs = 700;
+let lastAppointmentCount = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadBlueprints();
@@ -234,7 +237,7 @@ document.getElementById("ragToggle")?.addEventListener("change", async (e) => {
   }
 });
 
-// --- In-Browser WebRTC Voice Agent (Sofia) with Barge-In ---
+// --- In-Browser WebRTC Voice Agent (Sofia) with Infinite-Loop Prevention & Barge-In ---
 
 function initVoiceRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -251,17 +254,34 @@ function initVoiceRecognition() {
 
   recognition.onstart = () => {
     isRecording = true;
-    // Barge-in: if audio is currently playing, halt it immediately!
     triggerBargeIn();
     updateMicUI(true);
   };
 
   recognition.onresult = async (event) => {
-    const transcript = event.results[0][0].transcript;
-    document.getElementById("voiceStatus").textContent = `You said: "${transcript}"`;
+    // 1. Guard against re-entrant processing or bot's own speech
+    if (isProcessingTurn || isBotSpeaking) return;
+
+    // 2. IMMEDIATELY stop recognition so speakers cannot feedback into microphone
+    try {
+      recognition.abort();
+    } catch (e) {}
+    isRecording = false;
+    updateMicUI(false);
+
+    const transcript = event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript;
+    if (!transcript || !transcript.trim()) return;
+
+    const statusEl = document.getElementById("voiceStatus");
+    if (statusEl) statusEl.textContent = `You said: "${transcript}"`;
     appendChatBubble("user", transcript);
 
-    await processMessageTurn(transcript);
+    isProcessingTurn = true;
+    try {
+      await processMessageTurn(transcript);
+    } finally {
+      isProcessingTurn = false;
+    }
   };
 
   recognition.onerror = (event) => {
@@ -276,14 +296,15 @@ function initVoiceRecognition() {
 }
 
 function triggerBargeIn() {
-  if (window.speechSynthesis && window.speechSynthesis.speaking) {
+  isBotSpeaking = false;
+  if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
-    fetch("/api/voice/interrupt", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: "browser-session", reason: "barge_in" })
-    }).catch(() => {});
   }
+  fetch("/api/voice/interrupt", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ session_id: "browser-session", reason: "barge_in" })
+  }).catch(() => {});
 }
 
 function getLanguageCodeForAccent(accentKey) {
@@ -316,16 +337,30 @@ function updateMicUI(listening) {
 }
 
 function toggleVoice() {
+  if (isBotSpeaking) {
+    // Clicking mic while Sofia speaks halts her immediately
+    triggerBargeIn();
+    return;
+  }
+  if (isProcessingTurn) {
+    return;
+  }
   if (!recognition) initVoiceRecognition();
   if (!recognition) {
     alert("Speech recognition is not supported in this browser.");
     return;
   }
   if (isRecording) {
-    recognition.stop();
+    try { recognition.abort(); } catch (e) {}
+    isRecording = false;
+    updateMicUI(false);
   } else {
-    recognition.lang = getLanguageCodeForAccent(currentAccentKey);
-    recognition.start();
+    try {
+      recognition.lang = getLanguageCodeForAccent(currentAccentKey);
+      recognition.start();
+    } catch (err) {
+      console.warn("Recognition start skipped:", err);
+    }
   }
 }
 
@@ -504,6 +539,13 @@ function playSpeech(rawText) {
   const decoded = decodeURIComponent(rawText);
   if (!window.speechSynthesis) return;
 
+  // 1. Force halt speech recognition so the microphone CANNOT hear the laptop speakers
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+    isRecording = false;
+    updateMicUI(false);
+  }
+
   window.speechSynthesis.cancel();
 
   const utterance = new SpeechSynthesisUtterance(decoded);
@@ -513,55 +555,75 @@ function playSpeech(rawText) {
   utterance.rate = 1.0;
 
   const waves = document.querySelectorAll(".wave-bar");
-  waves.forEach(w => w.classList.add("speaking"));
+
+  utterance.onstart = () => {
+    isBotSpeaking = true;
+    waves.forEach(w => w.classList.add("speaking"));
+  };
+
   utterance.onend = () => {
     waves.forEach(w => w.classList.remove("speaking"));
+    // Safety buffer after speaker playback finishes before allowing mic input
+    setTimeout(() => {
+      isBotSpeaking = false;
+    }, 500);
   };
+
   utterance.onerror = () => {
     waves.forEach(w => w.classList.remove("speaking"));
+    isBotSpeaking = false;
   };
 
   window.speechSynthesis.speak(utterance);
 }
 
-// --- Appointments & Google Calendar Table ---
+// --- Appointments & Google Calendar / Excel Live Table ---
 
 async function fetchAppointments() {
   const tbody = document.getElementById("appointmentsTableBody");
   if (!tbody) return;
 
   try {
-    const res = await fetch(`/admin/appointments?tenant_id=${currentTenantId}`);
+    const res = await fetch(`/admin/appointments`);
     const data = await res.json();
     const appointments = data.appointments || [];
 
     if (appointments.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--text-muted); padding:20px;">No appointments recorded for this vertical yet. Try booking one above!</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--text-muted); padding:20px;">No appointments recorded yet. Say "Book an appointment for tomorrow at 2 PM" or call +1 (667) 307-0119 to see live bookings appear here!</td></tr>`;
+      lastAppointmentCount = 0;
       return;
     }
 
-    tbody.innerHTML = appointments.map(a => {
+    const isNewBooking = appointments.length > lastAppointmentCount && lastAppointmentCount > 0;
+    lastAppointmentCount = appointments.length;
+
+    tbody.innerHTML = appointments.map((a, idx) => {
       const isConfirmed = a.status === "CONFIRMED";
       const statusBadge = isConfirmed
         ? `<span class="badge confirmed">CONFIRMED</span>`
         : `<span class="badge cancelled">${a.status}</span>`;
 
-      const gcalBadge = `<span class="badge gcal">✓ Synced to G-Cal</span>`;
+      const gcalBadge = a.google_calendar_event_id
+        ? `<span class="badge gcal" title="Event ID: ${a.google_calendar_event_id}">✓ Google Calendar</span>`
+        : `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid rgba(16,185,129,0.3);">✓ Synced to Sheet</span>`;
 
       const actionBtn = isConfirmed
         ? `<button class="chip" style="font-size:11px; padding:3px 8px; color:var(--accent-rose); border-color:rgba(244,63,94,0.3);" onclick="cancelBooking('${a.caller_phone}', '${a.id}')">Cancel</button>`
         : `<span style="color:var(--text-muted); font-size:11px;">Archived</span>`;
 
+      const formattedTime = (a.start_time || "—").replace("T", " ");
+      const isLatest = idx === 0 && isNewBooking;
+
       return `
-        <tr>
-          <td style="font-family:var(--font-mono); font-size:11px;">${a.id}</td>
+        <tr style="${isLatest ? 'background:rgba(6,182,212,0.15); transition:background 1s ease;' : ''}">
+          <td style="font-family:var(--font-mono); font-size:11px; font-weight:600; color:var(--accent-cyan);">${a.id}</td>
           <td><b>${a.tenant_id}</b></td>
-          <td>${a.caller_name}</td>
-          <td style="font-family:var(--font-mono); font-size:12px;">${a.caller_phone}</td>
-          <td>${a.service_name}</td>
-          <td>${a.stylist_name}</td>
-          <td style="font-size:12px;">${a.start_time.replace("T", " ")}</td>
-          <td><span style="font-size:11px; color:var(--text-secondary);">${a.channel || "voice"}</span></td>
+          <td>${a.caller_name || "Valued Client"}</td>
+          <td style="font-family:var(--font-mono); font-size:12px;">${a.caller_phone || "—"}</td>
+          <td><span class="badge" style="background:var(--accent-cyan); color:#000; font-size:11px;">${a.service_name}</span></td>
+          <td>${a.stylist_name || "Elena"}</td>
+          <td style="font-size:12px; font-family:var(--font-mono);">${formattedTime}</td>
+          <td><span style="font-size:11px; color:var(--text-secondary); text-transform:uppercase;">${a.channel || "voice"}</span></td>
           <td>${gcalBadge}</td>
           <td>${statusBadge}</td>
           <td>${actionBtn}</td>
@@ -706,6 +768,9 @@ function setupEventListeners() {
   });
 
   setupOnboardModal();
+
+  // 3-second live sync poller: keeps the appointments table live whenever text or phone call books
+  setInterval(fetchAppointments, 3000);
 }
 
 // --- Hands-On Omnichannel Test Lab ---

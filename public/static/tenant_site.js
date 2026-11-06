@@ -9,6 +9,8 @@ let activeTenantId = urlParams.get("site") || urlParams.get("tenant_id") || "sal
 let tenantData = null;
 let recognition = null;
 let isRecording = false;
+let isProcessingTurn = false;
+let isBotSpeaking = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   await loadTenantData();
@@ -131,10 +133,27 @@ function setupSiteVoice() {
   };
 
   recognition.onresult = async (event) => {
-    const transcript = event.results[0][0].transcript;
+    if (isProcessingTurn || isBotSpeaking) return;
+
+    // Immediately halt recognition so speaker output cannot re-trigger mic
+    try {
+      recognition.abort();
+    } catch(e) {}
+    isRecording = false;
+    updateSiteMicUI(false);
+
+    const transcript = event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript;
+    if (!transcript || !transcript.trim()) return;
+
     document.getElementById("siteVoiceStatus").textContent = `You: "${transcript}"`;
     appendSiteChatBubble("user", transcript);
-    await processSiteTurn(transcript);
+
+    isProcessingTurn = true;
+    try {
+      await processSiteTurn(transcript);
+    } finally {
+      isProcessingTurn = false;
+    }
   };
 
   recognition.onerror = () => {
@@ -149,15 +168,28 @@ function setupSiteVoice() {
 }
 
 function toggleSiteVoice() {
+  if (isBotSpeaking) {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    isBotSpeaking = false;
+    return;
+  }
+  if (isProcessingTurn) return;
+
   if (!recognition) setupSiteVoice();
   if (!recognition) {
     alert("Speech recognition is not supported in this browser.");
     return;
   }
   if (isRecording) {
-    recognition.stop();
+    try { recognition.abort(); } catch(e) {}
+    isRecording = false;
+    updateSiteMicUI(false);
   } else {
-    recognition.start();
+    try {
+      recognition.start();
+    } catch(e) {
+      console.warn("Could not start site voice:", e);
+    }
   }
 }
 
@@ -260,10 +292,30 @@ function appendSiteChatBubble(role, text) {
 
 function playSiteSpeech(text) {
   if (!window.speechSynthesis) return;
+
+  if (recognition) {
+    try { recognition.abort(); } catch(e) {}
+    isRecording = false;
+    updateSiteMicUI(false);
+  }
+
   window.speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.pitch = 1.15;
   utterance.rate = 1.0;
+
+  utterance.onstart = () => {
+    isBotSpeaking = true;
+  };
+  utterance.onend = () => {
+    setTimeout(() => {
+      isBotSpeaking = false;
+    }, 500);
+  };
+  utterance.onerror = () => {
+    isBotSpeaking = false;
+  };
+
   window.speechSynthesis.speak(utterance);
 }
 
