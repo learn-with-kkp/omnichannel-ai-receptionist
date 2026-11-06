@@ -344,7 +344,7 @@ class UniversalReceptionistOrchestrator:
                 )
 
             elif intent == "cancel":
-                phone = caller_phone or "6673070119"
+                phone = caller_phone or "9124999633"
                 with tracker.stage("tool"):
                     cancelled = cancel_existing_appointment(phone, tenant_id=tenant.id)
                 if cancelled:
@@ -360,7 +360,7 @@ class UniversalReceptionistOrchestrator:
                     )
 
             elif intent == "reschedule":
-                phone = caller_phone or "6673070119"
+                phone = caller_phone or "9124999633"
                 new_dt = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%dT15:00:00")
                 with tracker.stage("tool"):
                     rescheduled = reschedule_existing_appointment(phone, new_dt, tenant_id=tenant.id)
