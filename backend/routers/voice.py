@@ -20,7 +20,8 @@ from backend.database import (
     cancel_existing_appointment,
     get_tenant_by_inbound_phone,
     get_tenant,
-    book_new_appointment
+    book_new_appointment,
+    reschedule_existing_appointment
 )
 
 logger = logging.getLogger("VoiceRouter")
@@ -74,6 +75,67 @@ async def trigger_outbound_phone_call(payload: OutboundCallRequest):
         "accent": accent.key,
         "greeting": greeting
     }
+
+
+class VapiCallRequest(BaseModel):
+    phone_number: str
+    tenant_id: Optional[str] = "salon"
+    caller_name: Optional[str] = "Valued Client"
+
+
+@router.post("/api/voice/vapi-call")
+async def trigger_vapi_phone_call(payload: VapiCallRequest):
+    """
+    Triggers an immediate live phone call via Vapi to test Sofia with ElevenLabs
+    ultra-realistic voice synthesis and Deepgram Nova-2 transcription.
+    """
+    phone = payload.phone_number.strip()
+    if not phone:
+        raise HTTPException(status_code=400, detail="phone_number is required")
+
+    vapi_key = os.getenv("VAPI_API_KEY")
+    asst_id = os.getenv("VAPI_ASSISTANT_ID")
+    phone_id = os.getenv("VAPI_PHONE_NUMBER_ID")
+
+    if not vapi_key or not asst_id or not phone_id:
+        raise HTTPException(status_code=500, detail="Vapi credentials are not fully configured in environment")
+
+    tenant = tenant_registry.get_tenant(payload.tenant_id)
+    import requests
+    vapi_payload = {
+        "assistantId": asst_id,
+        "phoneNumberId": phone_id,
+        "customer": {
+            "number": phone,
+            "name": payload.caller_name
+        }
+    }
+
+    try:
+        r = requests.post(
+            "https://api.vapi.ai/call/phone",
+            headers={"Authorization": f"Bearer {vapi_key}", "Content-Type": "application/json"},
+            json=vapi_payload,
+            timeout=15
+        )
+        if r.status_code in (200, 201):
+            call_data = r.json()
+            return {
+                "status": "success",
+                "message": f"Vapi outbound call placed to {phone} for {tenant.name}!",
+                "call_id": call_data.get("id"),
+                "vapi_response": call_data
+            }
+        else:
+            return {
+                "status": "error",
+                "message": f"Vapi API returned HTTP {r.status_code}",
+                "detail": r.text
+            }
+    except Exception as e:
+        logger.error(f"Failed to place Vapi call: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.api_route("/webhook/twilio-voice", methods=["GET", "POST"])
@@ -303,20 +365,57 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
                 res_text = f"I couldn't find an active reservation under {phone} at {salon_name}. Would you like me to book a new appointment for you?"
             results.append(ToolResult(toolCallId=call_id, result=res_text))
 
+        elif fn_name == "reschedule_appointment":
+            phone = args.get("caller_phone", "")
+            booking_id = args.get("booking_id")
+            new_dt = args.get("new_datetime") or "2026-11-06T15:00:00"
+            new_stylist = args.get("new_stylist_name")
+            updated = reschedule_existing_appointment(
+                caller_phone=phone,
+                new_datetime=new_dt,
+                booking_id=booking_id,
+                new_stylist_name=new_stylist,
+                tenant_id=resolved_tenant_id
+            )
+            if updated:
+                res_text = (
+                    f"Your appointment has been successfully rescheduled to {updated['start_time']} "
+                    f"with {updated['stylist_name']} at {salon_name}. Reference: {updated['booking_id']}."
+                )
+                try:
+                    notification_dispatcher.send_sms(
+                        to_phone=phone,
+                        text=f"[{salon_name}] Rescheduled: Your appointment is now set for {updated['start_time']} with {updated['stylist_name']}. Ref: {updated['booking_id']}."
+                    )
+                except Exception as e:
+                    logger.warning(f"SMS notification dispatch warning: {e}")
+            else:
+                res_text = f"I could not locate an active booking to reschedule under {phone}. Would you like me to book a new slot?"
+            results.append(ToolResult(toolCallId=call_id, result=res_text))
+
         elif fn_name == "cancel_appointment":
             phone = args.get("caller_phone", "")
             booking_id = args.get("booking_id")
             success = cancel_existing_appointment(phone, booking_id, tenant_id=resolved_tenant_id)
             if success:
                 res_text = f"Your appointment has been successfully canceled at {salon_name}. No fee was charged. We hope to welcome you another time!"
+                try:
+                    notification_dispatcher.send_sms(
+                        to_phone=phone,
+                        text=f"[{salon_name}] Canceled: Your appointment has been canceled. We hope to welcome you another time!"
+                    )
+                except Exception as e:
+                    logger.warning(f"SMS cancellation dispatch warning: {e}")
             else:
                 res_text = f"I could not locate an active booking to cancel under {phone}. Please check the number and let me know."
             results.append(ToolResult(toolCallId=call_id, result=res_text))
 
-        elif fn_name == "transfer_to_manager":
+        elif fn_name in ("transfer_to_human", "transfer_to_manager"):
+            reason = args.get("escalation_reason", "Customer requested human supervisor")
+            logger.info(f"Escalating call for tenant {resolved_tenant_id}: {reason}")
             results.append(ToolResult(
                 toolCallId=call_id,
-                result=f"I'm connecting you directly with our front desk manager right now. Please hold for just a few seconds."
+                result="I'm transferring you directly to our front desk supervisor right now. Please hold on for just a moment."
             ))
 
         else:

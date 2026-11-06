@@ -184,3 +184,31 @@ def test_meta_webhook_verification():
     ig_res = client.get(f"/webhook/instagram?hub.mode=subscribe&hub.challenge=test_ig_challenge&hub.verify_token={token}")
     assert ig_res.status_code == 200
     assert ig_res.text == "test_ig_challenge"
+
+
+def test_vapi_outbound_call_endpoint(monkeypatch):
+    """Test triggering an outbound call via Vapi API with ElevenLabs voice synthesis."""
+    from unittest.mock import MagicMock
+    import requests
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 201
+    mock_resp.json.return_value = {
+        "id": "vapi-call-test-999",
+        "status": "queued",
+        "assistantId": "47b92dd7-6751-4c12-b531-23adf3614d35"
+    }
+
+    monkeypatch.setattr(requests, "post", lambda url, **kwargs: mock_resp)
+
+    payload = {
+        "phone_number": "+16673070119",
+        "tenant_id": "salon",
+        "caller_name": "Test Client"
+    }
+    response = client.post("/api/voice/vapi-call", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["call_id"] == "vapi-call-test-999"
+    assert "Calling" in data["message"] or "placed" in data["message"]

@@ -366,6 +366,38 @@ async function triggerOutboundCall() {
   }
 }
 
+async function triggerVapiOutboundCall() {
+  const phone = document.getElementById("outboundPhone")?.value.trim();
+  const name = document.getElementById("outboundName")?.value.trim() || "Valued Client";
+  const feedback = document.getElementById("vapiFeedback");
+
+  if (!phone) {
+    if (feedback) feedback.textContent = "Please enter a valid phone number with country code.";
+    return;
+  }
+
+  if (feedback) feedback.textContent = `Connecting to Vapi API to dial ${phone}...`;
+  try {
+    const res = await fetch("/api/voice/vapi-call", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone_number: phone,
+        tenant_id: currentTenantId || "salon",
+        caller_name: name
+      })
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      if (feedback) feedback.textContent = `✅ Outbound call placed via Vapi (ID: ${data.call_id})! Sofia will ring you with ElevenLabs voice.`;
+    } else {
+      if (feedback) feedback.textContent = `⚠️ Vapi error: ${data.message || data.detail}`;
+    }
+  } catch (err) {
+    if (feedback) feedback.textContent = `❌ Network error connecting to Vapi: ${err.message}`;
+  }
+}
+
 // --- Omnichannel Chat Interaction ---
 
 async function sendChatMessage() {
