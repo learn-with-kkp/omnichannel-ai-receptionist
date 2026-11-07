@@ -857,13 +857,10 @@ def reschedule_existing_appointment(
     # Sync with Google Calendar if event exists
     if calendar_service and gcal_event_id:
         try:
-            tenant_info = get_tenant(tenant_id)
             calendar_service.update_event(
                 event_id=gcal_event_id,
-                summary=f"{tenant_info.get('name', 'Salon')}: {service_name} - {row['caller_name']}",
-                start_time_iso=new_start_dt.isoformat(),
-                duration_minutes=duration,
-                description=f"Rescheduled. Staff: {stylist}"
+                new_start_time_iso=new_start_dt.isoformat(),
+                duration_minutes=duration
             )
         except Exception as e:
             logger.warning(f"Google Calendar update bypassed: {e}")

@@ -1,48 +1,28 @@
-version: "3.8"
-
 services:
-  salon-backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: salon_voice_backend
-    restart: unless-stopped
+  voice-receptionist:
+    build: .
+    container_name: voice-receptionist-app
     ports:
       - "8000:8000"
-    environment:
-      - SALON_DB_PATH=/data/salon_bookings.db
+    env_file:
+      - .env
     volumes:
-      - salon_data:/data
-    networks:
-      - salon-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-  n8n:
-    image: docker.n8n.io/n8nio/n8n:latest
-    container_name: salon_n8n_engine
+      - .:/app
     restart: unless-stopped
-    ports:
-      - "5678:5678"
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: voice-receptionist-db
     environment:
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - WEBHOOK_URL=http://localhost:5678/
-      - GENERIC_TIMEZONE=America/New_York
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: receptionist_db
+    ports:
+      - "5432:5432"
     volumes:
-      - n8n_data:/home/node/.n8n
-    networks:
-      - salon-network
+      - pgdata:/var/lib/postgresql/data
 
 volumes:
-  salon_data:
-  n8n_data:
-
-networks:
-  salon-network:
-    driver: bridge
-
+  pgdata:
