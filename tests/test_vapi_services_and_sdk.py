@@ -44,14 +44,24 @@ def test_vapi_web_sdk_config_endpoint():
     assert data["status"] == "success"
     assert data["publicKey"] == PUBLIC_KEY
     assert data["assistantId"] == ASSISTANT_ID
+    assert "squadId" in data
     assert data["sdkLoaded"] is True
 
 def test_vapi_web_sdk_html_harness_endpoint():
-    """Verify /vapi-test serves the HTML test harness."""
-    resp = client.get("/vapi-test")
+    """Verify /vapi-test and /vapi-call serve the HTML test harness."""
+    for path in ["/vapi-test", "/vapi-call", "/call"]:
+        resp = client.get(path)
+        assert resp.status_code == 200
+        assert "Vapi Web SDK Diagnostic Test Harness" in resp.text
+        assert "@vapi-ai/web" in resp.text
+
+def test_embed_widget_script_endpoint():
+    """Verify GET /widget.js serves the embeddable Sofia widget JavaScript."""
+    resp = client.get("/widget.js")
     assert resp.status_code == 200
-    assert "Vapi Web SDK Diagnostic Test Harness" in resp.text
-    assert "@vapi-ai/web" in resp.text
+    assert "application/javascript" in resp.headers.get("content-type", "")
+    assert "SofiaWidget" in resp.text
+    assert "luxe-widget-root" in resp.text
 
 @pytest.mark.skipif(not PRIVATE_KEY, reason="Vapi Private Key required for live API tests")
 def test_live_vapi_assistants_service():

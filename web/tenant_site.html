@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/index.umd.js"></script>
   <style>
     .site-hero {
       padding: 60px 20px 40px;
@@ -311,10 +312,13 @@
         </div>
 
         <div class="voice-hero">
-          <button class="mic-button" id="siteMicBtn" onclick="toggleSiteVoice()">
+          <button class="btn-primary" id="btnSiteLiveCall" onclick="toggleSiteVoice()" style="margin-bottom:14px; width:auto; padding:10px 22px; font-weight:700; display:inline-flex; align-items:center; gap:8px;">
+            <span>📞</span> <span id="siteCallBtnLabel">Call Sofia Live (WebRTC)</span>
+          </button>
+          <button class="mic-button" id="siteMicBtn" onclick="toggleSiteVoice()" title="Click to speak with Sofia">
             <span id="siteMicIcon">🎙️</span>
           </button>
-          <div class="voice-status-text" id="siteVoiceStatus">Click microphone to speak with Sofia</div>
+          <div class="voice-status-text" id="siteVoiceStatus">Click to talk live with Sofia via WebRTC or tap microphone</div>
           <div class="waveform" id="siteWaveform">
             <div class="wave-bar"></div>
             <div class="wave-bar"></div>
@@ -323,6 +327,7 @@
             <div class="wave-bar"></div>
             <div class="wave-bar"></div>
           </div>
+          <div id="siteLiveTranscript" style="display:none; width:100%; max-height:70px; overflow-y:auto; font-size:12px; color:var(--text-primary); background:rgba(0,0,0,0.3); border-radius:8px; padding:8px 12px; margin-top:10px; border-left:3px solid var(--accent-cyan); text-align:left;"></div>
         </div>
 
         <!-- Call My Phone -->
@@ -465,7 +470,9 @@
 
   </div>
 
-  <script src="/static/tenant_site.js?v=3.5"></script>
+  <script src="/static/tenant_site.js?v=3.6"></script>
+  <!-- Universal Plug-and-Play Sofia Voice & Chat Embed Widget -->
+  <script src="/widget.js" data-tenant="salon"></script>
 </body>
 
 </html>

@@ -146,6 +146,8 @@ if web_dir.exists():
             return FileResponse(str(tenant_site_path))
         return {"error": f"Tenant site template not found for {tenant_id}"}
 
+    @app.get("/vapi-call")
+    @app.get("/call")
     @app.get("/vapi-test")
     @app.get("/test-vapi")
     def serve_vapi_web_sdk_test():
@@ -158,16 +160,28 @@ if web_dir.exists():
             return FileResponse(str(test_path))
         return {"error": "Vapi Web SDK test page template not found"}
 
+    @app.get("/widget.js")
+    def serve_widget_script():
+        """
+        Serves the universal plug-and-play embeddable widget script.
+        """
+        widget_path = web_dir / "widget.js"
+        if widget_path.exists():
+            return FileResponse(str(widget_path), media_type="application/javascript")
+        return Response(content="console.warn('Widget script not found');", media_type="application/javascript")
+
 @app.get("/api/voice/vapi-config")
 def get_vapi_web_sdk_config():
     """Returns public Vapi Web SDK configuration for browser calling."""
     public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
     assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or "").strip()
+    squad_id = (os.getenv("VAPI_SQUAD_ID") or "").strip()
     return {
         "status": "success",
         "publicKey": public_key,
         "assistantId": assistant_id,
-        "sdkLoaded": bool(public_key and assistant_id)
+        "squadId": squad_id,
+        "sdkLoaded": bool(public_key and (assistant_id or squad_id))
     }
 
 @app.get("/health")

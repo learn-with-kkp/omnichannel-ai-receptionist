@@ -7,6 +7,7 @@
   <meta name="description" content="Autonomous real-time voice and multi-channel messaging platform for salons, clinics, law firms, and real estate. Sub-500ms Nimbus latency, partitioned Qdrant vector memory, and auto-generated websites.">
   <link rel="stylesheet" href="/static/style.css?v=2.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/index.umd.js"></script>
 </head>
 <body>
 
@@ -210,12 +211,24 @@
           </span>
         </div>
 
-        <!-- Channel 1: WebRTC Browser Calling -->
+        <!-- Channel 1: WebRTC Browser Calling with Vapi -->
         <div class="voice-hero">
+          <div style="display:flex; gap:10px; margin-bottom:14px; width:100%; justify-content:center; flex-wrap:wrap;">
+            <button class="btn-primary" id="btnLiveVapiCall" onclick="toggleVapiWebRTCCall()" style="padding:10px 20px; font-size:13px; font-weight:700; width:auto; display:inline-flex; align-items:center; gap:8px;">
+              <span>📞</span> <span id="vapiCallBtnLabel">Call Sofia Live (WebRTC)</span>
+            </button>
+            <button class="btn-secondary" id="btnMuteVapi" onclick="toggleVapiMute()" style="display:none; padding:10px 14px; font-size:13px; width:auto;">
+              <span id="muteIconLabel">🎤 Mute</span>
+            </button>
+            <a href="/vapi-call" target="_blank" class="btn-secondary" style="padding:10px 14px; font-size:13px; width:auto; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+              <span>🖥️</span> Diagnostic Studio
+            </a>
+          </div>
+
           <button class="mic-button" id="micBtn" title="Click to talk with Sofia">
             <span id="micIcon">🎙️</span>
           </button>
-          <div class="voice-status-text" id="voiceStatus">Click microphone to speak with Sofia</div>
+          <div class="voice-status-text" id="voiceStatus">Click "Call Sofia Live" for sub-500ms WebRTC voice, or click mic</div>
           
           <div class="waveform" id="waveform">
             <div class="wave-bar"></div>
@@ -225,6 +238,8 @@
             <div class="wave-bar"></div>
             <div class="wave-bar"></div>
           </div>
+
+          <div id="vapiLiveTranscript" style="display:none; width:100%; max-height:80px; overflow-y:auto; font-size:12px; color:var(--text-primary); background:rgba(0,0,0,0.3); border-radius:8px; padding:8px 12px; margin-top:12px; text-align:left; border-left:3px solid var(--accent-cyan);"></div>
 
           <div style="display:flex; align-items:center; gap:12px; margin-top:16px; font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">
             <span>Speech Endpointing:</span>
@@ -271,6 +286,31 @@
             </button>
           </div>
           <div id="vapiFeedback" style="font-size:11px; margin-top:8px; color:var(--accent-cyan); font-family:var(--font-mono);"></div>
+        </div>
+
+        <!-- Channel 4: Universal Embeddable Widget Snippet -->
+        <div style="margin-top:16px; padding:14px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.3); border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h3 style="font-size:13px; font-weight:700; color:#a5b4fc; display:flex; align-items:center; gap:8px;">
+              <span>🧩</span> Embed Sofia on Any Website (1-Line Code)
+            </h3>
+            <span class="badge" style="background:#6366f1; color:#fff; font-size:10px; padding:2px 8px; border-radius:12px;">Plug & Play</span>
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">
+            Add real-time voice calling and chat booking to your salon or client website by pasting this snippet right before <code style="color:#a5b4fc;">&lt;/body&gt;</code>:
+          </p>
+          <div style="position:relative; background:#0b0f19; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:10px; margin-bottom:10px;">
+            <pre style="margin:0; font-size:11px; color:#38bdf8; font-family:var(--font-mono); overflow-x:auto;" id="embedSnippetCode">&lt;script src="https://ai-voice-receptionist.kishor.tech/widget.js" data-tenant="salon"&gt;&lt;/script&gt;</pre>
+            <button onclick="copyEmbedSnippet()" style="position:absolute; right:8px; top:8px; background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff; padding:3px 8px; border-radius:6px; font-size:11px; cursor:pointer;" id="copyEmbedBtn">Copy</button>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn-secondary" onclick="window.SofiaWidget?.toggle()" style="padding:6px 12px; font-size:12px; width:auto;">
+              ✨ Test Floating Widget
+            </button>
+            <a href="/site/salon" target="_blank" class="btn-secondary" style="padding:6px 12px; font-size:12px; width:auto; text-decoration:none;">
+              🌐 View Client Salon Site
+            </a>
+          </div>
         </div>
       </div>
 
@@ -643,11 +683,24 @@
     </div>
   </div>
 
-  <script src="/static/app.js?v=3.5"></script>
+  <script src="/static/app.js?v=3.6"></script>
+  <!-- Universal Plug-and-Play Sofia Voice & Chat Embed Widget -->
+  <script src="/widget.js" data-tenant="salon"></script>
   <script>
     function switchCompareTab(vertical) {
       document.querySelectorAll('.compare-tab-pill').forEach(btn => btn.classList.remove('active'));
       event.target.classList.add('active');
+    }
+
+    function copyEmbedSnippet() {
+      const code = document.getElementById('embedSnippetCode').innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        const btn = document.getElementById('copyEmbedBtn');
+        if (btn) {
+          btn.textContent = 'Copied!';
+          setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+        }
+      });
     }
 
     async function launchMetaOAuth() {

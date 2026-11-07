@@ -149,15 +149,17 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
 def get_vapi_web_sdk_config():
     """
     Returns public Vapi Web SDK configuration parameters for browser WebRTC voice calls.
-    Exposes only the Public Key and Assistant ID safe for browser runtime.
+    Exposes only the Public Key, Assistant ID, and Squad ID safe for browser runtime.
     """
     public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
     assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or "").strip()
+    squad_id = (os.getenv("VAPI_SQUAD_ID") or "").strip()
     return {
         "status": "success",
         "publicKey": public_key,
         "assistantId": assistant_id,
-        "sdkLoaded": bool(public_key and assistant_id)
+        "squadId": squad_id,
+        "sdkLoaded": bool(public_key and (assistant_id or squad_id))
     }
 
 
