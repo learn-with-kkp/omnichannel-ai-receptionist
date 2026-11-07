@@ -28,9 +28,91 @@ logger = logging.getLogger("ReminderService")
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
+
+# Telnyx Configuration (Cost-effective Twilio Alternative: $1/mo number, ~$0.004/SMS)
+TELNYX_API_KEY = os.getenv("TELNYX_API_KEY")
+TELNYX_PHONE_NUMBER = os.getenv("TELNYX_PHONE_NUMBER")
+TELNYX_CONNECTION_ID = os.getenv("TELNYX_CONNECTION_ID")
 
 VAPI_API_KEY = os.getenv("VAPI_API_KEY")
 VAPI_PHONE_NUMBER_ID = os.getenv("VAPI_PHONE_NUMBER_ID")
+
+
+def send_telnyx_sms(to_number: str, message_body: str) -> bool:
+    """
+    Sends an SMS using Telnyx Messages API v2.
+    Cost: ~$0.004 per SMS (50% cheaper than Twilio, no $20 upfront requirement).
+    """
+    clean_to = to_number if to_number.startswith("+") else f"+{to_number}"
+    from_num = TELNYX_PHONE_NUMBER or ""
+    clean_from = from_num if from_num.startswith("+") else f"+{from_num}"
+
+    if TELNYX_API_KEY and TELNYX_PHONE_NUMBER:
+        try:
+            url = "https://api.telnyx.com/v2/messages"
+            headers = {
+                "Authorization": f"Bearer {TELNYX_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "from": clean_from,
+                "to": clean_to,
+                "text": message_body
+            }
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(url, headers=headers, json=payload)
+                if resp.status_code in (200, 201, 202):
+                    logger.info(f"✅ [TELNYX SMS] Delivered successfully to {clean_to}")
+                    return True
+                else:
+                    logger.error(f"❌ [TELNYX SMS] Error: HTTP {resp.status_code} - {resp.text}")
+                    return False
+        except Exception as e:
+            logger.error(f"❌ [TELNYX SMS] Dispatch exception: {e}")
+            return False
+    return False
+
+
+def send_sms_message(to_number: str, message_body: str) -> bool:
+    """
+    Sends an SMS message with priority:
+    1. Telnyx API (if TELNYX_API_KEY & TELNYX_PHONE_NUMBER configured)
+    2. Twilio SMS (if TWILIO_ACCOUNT_SID & TWILIO_AUTH_TOKEN configured)
+    3. Simulation logging fallback
+    """
+    clean_phone = to_number if to_number.startswith("+") else f"+{to_number}"
+
+    # 1. Try Telnyx first (high throughput, lowest cost)
+    if TELNYX_API_KEY and TELNYX_PHONE_NUMBER:
+        success = send_telnyx_sms(clean_phone, message_body)
+        if success:
+            return True
+
+    # 2. Try Twilio SMS
+    if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER:
+        try:
+            url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
+            data = {
+                "From": TWILIO_PHONE_NUMBER,
+                "To": clean_phone,
+                "Body": message_body
+            }
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(url, data=data, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
+                if resp.status_code in (200, 201):
+                    logger.info(f"✅ [TWILIO SMS] Sent successfully to {clean_phone}")
+                    return True
+                else:
+                    logger.error(f"❌ [TWILIO SMS] Error: HTTP {resp.status_code} - {resp.text}")
+        except Exception as e:
+            logger.error(f"❌ [TWILIO SMS] Dispatch exception: {e}")
+
+    # 3. Development / Simulation Mode
+    logger.info(f"📱 [SMS REMINDER SIMULATION] To: {clean_phone}")
+    logger.info(f"   Provider: {'Telnyx' if TELNYX_API_KEY else 'Twilio/Mock'}")
+    logger.info(f"   Message: {message_body}")
+    return True
 
 def send_whatsapp_message(to_number: str, message_body: str) -> bool:
     """
@@ -152,6 +234,15 @@ def run_reminder_cycle():
                 f"Booking ID: `{b_id}`\n\n"
                 f"Please reply *CONFIRM* to let us know you'll be there, or reply to this message if you need to reschedule!"
             )
+            
+            # Send via Telnyx/Twilio SMS
+            sms_text = (
+                f"Luxe Salon Reminder: Hi {name}, your {service} appointment is scheduled for tomorrow, {st_dt}, with {stylist}. "
+                f"Reply CONFIRM to confirm or call us to reschedule."
+            )
+            send_sms_message(phone, sms_text)
+
+            # Send via WhatsApp
             success = send_whatsapp_message(phone, msg)
             if success:
                 mark_24h_reminder_sent(b_id)
@@ -176,6 +267,13 @@ def run_reminder_cycle():
                 f"Valet and garage parking are available directly across from the salon. See you soon!"
             )
             send_whatsapp_message(phone, wa_msg)
+
+            # 1-Hour SMS Alert (Telnyx / Twilio)
+            sms_1h = (
+                f"Luxe Salon Alert: Hi {name}, your {service} with {stylist} starts in 1 hour ({st_time})! "
+                f"See you at 450 Newbury Street, Boston."
+            )
+            send_sms_message(phone, sms_1h)
 
             # 1-Hour Automated Voice Call
             call_success = trigger_vapi_outbound_reminder_call(phone, name, service, stylist, st_time)
