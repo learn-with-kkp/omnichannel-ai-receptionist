@@ -487,3 +487,26 @@ def poll_reddit_inbox(tenant_id: Optional[str] = "salon"):
     return {"status": "success", "messages_processed": len(replies_sent), "replies": replies_sent}
 
 
+class DirectSMSRequest(BaseModel):
+    to_phone: str
+    message: str
+    tenant_id: Optional[str] = "salon"
+
+
+@router.post("/api/messaging/send-sms")
+@router.post("/api/messaging/send-from-vapi-number")
+def send_message_from_vapi_number(payload: DirectSMSRequest):
+    """
+    Sends an outbound SMS message directly from VAPI_PHONE_NUMBER.
+    """
+    vapi_phone = os.getenv("VAPI_PHONE_NUMBER") or os.getenv("TWILIO_PHONE_NUMBER", "+19124999633")
+    res = notification_dispatcher.send_sms(to_phone=payload.to_phone, text=payload.message)
+    return {
+        "status": "success" if res.get("status") in ("sent", "simulated") else "failed",
+        "from_number": vapi_phone,
+        "to_number": payload.to_phone,
+        "detail": res
+    }
+
+
+

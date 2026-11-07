@@ -23,10 +23,11 @@ class NotificationDispatcher:
     """Enterprise multi-channel notification engine."""
 
     def __init__(self):
-        # Twilio Credentials
+        # Twilio Credentials & Phone Numbers
         self.twilio_account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
         self.twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
-        self.twilio_from_phone = os.getenv("TWILIO_PHONE_NUMBER", "+18005550199")
+        self.vapi_phone_number = os.getenv("VAPI_PHONE_NUMBER", "")
+        self.twilio_from_phone = self.vapi_phone_number or os.getenv("TWILIO_PHONE_NUMBER", "+18005550199")
         self.twilio_whatsapp_from = os.getenv("TWILIO_WHATSAPP_NUMBER", "+14155238886")
 
         # Meta Cloud APIs (WhatsApp, Messenger, Instagram)
