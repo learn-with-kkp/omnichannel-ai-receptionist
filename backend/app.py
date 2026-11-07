@@ -218,6 +218,15 @@ def manual_trigger_reminders():
     run_reminder_cycle()
     return {"status": "success", "message": "Reminder cycle executed successfully"}
 
+@app.post("/admin/sync-google-sheet")
+def manual_sync_google_sheet():
+    """Manually triggers real-user rebuild and styling on the connected Google Sheet."""
+    from backend.google_sheets_sync import rebuild_real_user_google_sheet
+    success = rebuild_real_user_google_sheet()
+    if success:
+        return {"status": "success", "message": "Google Sheet synchronized with real user appointments"}
+    return {"status": "error", "message": "Failed to synchronize Google Sheet"}
+
 @app.get("/admin/tenants")
 def list_tenants():
     """List all onboarded salon tenants."""
