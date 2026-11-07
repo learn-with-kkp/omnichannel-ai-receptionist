@@ -1433,6 +1433,16 @@ async function handleClerkUserSignedIn(user) {
     if (nInput) nInput.value = fullName;
   }
 
+  // Cache profile locally so the user is instantly recognized upon reload without signing in again
+  const userProfile = {
+    id: user.id,
+    email: email,
+    phone: phone,
+    name: fullName,
+    imageUrl: user.imageUrl || "https://images.clerk.dev/static/avatar.png"
+  };
+  localStorage.setItem("luxe_vip_user", JSON.stringify(userProfile));
+
   // Sync session with backend to persist phone and email into Neon PostgreSQL
   try {
     const syncRes = await fetch("/api/auth/clerk-sync", {
@@ -1455,14 +1465,35 @@ async function handleClerkUserSignedIn(user) {
     console.warn("Clerk sync warning:", err);
   }
 
+  renderClerkSignedInUI(userProfile);
+}
+
+function renderClerkSignedInUI(profile) {
+  if (!profile) return;
+  const fullName = profile.name || "VIP Guest";
+  const email = profile.email || "";
+  const phone = profile.phone || "";
+  const avatar = profile.imageUrl || "https://images.clerk.dev/static/avatar.png";
+
+  if (phone) {
+    const pInput = document.getElementById("outboundPhone");
+    if (pInput && !pInput.value) pInput.value = phone;
+    const tPhone = document.getElementById("telnyxToPhone");
+    if (tPhone && !tPhone.value) tPhone.value = phone;
+  }
+  if (fullName) {
+    const nInput = document.getElementById("outboundName");
+    if (nInput && !nInput.value) nInput.value = fullName;
+  }
+
   const container = document.getElementById("clerkAuthHeader");
   if (container) {
     container.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); padding:4px 12px; border-radius:var(--radius-full); border:1px solid var(--border-color);">
-        <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:22px; height:22px; border-radius:50%;" alt="avatar">
+        <img src="${avatar}" style="width:22px; height:22px; border-radius:50%;" alt="avatar">
         <span style="font-size:12px; font-weight:600; color:#fff;">👑 VIP: ${escapeHtml(fullName)}</span>
         ${phone ? `<span style="font-size:10px; color:#38bdf8; font-family:var(--font-mono);">${escapeHtml(phone)}</span>` : ''}
-        <button onclick="window.Clerk.signOut().then(() => window.location.reload())" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; margin-left:4px;" title="Sign out">✕</button>
+        <button onclick="handleClerkSignOut()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; margin-left:4px;" title="Sign out">✕</button>
       </div>
     `;
   }
@@ -1471,13 +1502,13 @@ async function handleClerkUserSignedIn(user) {
   if (banner) {
     banner.innerHTML = `
       <div style="display:flex; align-items:center; gap:12px;">
-        <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:36px; height:36px; border-radius:50%; border:2px solid #38bdf8;" alt="avatar">
+        <img src="${avatar}" style="width:36px; height:36px; border-radius:50%; border:2px solid #38bdf8;" alt="avatar">
         <div>
           <div style="font-size:14px; font-weight:700; color:#fff;">Welcome Back, ${escapeHtml(fullName)}! 👑 VIP Member</div>
-          <div style="font-size:11px; color:#38bdf8;">${email} ${phone ? '• ' + phone : ''} • 1-Click Priority Booking Active</div>
+          <div style="font-size:11px; color:#38bdf8;">${email} ${phone ? '• ' + phone : ''} • Persistent VIP Session Active</div>
         </div>
       </div>
-      <button onclick="window.Clerk.signOut().then(() => window.location.reload())" class="btn-ghost" style="padding:6px 14px; font-size:12px;">Sign Out</button>
+      <button onclick="handleClerkSignOut()" class="btn-ghost" style="padding:6px 14px; font-size:12px;">Sign Out</button>
     `;
   }
 
@@ -1488,6 +1519,17 @@ async function handleClerkUserSignedIn(user) {
   }
 
   loadTenantIntegrations("salon");
+}
+
+async function handleClerkSignOut() {
+  localStorage.removeItem("luxe_vip_user");
+  localStorage.removeItem("paroi_auth_token");
+  if (window.Clerk && typeof window.Clerk.signOut === "function") {
+    try {
+      await window.Clerk.signOut();
+    } catch (e) {}
+  }
+  window.location.reload();
 }
 
 function renderClerkSignedOutState() {
@@ -1527,6 +1569,15 @@ async function initClerkAuth() {
   const container = document.getElementById("clerkAuthHeader");
   if (!container) return;
 
+  // Instant hydration from local storage so the user doesn't have to wait or log in every time
+  try {
+    const cachedRaw = localStorage.getItem("luxe_vip_user");
+    if (cachedRaw) {
+      const cached = JSON.parse(cachedRaw);
+      renderClerkSignedInUI(cached);
+    }
+  } catch (e) {}
+
   try {
     const res = await fetch("/api/auth/clerk-config");
     const cfg = await res.json();
@@ -1541,6 +1592,7 @@ async function initClerkAuth() {
           closeClerkMountModal();
           handleClerkUserSignedIn(user);
         } else {
+          localStorage.removeItem("luxe_vip_user");
           renderClerkSignedOutState();
         }
       });
@@ -1548,14 +1600,16 @@ async function initClerkAuth() {
 
     if (clerk && clerk.user) {
       await handleClerkUserSignedIn(clerk.user);
-    } else {
+    } else if (!localStorage.getItem("luxe_vip_user")) {
       renderClerkSignedOutState();
       loadTenantIntegrations(currentTenantId);
     }
   } catch (err) {
     console.error("Failed to initialize Clerk auth:", err);
-    renderClerkSignedOutState();
-    loadTenantIntegrations(currentTenantId);
+    if (!localStorage.getItem("luxe_vip_user")) {
+      renderClerkSignedOutState();
+      loadTenantIntegrations(currentTenantId);
+    }
   }
 }
 
