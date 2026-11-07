@@ -63,8 +63,8 @@ DEFAULT_TENANT_ID = "default_salon"
 def get_database_url() -> Optional[str]:
     """Retrieves Neon / PostgreSQL connection string from environment."""
     url = (
-        os.getenv("NEON_POSTGRES_CONNECTION_URL")
-        or os.getenv("DATABASE_URL")
+        os.getenv("DATABASE_URL")
+        or os.getenv("NEON_POSTGRES_CONNECTION_URL")
         or os.getenv("NEON_DATABASE_URL")
         or os.getenv("POSTGRES_URL")
         or os.getenv("POSTGRESQL_URL")
