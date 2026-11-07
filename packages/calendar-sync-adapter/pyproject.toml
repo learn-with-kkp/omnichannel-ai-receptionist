@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "calendar-sync-adapter"
+version = "2.2.0"
+description = "Two-way Google Calendar synchronization, OAuth2 slot availability calculator, and conflict resolver"
+authors = [{ name = "Kishor Kumar Paroi", email = "1703053@student.ruet.ac.bd" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "google-api-python-client>=2.100.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-auth-oauthlib>=1.2.0",
+    "pydantic>=2.0.0"
+]
