@@ -149,16 +149,23 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
 def get_vapi_web_sdk_config():
     """
     Returns public Vapi Web SDK configuration parameters for browser WebRTC voice calls.
-    Exposes only the Public Key, Assistant ID, and Squad ID safe for browser runtime.
+    Exposes only the Public Key, Assistant IDs (Sophia & Marcus), and Squad ID safe for browser runtime.
     """
     public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
-    assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or "").strip()
-    squad_id = (os.getenv("VAPI_SQUAD_ID") or "").strip()
+    assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or "47b92dd7-6751-4c12-b531-23adf3614d35").strip()
+    marcus_id = (os.getenv("VAPI_MARCUS_ASSISTANT_ID") or "b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9").strip()
+    squad_id = (os.getenv("VAPI_SQUAD_ID") or "767bf6bc-c1fb-4de8-bc32-d33d2522d07b").strip()
     return {
         "status": "success",
         "publicKey": public_key,
         "assistantId": assistant_id,
+        "marcusId": marcus_id,
         "squadId": squad_id,
+        "assistants": {
+            "sophia": assistant_id,
+            "marcus": marcus_id,
+            "squad": squad_id
+        },
         "sdkLoaded": bool(public_key and (assistant_id or squad_id))
     }
 

@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateQuickChips();
   initVoiceRecognition();
   setupEventListeners();
+  initClerkAuth();
 });
 
 // --- Blueprint & Accent Loading ---
@@ -1261,5 +1262,235 @@ async function runProvisionTelephony() {
     alert(`🎉 Telephony Line Active!\nAssigned Number: ${data.assigned_phone_number}\nProvider: ${data.provider}\nWebhook: ${data.webhook_url}`);
   } catch (err) {
     if (inspector) inspector.textContent = JSON.stringify({ error: err.message }, null, 2);
+  }
+}
+
+// --- Clerk Authentication & Meta Developer Key Hub ---
+
+let selectedAssistantKey = "sophia";
+const ASSISTANT_IDS = {
+  sophia: "47b92dd7-6751-4c12-b531-23adf3614d35",
+  marcus: "b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9",
+  squad: "767bf6bc-c1fb-4de8-bc32-d33d2522d07b"
+};
+
+async function initClerkAuth() {
+  const container = document.getElementById("clerkAuthHeader");
+  const hubStatus = document.getElementById("hubClerkStatus");
+  if (!container) return;
+
+  try {
+    const res = await fetch("/api/auth/clerk-config");
+    const cfg = await res.json();
+
+    if (!cfg.enabled || !cfg.publishableKey) {
+      container.innerHTML = `
+        <button class="btn-ghost" onclick="showClerkSetupModal()" style="font-size:12px; padding:6px 12px; border-color:rgba(138,43,226,0.4); color:#c084fc;">
+          🔑 Connect Clerk Auth
+        </button>
+      `;
+      if (hubStatus) {
+        hubStatus.textContent = "Clerk: Local Dev (Add CLERK_PUBLISHABLE_KEY)";
+        hubStatus.style.color = "var(--accent-amber)";
+      }
+      loadTenantIntegrations(currentTenantId);
+      return;
+    }
+
+    // Load Clerk JS SDK if not present
+    if (!window.Clerk) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
+        s.crossOrigin = "anonymous";
+        s.setAttribute("data-clerk-publishable-key", cfg.publishableKey);
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+    }
+
+    await window.Clerk.load({
+      publishableKey: cfg.publishableKey
+    });
+
+    if (window.Clerk.user) {
+      const user = window.Clerk.user;
+      const email = user.primaryEmailAddress ? user.primaryEmailAddress.emailAddress : "user@luxesalon.com";
+      const fullName = user.fullName || email.split("@")[0];
+
+      // Sync session with backend to get tenant workspace
+      try {
+        const syncRes = await fetch("/api/auth/clerk-sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            clerk_user_id: user.id,
+            email: email,
+            name: fullName,
+            company_name: `${fullName}'s Salon`
+          })
+        });
+        const syncData = await syncRes.json();
+        if (syncData.token) {
+          localStorage.setItem("paroi_auth_token", syncData.token);
+          if (syncData.user && syncData.user.tenant_id) {
+            currentTenantId = syncData.user.tenant_id;
+            const displayEl = document.getElementById("hubTenantDisplay");
+            if (displayEl) displayEl.textContent = currentTenantId;
+            updateEmbedSnippet();
+          }
+        }
+      } catch (err) {
+        console.warn("Clerk sync warning:", err);
+      }
+
+      container.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); padding:4px 10px; border-radius:var(--radius-full); border:1px solid var(--border-color);">
+          <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:22px; height:22px; border-radius:50%;" alt="avatar">
+          <span style="font-size:12px; font-weight:600; color:#fff;">${escapeHtml(fullName)}</span>
+          <button onclick="window.Clerk.signOut().then(() => window.location.reload())" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; margin-left:4px;" title="Sign out">✕</button>
+        </div>
+      `;
+
+      if (hubStatus) {
+        hubStatus.textContent = `🟢 Signed in (${email})`;
+        hubStatus.style.color = "var(--accent-emerald)";
+      }
+
+      loadTenantIntegrations(currentTenantId);
+    } else {
+      container.innerHTML = `
+        <button class="btn-ghost" onclick="window.Clerk.openSignIn()" style="font-size:12px; padding:6px 12px;">Sign In</button>
+        <button class="btn-primary" onclick="window.Clerk.openSignUp()" style="font-size:12px; padding:6px 12px;">Sign Up</button>
+      `;
+      if (hubStatus) {
+        hubStatus.textContent = "Clerk: Guest (Sign in to sync)";
+        hubStatus.style.color = "var(--text-muted)";
+      }
+      loadTenantIntegrations(currentTenantId);
+    }
+  } catch (err) {
+    console.error("Failed to initialize Clerk auth:", err);
+    if (hubStatus) hubStatus.textContent = "Clerk: Standalone Mode";
+    loadTenantIntegrations(currentTenantId);
+  }
+}
+
+function showClerkSetupModal() {
+  alert("🔑 To enable Clerk Authentication:\n\n1. Sign up at https://clerk.com and create an application.\n2. Copy your Publishable Key (pk_test_... or pk_live_...) and Secret Key (sk_test_...).\n3. Add to your .env or Vercel Environment Variables:\n   CLERK_PUBLISHABLE_KEY=pk_test_...\n   CLERK_SECRET_KEY=sk_test_...\n\nOnce added, sign-in and user authentication will automatically be active!");
+}
+
+function selectAssistant(key) {
+  selectedAssistantKey = key;
+  ['sophia', 'marcus', 'squad'].forEach(k => {
+    const card = document.getElementById(`asstCard${k.charAt(0).toUpperCase() + k.slice(1)}`);
+    const badge = document.getElementById(`badge${k.charAt(0).toUpperCase() + k.slice(1)}`);
+    if (card) {
+      if (k === key) {
+        card.style.borderColor = 'var(--border-glow)';
+        card.style.background = 'rgba(0, 240, 255, 0.08)';
+      } else {
+        card.style.borderColor = 'var(--border-color)';
+        card.style.background = 'rgba(255, 255, 255, 0.02)';
+      }
+    }
+    if (badge) {
+      badge.style.display = k === key ? 'inline-block' : 'none';
+      if (k === key) badge.textContent = 'Selected Active';
+    }
+  });
+
+  updateEmbedSnippet();
+}
+
+function updateEmbedSnippet() {
+  const asstId = ASSISTANT_IDS[selectedAssistantKey] || ASSISTANT_IDS.sophia;
+  const snippetEl = document.getElementById("embedSnippetDisplay");
+  if (snippetEl) {
+    snippetEl.textContent = `<script src="https://ai-voice-receptionist.kishor.tech/widget.js" data-tenant="${currentTenantId}" data-assistant="${asstId}"></script>`;
+  }
+}
+
+async function loadTenantIntegrations(tenantId) {
+  try {
+    const res = await fetch(`/api/auth/integrations?tenant_id=${tenantId}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const it = data.integrations || {};
+
+    if (it.whatsapp_phone_number_id) {
+      const el = document.getElementById("cfgWhatsappPhoneId");
+      if (el) el.value = it.whatsapp_phone_number_id;
+      const chip = document.getElementById("chipWaStatus");
+      if (chip) { chip.textContent = "Connected"; chip.style.color = "var(--accent-emerald)"; }
+    }
+    if (it.meta_page_id) {
+      const el = document.getElementById("cfgMetaPageId");
+      if (el) el.value = it.meta_page_id;
+      const chip = document.getElementById("chipFbStatus");
+      if (chip) { chip.textContent = "Connected"; chip.style.color = "var(--accent-emerald)"; }
+    }
+    if (it.instagram_id) {
+      const el = document.getElementById("cfgInstagramId");
+      if (el) el.value = it.instagram_id;
+      const chip = document.getElementById("chipIgStatus");
+      if (chip) { chip.textContent = "Connected"; chip.style.color = "var(--accent-emerald)"; }
+    }
+  } catch (e) {
+    console.debug("Could not load tenant integrations:", e);
+  }
+}
+
+async function saveMetaDeveloperSettings() {
+  const token = document.getElementById("cfgMetaAccessToken")?.value.trim() || "";
+  const whatsappPhoneId = document.getElementById("cfgWhatsappPhoneId")?.value.trim() || "";
+  const pageId = document.getElementById("cfgMetaPageId")?.value.trim() || "";
+  const instagramId = document.getElementById("cfgInstagramId")?.value.trim() || "";
+
+  try {
+    const res = await fetch("/api/oauth/meta/manual-connect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tenant_id: currentTenantId,
+        meta_access_token: token,
+        whatsapp_phone_number_id: whatsappPhoneId,
+        meta_page_id: pageId,
+        instagram_id: instagramId
+      })
+    });
+    const data = await res.json();
+    if (data.status === "success") {
+      alert(`🎉 Meta Developer Keys Saved!\n\nTenant: ${currentTenantId}\nWhatsApp ID: ${whatsappPhoneId || 'Unset'}\nFacebook Page ID: ${pageId || 'Unset'}\nInstagram ID: ${instagramId || 'Unset'}\n\nYour Voice & Chat AI is now active across all 4 channels!`);
+      loadTenantIntegrations(currentTenantId);
+    } else {
+      alert(`Error saving Meta keys: ${data.detail || 'Unknown error'}`);
+    }
+  } catch (err) {
+    alert(`Request error: ${err.message}`);
+  }
+}
+
+function copyWidgetSnippet(btn) {
+  const snippet = document.getElementById("embedSnippetDisplay")?.textContent || "";
+  copyText(snippet, btn);
+}
+
+function copyText(text, btn) {
+  if (!navigator.clipboard) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+  } else {
+    navigator.clipboard.writeText(text);
+  }
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = "✅ Copied!";
+    setTimeout(() => { btn.textContent = orig; }, 2000);
   }
 }

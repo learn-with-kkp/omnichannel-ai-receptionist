@@ -26,6 +26,8 @@
 
   const config = {
     tenantId: (currentScript && currentScript.getAttribute('data-tenant')) || 'salon',
+    assistantId: (currentScript && currentScript.getAttribute('data-assistant')) || '',
+    assistantName: (currentScript && currentScript.getAttribute('data-assistant-name')) || 'Sofia',
     apiBase: (currentScript && currentScript.getAttribute('data-api-base')) || defaultApiBase || '',
     theme: (currentScript && currentScript.getAttribute('data-theme')) || 'dark',
     position: (currentScript && currentScript.getAttribute('data-position')) || 'right', // 'right' or 'left'
@@ -748,7 +750,17 @@
         });
       }
 
-      await vapi.start(cfg.assistantId);
+      // Resolve assistant target (allows data-assistant to specify 'marcus', 'sophia', 'squad' or custom UUID)
+      let targetAssistant = config.assistantId || cfg.assistantId;
+      if (targetAssistant === 'marcus' && cfg.marcusId) {
+        targetAssistant = cfg.marcusId;
+      } else if (targetAssistant === 'sophia' && cfg.assistantId) {
+        targetAssistant = cfg.assistantId;
+      } else if (targetAssistant === 'squad' && cfg.squadId) {
+        targetAssistant = cfg.squadId;
+      }
+
+      await vapi.start(targetAssistant);
     } catch (err) {
       console.error('[Sofia Widget Start Error]', err);
       callStatus.textContent = `Could not connect: ${err.message}`;
@@ -883,3 +895,4 @@
     setTimeout(() => toggleWidget(true), 1000);
   }
 })();
+

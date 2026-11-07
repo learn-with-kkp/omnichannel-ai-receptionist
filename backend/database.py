@@ -1062,6 +1062,55 @@ def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
         return db.fetchone()
 
 
+def get_or_create_clerk_user(
+    clerk_user_id: str,
+    email: str,
+    company_name: str = "My Business",
+    plan: str = "growth"
+) -> Dict[str, Any]:
+    """Retrieves an existing user by email or provisions a new user and tenant workspace for a Clerk user."""
+    init_db()
+    clean_email = email.lower().strip()
+    existing = get_user_by_email(clean_email)
+    if existing:
+        return existing
+
+    # Generate safe tenant ID slug from email
+    slug = clean_email.split("@")[0].replace(".", "_").replace("+", "_")
+    tenant_id = f"tenant_{slug}"
+    
+    tenant = get_tenant(tenant_id)
+    if not tenant:
+        from core.blueprint.tenant_manager import tenant_registry
+        try:
+            tenant_registry.onboard_custom_tenant(
+                tenant_id=tenant_id,
+                business_name=company_name or f"{slug.replace('_', ' ').title()} Salon",
+                vertical="salon",
+                phone_number="+18005550199",
+                address="450 Newbury Street, Boston, MA",
+                primary_accent="general_american"
+            )
+        except Exception:
+            create_tenant(
+                tenant_id=tenant_id,
+                name=company_name or f"{slug.replace('_', ' ').title()} Salon",
+                phone="+18005550199",
+                address="450 Newbury Street, Boston, MA",
+                services=[("Womens Haircut", 45, 75), ("Mens Cut", 30, 45)],
+                stylists=["Elena", "Marcus"]
+            )
+
+    user = create_user(
+        email=clean_email,
+        password=secrets.token_urlsafe(16),
+        company_name=company_name or f"{slug.replace('_', ' ').title()} Salon",
+        tenant_id=tenant_id,
+        plan=plan
+    )
+    return user
+
+
 def save_tenant_integrations(
     tenant_id: str,
     whatsapp_phone_number_id: str = "",

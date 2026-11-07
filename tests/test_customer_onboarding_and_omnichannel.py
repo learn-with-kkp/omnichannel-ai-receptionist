@@ -365,3 +365,38 @@ def test_serve_tenant_site():
     assert "text/html" in res.headers["content-type"]
     assert "Sofia" in res.text
 
+
+def test_clerk_config_endpoint():
+    res = client.get("/api/auth/clerk-config")
+    assert res.status_code == 200
+    data = res.json()
+    assert "enabled" in data
+    assert "publishableKey" in data
+
+
+def test_clerk_sync_new_and_existing_user():
+    payload = {
+        "clerk_user_id": "user_2test123456789",
+        "email": "clerk_owner@luxesalon.com",
+        "name": "Marcus Director",
+        "company_name": "Luxe Salon & Spa"
+    }
+    # Initial sync creates tenant & user
+    res1 = client.post("/api/auth/clerk-sync", json=payload)
+    assert res1.status_code == 200
+    data1 = res1.json()
+    assert data1["status"] == "success"
+    assert data1["token"].startswith("clerk_sess_")
+    assert data1["user"]["email"] == "clerk_owner@luxesalon.com"
+    assert "tenant" in data1
+    assert "integrations" in data1
+
+    # Second sync retrieves existing user & keeps tenant intact
+    res2 = client.post("/api/auth/clerk-sync", json=payload)
+    assert res2.status_code == 200
+    data2 = res2.json()
+    assert data2["status"] == "success"
+    assert data2["user"]["id"] == data1["user"]["id"]
+    assert data2["token"].startswith("clerk_sess_")
+
+

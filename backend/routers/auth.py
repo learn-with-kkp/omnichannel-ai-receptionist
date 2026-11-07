@@ -13,10 +13,13 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, Header
 from pydantic import BaseModel
 
+import os
 from backend.database import (
     create_user,
     get_user_by_email,
     get_user_by_id,
+    get_or_create_clerk_user,
+    get_tenant,
     verify_password,
     update_tenant_plan,
     get_tenant_integrations,
@@ -43,6 +46,13 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+
+class ClerkSyncRequest(BaseModel):
+    clerk_user_id: str
+    email: str
+    name: Optional[str] = ""
+    company_name: Optional[str] = ""
 
 
 class ChangePlanRequest(BaseModel):
@@ -217,3 +227,45 @@ def update_tenant_integrations_endpoint(payload: UpdateIntegrationsRequest):
         tiktok_access_token=payload.tiktok_access_token or ""
     )
     return {"status": "success", "integrations": saved}
+
+
+@router.get("/clerk-config")
+def get_clerk_config():
+    """Provides frontend with Clerk publishable key and feature flags."""
+    pub_key = os.getenv("CLERK_PUBLISHABLE_KEY", os.getenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", ""))
+    return {
+        "enabled": bool(pub_key),
+        "publishableKey": pub_key
+    }
+
+
+@router.post("/clerk-sync")
+def sync_clerk_session(payload: ClerkSyncRequest):
+    """
+    Synchronizes an authenticated Clerk user with tenant workspace,
+    returning a valid session token, tenant profile, and social integrations.
+    """
+    user = get_or_create_clerk_user(
+        clerk_user_id=payload.clerk_user_id,
+        email=payload.email,
+        company_name=payload.company_name or payload.name or "My Business"
+    )
+    token = f"clerk_sess_{secrets.token_hex(20)}"
+    ACTIVE_SESSIONS[token] = user["id"]
+    
+    tenant = get_tenant(user["tenant_id"]) or {}
+    integrations = get_tenant_integrations(user["tenant_id"]) or {}
+
+    return {
+        "status": "success",
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "company_name": user.get("company_name", ""),
+            "tenant_id": user["tenant_id"],
+            "plan": user.get("plan", "growth")
+        },
+        "tenant": tenant,
+        "integrations": integrations
+    }

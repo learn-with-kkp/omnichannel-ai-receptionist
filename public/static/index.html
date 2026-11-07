@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="/static/style.css?v=2.7">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
   <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/index.umd.js"></script>
+  <!-- Clerk Authentication JS SDK -->
+  <script async crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
 </head>
 <body>
 
@@ -34,11 +36,13 @@
         <a href="#voice-studio" class="nav-link">Voice Studio</a>
         <a href="#compare" class="nav-link">Compare</a>
         <a href="#omnichannelLab" class="nav-link">Social Lab</a>
+        <a href="#metaConfigHub" class="nav-link">Meta & Assistant</a>
         <a href="#calendar-store" class="nav-link">Calendar</a>
         <a href="#telemetry" class="nav-link">Waterfall</a>
       </nav>
 
       <div class="header-badges">
+        <div id="clerkAuthHeader" style="display:inline-flex; align-items:center; gap:8px;"></div>
         <a id="btnViewTenantSite" href="/site/salon" target="_blank" class="btn-ghost">
           🌐 Customer Website
         </a>
@@ -507,6 +511,251 @@
   "status": "ready",
   "instructions": "Select provisioning mode and click 'Provision Phone Line Now' to generate dedicated virtual telephony credentials."
 }</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Meta Developer Key & Voice AI Assistant Configuration Hub -->
+    <section class="test-lab-card" id="metaConfigHub" style="margin-top:28px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h2 class="card-title" style="margin-bottom:4px;">
+            <span>⚙️</span> Meta Developer Keys & Multi-Channel Voice AI Setup
+          </h2>
+          <p class="card-desc">
+            Authenticate via Clerk, configure your permanent Meta Developer keys, and deploy custom Voice AI Assistants across Website, Instagram, Facebook Page, and WhatsApp Business.
+          </p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <span class="status-chip" id="hubClerkStatus">Clerk: Checking...</span>
+          <span class="status-chip" style="color:var(--accent-cyan);">Tenant: <strong id="hubTenantDisplay">salon</strong></span>
+        </div>
+      </div>
+
+      <!-- Active Voice Assistant Model Selector -->
+      <div style="background:rgba(255, 255, 255, 0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:16px; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+          <div>
+            <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--text-secondary); font-family:var(--font-mono);">
+              🎙️ Active Voice AI Assistant Persona
+            </div>
+            <div style="font-size:12px; color:var(--text-muted);">
+              Select which Vapi assistant powers your Website WebRTC Voice, WhatsApp, Facebook, and Instagram interactions.
+            </div>
+          </div>
+          <span class="status-chip" style="color:var(--accent-emerald);">● Sub-500ms Nimbus Voice Engine</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+          <!-- Option 1: Sophia -->
+          <div class="assistant-card active" id="asstCardSophia" onclick="selectAssistant('sophia')" style="border:1px solid var(--border-glow); background:rgba(0, 240, 255, 0.05); border-radius:var(--radius-md); padding:14px; cursor:pointer; transition:all 0.2s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div style="font-size:15px; font-weight:600; color:#fff; display:flex; align-items:center; gap:6px;">
+                <span>🌸</span> Sofia (Front Desk Concierge)
+              </div>
+              <span class="badge confirmed" id="badgeSophia">Active Default</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-secondary); line-height:1.4; margin-bottom:8px;">
+              Warm greetings, client booking, pricing inquiries, stylist scheduling, and atomic 2-way Google Calendar synchronization.
+            </div>
+            <div style="font-size:11px; color:var(--accent-cyan); font-family:var(--font-mono);">
+              ID: 47b92dd7-6751-4c12-b531-23adf3614d35
+            </div>
+          </div>
+
+          <!-- Option 2: Marcus -->
+          <div class="assistant-card" id="asstCardMarcus" onclick="selectAssistant('marcus')" style="border:1px solid var(--border-color); background:rgba(255, 255, 255, 0.02); border-radius:var(--radius-md); padding:14px; cursor:pointer; transition:all 0.2s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div style="font-size:15px; font-weight:600; color:#fff; display:flex; align-items:center; gap:6px;">
+                <span>✂️</span> Marcus (Salon Director & Escalation)
+              </div>
+              <span class="badge" id="badgeMarcus" style="display:none; background:rgba(138, 43, 226, 0.2); color:#c084fc;">Selected</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-secondary); line-height:1.4; margin-bottom:8px;">
+              Executive hospitality for bridal parties (&gt;4 guests), VIP styling, custom quotes, and sensitive customer resolutions.
+            </div>
+            <div style="font-size:11px; color:var(--accent-purple); font-family:var(--font-mono);">
+              ID: b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9
+            </div>
+          </div>
+
+          <!-- Option 3: Squad Collaborative Mode -->
+          <div class="assistant-card" id="asstCardSquad" onclick="selectAssistant('squad')" style="border:1px solid var(--border-color); background:rgba(255, 255, 255, 0.02); border-radius:var(--radius-md); padding:14px; cursor:pointer; transition:all 0.2s ease;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <div style="font-size:15px; font-weight:600; color:#fff; display:flex; align-items:center; gap:6px;">
+                <span>👥</span> Luxe Concierge Squad (Sophia + Marcus)
+              </div>
+              <span class="badge" id="badgeSquad" style="display:none; background:rgba(16, 185, 129, 0.2); color:#34d399;">Selected</span>
+            </div>
+            <div style="font-size:12px; color:var(--text-secondary); line-height:1.4; margin-bottom:8px;">
+              Multi-agent squad: Sophia manages front desk inquiries, seamlessly transferring calls to Marcus when escalation criteria trigger.
+            </div>
+            <div style="font-size:11px; color:var(--accent-emerald); font-family:var(--font-mono);">
+              Squad ID: 767bf6bc-c1fb-4de8-bc32-d33d2522d07b
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meta Developer Keys Configuration & OAuth Flow -->
+      <div style="display:grid; grid-template-columns:1.2fr 1fr; gap:20px; margin-bottom:24px;">
+        <!-- Left: Form -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:12px; text-transform:uppercase; color:var(--text-muted); font-weight:700; font-family:var(--font-mono);">
+              🔑 Meta Developer Credentials
+            </span>
+            <button class="btn-ghost" onclick="launchMetaOAuth()" style="padding:6px 12px; font-size:11px; background:#1877f2; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle; margin-right:4px;"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              1-Click Meta Auto-Connect (OAuth 2.0)
+            </button>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label class="form-label">Meta App ID</label>
+              <input type="text" id="cfgMetaAppId" class="form-input" placeholder="e.g. 1451747113780324" value="1451747113780324">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Meta App Secret</label>
+              <input type="password" id="cfgMetaAppSecret" class="form-input" placeholder="••••••••••••••••">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">System User Permanent Access Token</label>
+            <input type="password" id="cfgMetaAccessToken" class="form-input" placeholder="EAAV... (Permanent token from Meta Business Manager)">
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label class="form-label">WhatsApp Phone Number ID</label>
+              <input type="text" id="cfgWhatsappPhoneId" class="form-input" placeholder="e.g. 1414204225112839">
+            </div>
+            <div class="form-group">
+              <label class="form-label">WhatsApp Account ID (WABA)</label>
+              <input type="text" id="cfgWhatsappAccountId" class="form-input" placeholder="e.g. 102938475610293">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label class="form-label">Facebook Page ID</label>
+              <input type="text" id="cfgMetaPageId" class="form-input" placeholder="e.g. 1429742393555082">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Instagram Business ID</label>
+              <input type="text" id="cfgInstagramId" class="form-input" placeholder="e.g. 17841447273400649">
+            </div>
+          </div>
+
+          <button class="btn-primary" onclick="saveMetaDeveloperSettings()" style="justify-content:center; margin-top:4px;">
+            💾 Save & Verify Meta Developer Keys
+          </button>
+        </div>
+
+        <!-- Right: Developer Guide -->
+        <div style="background:rgba(255, 255, 255, 0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--text-secondary); margin-bottom:10px; font-family:var(--font-mono);">
+              📖 How to obtain your Meta Keys in 3 steps
+            </div>
+            <ol style="font-size:12px; color:var(--text-secondary); line-height:1.6; padding-left:18px; display:flex; flex-direction:column; gap:8px;">
+              <li>
+                <strong>Create Meta App:</strong> Go to <a href="https://developers.facebook.com/apps" target="_blank" style="color:var(--accent-cyan);">developers.facebook.com</a> → <em>Create App</em> → Select <strong>Business</strong> type.
+              </li>
+              <li>
+                <strong>Add Products:</strong> In the App Dashboard, add <strong>WhatsApp</strong>, <strong>Messenger</strong>, and <strong>Instagram Graph API</strong>.
+              </li>
+              <li>
+                <strong>Generate Permanent Token:</strong> Go to <a href="https://business.facebook.com/settings/system-users" target="_blank" style="color:var(--accent-cyan);">Business Manager → System Users</a> → Create an Admin System User → Click <em>Generate New Token</em> with permissions:
+                <code style="background:rgba(255,255,255,0.06); padding:2px 4px; border-radius:4px; font-size:11px;">pages_messaging</code>,
+                <code style="background:rgba(255,255,255,0.06); padding:2px 4px; border-radius:4px; font-size:11px;">instagram_manage_messages</code>,
+                <code style="background:rgba(255,255,255,0.06); padding:2px 4px; border-radius:4px; font-size:11px;">whatsapp_business_messaging</code>.
+              </li>
+              <li>
+                <strong>Copy IDs:</strong> Copy the Phone Number ID from WhatsApp &gt; API Setup, your Facebook Page ID, and Instagram ID.
+              </li>
+            </ol>
+          </div>
+          <div style="margin-top:14px; padding:10px; background:rgba(0, 240, 255, 0.04); border:1px dashed var(--border-glow); border-radius:var(--radius-sm); font-size:11px; color:var(--text-muted);">
+            💡 <strong>Pro-Tip:</strong> Using <em>1-Click Meta Auto-Connect</em> automatically discovers your Page, Instagram, and WhatsApp IDs without manual copy-pasting.
+          </div>
+        </div>
+      </div>
+
+      <!-- 4-Channel Setup & Embed Deployment Grid -->
+      <div style="margin-top:20px;">
+        <div style="font-size:13px; font-weight:700; text-transform:uppercase; color:var(--text-secondary); margin-bottom:12px; font-family:var(--font-mono);">
+          🚀 Multi-Channel Voice AI Deployment Snippets
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+          <!-- Channel 1: Website Voice & Chat -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:14px; font-weight:600; color:#fff;">🌐 1. Website Voice & Chat</span>
+                <span class="status-chip" style="color:var(--accent-emerald);">Active</span>
+              </div>
+              <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">
+                Embeds WebRTC real-time noise-cancelling voice calling & interactive chat directly on your website.
+              </p>
+              <pre class="json-inspector" id="embedSnippetDisplay" style="font-size:11px; max-height:80px; margin-bottom:10px; white-space:pre-wrap; word-break:break-all;">&lt;script src="https://ai-voice-receptionist.kishor.tech/widget.js" data-tenant="salon" data-assistant="47b92dd7-6751-4c12-b531-23adf3614d35"&gt;&lt;/script&gt;</pre>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="chip" onclick="copyWidgetSnippet(this)" style="font-size:11px; flex:1; justify-content:center;">📋 Copy Embed</button>
+              <a href="/site/salon" target="_blank" class="chip" style="font-size:11px; text-decoration:none; color:var(--accent-cyan); flex:1; text-align:center;">👁️ View Site</a>
+            </div>
+          </div>
+
+          <!-- Channel 2: Instagram Direct & Calling -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:14px; font-weight:600; color:#fff;">📸 2. Instagram Direct & Call</span>
+                <span class="status-chip" id="chipIgStatus">Ready</span>
+              </div>
+              <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">
+                Automates direct message bookings and routes profile Call action to your AI voice line.
+              </p>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">Webhook Callback:</div>
+              <pre class="json-inspector" style="font-size:10px; padding:6px; margin-bottom:8px;">https://ai-voice-receptionist.kishor.tech/webhook/instagram</pre>
+            </div>
+            <button class="chip" onclick="copyText('https://ai-voice-receptionist.kishor.tech/webhook/instagram', this)" style="font-size:11px; justify-content:center;">📋 Copy Webhook URL</button>
+          </div>
+
+          <!-- Channel 3: Facebook Page Messenger & Call Now -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:14px; font-weight:600; color:#fff;">💬 3. Facebook Page & Call Now</span>
+                <span class="status-chip" id="chipFbStatus">Ready</span>
+              </div>
+              <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">
+                Messenger appointment booking bot + Page Action button pointing to Vapi Phone Number.
+              </p>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">Webhook Callback:</div>
+              <pre class="json-inspector" style="font-size:10px; padding:6px; margin-bottom:8px;">https://ai-voice-receptionist.kishor.tech/webhook/messenger</pre>
+            </div>
+            <button class="chip" onclick="copyText('https://ai-voice-receptionist.kishor.tech/webhook/messenger', this)" style="font-size:11px; justify-content:center;">📋 Copy Webhook URL</button>
+          </div>
+
+          <!-- Channel 4: WhatsApp Business Voice & Chat -->
+          <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:16px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:14px; font-weight:600; color:#fff;">🟢 4. WhatsApp Business Voice</span>
+                <span class="status-chip" id="chipWaStatus">Ready</span>
+              </div>
+              <p style="font-size:12px; color:var(--text-secondary); margin-bottom:10px;">
+                Conversational WhatsApp booking, Whisper voice note replies, and inbound virtual calling.
+              </p>
+              <div style="font-size:11px; color:var(--text-muted); margin-bottom:6px;">Webhook Callback:</div>
+              <pre class="json-inspector" style="font-size:10px; padding:6px; margin-bottom:8px;">https://ai-voice-receptionist.kishor.tech/webhook/whatsapp</pre>
+            </div>
+            <button class="chip" onclick="copyText('https://ai-voice-receptionist.kishor.tech/webhook/whatsapp', this)" style="font-size:11px; justify-content:center;">📋 Copy Webhook URL</button>
           </div>
         </div>
       </div>
