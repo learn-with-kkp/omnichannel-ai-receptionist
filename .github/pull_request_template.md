@@ -37,3 +37,4 @@
 - [ ] Idempotent webhook handling (duplicate requests cannot corrupt state)
 - [ ] Graceful fallback mechanisms for third-party outages (Twilio, Vapi, OpenAI, ElevenLabs)
 - [ ] Multi-tenant isolation verified (cross-tenant data leakage impossible)
+

@@ -83,6 +83,14 @@ class MultiTenantQdrantEngine:
                         collection_name=COLLECTION_NAME,
                         vectors_config=VectorParams(size=VECTOR_DIM, distance=Distance.COSINE)
                     )
+                try:
+                    self.client.create_payload_index(
+                        collection_name=COLLECTION_NAME,
+                        field_name="tenant_id",
+                        field_schema="keyword"
+                    )
+                except Exception:
+                    pass
                 self.connected_to_cloud = True
                 logger.info(f"Connected to Qdrant Cloud at {self.qdrant_url} with collection '{COLLECTION_NAME}'")
             else:

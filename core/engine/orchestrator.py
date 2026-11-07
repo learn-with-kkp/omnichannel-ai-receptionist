@@ -198,30 +198,90 @@ class UniversalReceptionistOrchestrator:
             return "check_availability"
         if any(w in m for w in ["manager", "human", "representative", "person", "agent", "supervisor"]):
             return "escalate"
-        if any(w in m for w in ["accent", "pronunciation", "indian", "british", "african", "southern", "american", "canadian", "irish", "australian"]):
+        # Outbound Voice Call Intent (Trigger Vapi Live Call from Chat / Messaging)
+        if any(w in m for w in [
+            "call me", "call my phone", "call my number", "give me a call",
+            "ring me", "dial me", "speak on phone", "talk on phone", "talk over phone",
+            "voice call", "call please", "ring my cell", "phone call"
+        ]):
+            return "trigger_voice_call"
+
+        if any(w in m for w in ["accent", "pronunciation", "indian", "british", "african", "southern", "american", "canadian", "irish", "australian", "spanish", "latino"]):
             return "accent_switch"
         return "faq"
 
+    def detect_talking_style(
+        self,
+        message: str,
+        caller_phone: Optional[str] = None,
+        current_accent: Optional[str] = None
+    ) -> AccentProfile:
+        """
+        Dynamically detects user ethnicity and talking style in America based on
+        lexical, cultural, colloquial, and geographic indicators in real time (<1ms).
+        Ensures the AI voice sounds completely native, relatable, and culturally attuned.
+        """
+        m = message.lower().strip()
+        phone = (caller_phone or "").strip()
+
+        # 1. Explicit Dialect Preferences
+        if any(w in m for w in ["indian", "hindi", "namaste", "punjabi", "desi", "south asian"]):
+            return tenant_registry.get_accent("indian_english")
+        if any(w in m for w in ["spanish", "latino", "latina", "hispanic", "mexican"]):
+            return tenant_registry.get_accent("latino_american")
+        if any(w in m for w in ["southern", "texas", "country accent", "cowboy"]):
+            return tenant_registry.get_accent("red_american")
+        if any(w in m for w in ["british", "uk accent", "english accent", "london"]):
+            return tenant_registry.get_accent("european_british")
+        if any(w in m for w in ["african", "urban accent", "aave", "black accent"]):
+            return tenant_registry.get_accent("african_english")
+        if any(w in m for w in ["australian", "aussie"]):
+            return tenant_registry.get_accent("australian_english")
+        if any(w in m for w in ["canadian"]):
+            return tenant_registry.get_accent("canadian_english")
+
+        # 2. Linguistic Talking Style Pattern Matching (Regex)
+        # Indian-American Style: polite honorifics, syntax, colloquial markers
+        indian_patterns = r"\b(namaste|vanakkam|accha|achha|arre|yaar|bhai|ji|prepone|revert\s*back|kindly|doubt|needful|do\s*the\s*needful|lakh|crore|today\s*itself|tomorrow\s*itself|tension|bhaiya|didi)\b"
+        if re.search(indian_patterns, m) or phone.startswith("+91"):
+            return tenant_registry.get_accent("indian_english")
+
+        # Latino / Hispanic-American Style: conversational Spanish touches & warmth
+        latino_patterns = r"\b(hola|buenas|buenos\s*dias|buenas\s*tardes|amigo|amiga|por\s*favor|muchas\s*gracias|gracias|saludos|mi\s*amigo|con\s*gusto|mi\s*gente)\b"
+        if re.search(latino_patterns, m) or phone.startswith("+52"):
+            return tenant_registry.get_accent("latino_american")
+
+        # Southern American Style: southern hospitality & colloquial phrasing
+        southern_patterns = r"\b(howdy|y'?all|darlin'?|honey|sweetheart|fixin\s*to|reckon|bless\s*your\s*heart|sure\s*thing|yall)\b"
+        if re.search(southern_patterns, m):
+            return tenant_registry.get_accent("red_american")
+
+        # African American / Urban Contemporary Style: warm rhythmic colloquialisms
+        urban_patterns = r"\b(what'?s\s*good|what\s*up|for\s*real|straight\s*up|no\s*cap|bless\s*up|appreciate\s*you|fam|tryna|hook\s*me\s*up|lemme\s*get|gotchu|my\s*guy)\b"
+        if re.search(urban_patterns, m) or phone.startswith("+27"):
+            return tenant_registry.get_accent("african_english")
+
+        # European / British Expat Style: British idioms & spelling
+        british_patterns = r"\b(cheers|bloody|quid|splendid|sorted|brilliant|fancy|proper|half\s*past|fortnight|rubbish|queue|bloke|chap|mate|colour|favour)\b"
+        if re.search(british_patterns, m) or phone.startswith("+44"):
+            return tenant_registry.get_accent("european_british")
+
+        # Australian Style:
+        aussie_patterns = r"\b(g'?day|too\s*easy|arvo|brekkie|barbie|no\s*worries)\b"
+        if re.search(aussie_patterns, m) or phone.startswith("+61"):
+            return tenant_registry.get_accent("australian_english")
+
+        # 3. Preserve session accent if already set, otherwise modern General American
+        if current_accent and current_accent != "general_american":
+            return tenant_registry.get_accent(current_accent)
+        return tenant_registry.get_accent("general_american")
+
     def format_accented_response(self, text: str, accent: AccentProfile) -> str:
-        """Personalizes phrasing and greetings according to regional English accent profile."""
-        if accent.key == "canadian_english":
-            return f"Hello there! {text} Happy to help you out, eh."
-        elif accent.key == "general_american":
-            return f"Hello! {text} Let me know if that works for you."
-        elif accent.key == "irish_english":
-            return f"Grand! {text} We'll have that sorted for you in no time."
-        elif accent.key == "euro_international":
-            return f"Certainly! {text} We look forward to receiving you."
-        elif accent.key == "australian_english":
-            return f"G'day! {text} Too easy, mate!"
-        elif accent.key == "indian_english":
-            return f"Namaste! {text} Kindly let me know if this works for you."
-        elif accent.key == "african_english":
-            return f"Warm greetings, my dear! {text} We are always delighted to assist you."
-        elif accent.key == "red_american":
-            return f"Howdy! {text} Appreciate ya reachin' out!"
-        elif accent.key == "european_british":
-            return f"Splendid! {text} Cheerio."
+        """
+        Formats conversational responses with professional, natural elegance.
+        Dialect acoustics and cadence are delivered natively by the TTS voice engine,
+        avoiding artificial caricatures or repetitive catchphrases.
+        """
         return text
 
     @observe(name="receptionist-turn", as_type="agent")
@@ -242,7 +302,7 @@ class UniversalReceptionistOrchestrator:
         start_ts = time.time()
         tracker = LatencyTracker()
         tenant = self.get_tenant_manifest(tenant_id)
-        accent = self.get_accent_profile(accent_key)
+        accent = self.detect_talking_style(user_message, caller_phone, accent_key)
         sentiment = self.detect_sentiment(user_message)
         intent = self.recognize_intent(user_message)
 
@@ -389,6 +449,29 @@ class UniversalReceptionistOrchestrator:
                     response_text = (
                         f"I am transferring your request to our front desk manager at {tenant.name}. "
                         f"Our manager can also be reached directly at {tenant.phone}. Please hold for just a moment."
+                    )
+
+            elif intent == "trigger_voice_call":
+                action_performed = "vapi_call_triggered"
+                # Search for target phone in message, otherwise fallback to caller_phone
+                phone_match = re.search(r"(\+?[1-9]\d{0,2}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9})", user_message)
+                target_phone = phone_match.group(1).strip() if phone_match else (caller_phone or "").strip()
+
+                if target_phone and len(re.sub(r"\D", "", target_phone)) >= 10:
+                    call_res = notification_dispatcher.trigger_vapi_outbound_call(
+                        to_phone=target_phone,
+                        customer_name=caller_name or "Valued Guest",
+                        tenant_name=tenant.name,
+                        first_message=f"{accent.sample_phrase} This is Sofia calling you back live from {tenant.name} as requested! How may I help you with your booking today?"
+                    )
+                    response_text = (
+                        f"📞 Placing a live voice call to your phone right now at {target_phone}! "
+                        f"Sofia is dialing via Vapi using her native {accent.name} voice. Please answer your phone!"
+                    )
+                else:
+                    response_text = (
+                        f"I would be delighted to call your phone right now! Kindly reply with your phone number "
+                        f"(for example: +1 667 307 0119), and Sofia will call you immediately."
                     )
 
             elif intent == "accent_switch":

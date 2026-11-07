@@ -28,6 +28,17 @@ DEFAULT_ACCENTS: Dict[str, AccentProfile] = {
         conversational_style="Courteous, polite North American raising, attentive Canadian phrasing, friendly hospitality.",
         sample_phrase="No problem at all! Let's get that scheduled for you right away, no worries."
     ),
+    "latino_american": AccentProfile(
+        accent_id="latino_american",
+        name="Latino-American (Warm Bilingual Hospitality)",
+        flag="🇺🇸🇲🇽",
+        locale="en-US",
+        tts_voice_id="21m00Tcm4TlvDq8ikWAM",
+        openai_voice="nova",
+        greeting_template="¡Hola! Welcome to {business_name}! Sofia here. So wonderful to have you reach out today. How can I help you book your appointment?",
+        conversational_style="Warm, expressive, vibrant hospitality, bilingual conversational touches ('Hola', 'gracias', 'amigo', 'con mucho gusto').",
+        sample_phrase="¡Con mucho gusto! I would be delighted to arrange that appointment for you right now."
+    ),
     "red_american": AccentProfile(
         accent_id="red_american",
         name="Red American / Southern Warmth",
