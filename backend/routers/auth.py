@@ -234,7 +234,11 @@ def update_tenant_integrations_endpoint(payload: UpdateIntegrationsRequest):
 @router.get("/clerk-config")
 def get_clerk_config():
     """Provides frontend with Clerk publishable key and feature flags."""
-    pub_key = os.getenv("CLERK_PUBLISHABLE_KEY", os.getenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", ""))
+    pub_key = (
+        os.getenv("CLERK_PUBLISHABLE_KEY")
+        or os.getenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")
+        or "pk_test_c2F2ZWQtbWFybGluLTQ3My5jbGVyay5hY2NvdW50cy5kZXYk"
+    ).strip()
     return {
         "enabled": bool(pub_key),
         "publishableKey": pub_key

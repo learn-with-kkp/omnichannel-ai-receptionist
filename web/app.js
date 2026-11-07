@@ -1296,147 +1296,250 @@ const ASSISTANT_IDS = {
   squad: "767bf6bc-c1fb-4de8-bc32-d33d2522d07b"
 };
 
+let currentActiveClerkModal = null;
+const CLERK_FALLBACK_PK = "pk_test_c2F2ZWQtbWFybGluLTQ3My5jbGVyay5hY2NvdW50cy5kZXYk";
+
+async function ensureClerkReady(pubKey) {
+  const key = pubKey || window.__clerk_publishable_key || CLERK_FALLBACK_PK;
+  window.__clerk_publishable_key = key;
+
+  if (!window.Clerk) {
+    await new Promise((resolve) => {
+      const existing = document.querySelector("script[data-clerk-publishable-key]");
+      if (existing) {
+        existing.addEventListener("load", resolve);
+        existing.addEventListener("error", resolve);
+        return;
+      }
+      const s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
+      s.crossOrigin = "anonymous";
+      s.setAttribute("data-clerk-publishable-key", key);
+      s.onload = resolve;
+      s.onerror = resolve;
+      document.head.appendChild(s);
+    });
+  }
+
+  if (window.Clerk && !window.Clerk.loaded) {
+    try {
+      await window.Clerk.load({ publishableKey: key });
+    } catch (e) {
+      console.warn("Clerk.load note:", e);
+    }
+  }
+  return window.Clerk;
+}
+
+async function openClerkSignIn() {
+  try {
+    const clerk = await ensureClerkReady();
+    if (clerk && typeof clerk.openSignIn === "function") {
+      clerk.openSignIn();
+      return;
+    }
+  } catch (err) {
+    console.warn("openSignIn modal failed, falling back to mount modal:", err);
+  }
+  openClerkMountModal("signin");
+}
+
+async function openClerkSignUp() {
+  try {
+    const clerk = await ensureClerkReady();
+    if (clerk && typeof clerk.openSignUp === "function") {
+      clerk.openSignUp();
+      return;
+    }
+  } catch (err) {
+    console.warn("openSignUp modal failed, falling back to mount modal:", err);
+  }
+  openClerkMountModal("signup");
+}
+
+async function openClerkMountModal(mode) {
+  const modal = document.getElementById("clerkMountModal");
+  const target = document.getElementById("clerkMountTarget");
+  if (!modal || !target) return;
+
+  modal.style.display = "flex";
+  target.innerHTML = `<div style="color:var(--text-muted); font-size:13px; padding:30px; text-align:center;">Initializing ${mode === "signup" ? "VIP Registration" : "Sign In"}...</div>`;
+
+  const clerk = await ensureClerkReady();
+  if (!clerk) {
+    target.innerHTML = `<div style="color:var(--accent-rose); font-size:13px; padding:20px; text-align:center;">Unable to load Clerk SDK. Please reload or check network access.</div>`;
+    return;
+  }
+
+  target.innerHTML = "";
+  try {
+    if (mode === "signup" && typeof clerk.mountSignUp === "function") {
+      clerk.mountSignUp(target);
+      currentActiveClerkModal = "signup";
+    } else if (typeof clerk.mountSignIn === "function") {
+      clerk.mountSignIn(target);
+      currentActiveClerkModal = "signin";
+    }
+  } catch (err) {
+    console.error("Mount error:", err);
+    target.innerHTML = `<div style="color:var(--accent-rose); font-size:13px; padding:20px;">${err.message}</div>`;
+  }
+}
+
+function closeClerkMountModal() {
+  const modal = document.getElementById("clerkMountModal");
+  const target = document.getElementById("clerkMountTarget");
+  if (modal) modal.style.display = "none";
+  if (target && window.Clerk) {
+    try {
+      if (currentActiveClerkModal === "signup") window.Clerk.unmountSignUp(target);
+      if (currentActiveClerkModal === "signin") window.Clerk.unmountSignIn(target);
+    } catch (e) {}
+    target.innerHTML = "";
+  }
+  currentActiveClerkModal = null;
+}
+
+async function handleClerkUserSignedIn(user) {
+  if (!user) return;
+  const email = user.primaryEmailAddress ? user.primaryEmailAddress.emailAddress : "vip@luxesalon.com";
+  const phone = user.primaryPhoneNumber ? user.primaryPhoneNumber.phoneNumber : (user.phoneNumbers && user.phoneNumbers.length ? user.phoneNumbers[0].phoneNumber : "");
+  const fullName = user.fullName || user.firstName || email.split("@")[0] || "VIP Guest";
+
+  // Auto-populate booking and telephony inputs
+  if (phone) {
+    const pInput = document.getElementById("outboundPhone");
+    if (pInput) pInput.value = phone;
+    const tPhone = document.getElementById("telnyxToPhone");
+    if (tPhone) tPhone.value = phone;
+  }
+  if (fullName) {
+    const nInput = document.getElementById("outboundName");
+    if (nInput) nInput.value = fullName;
+  }
+
+  // Sync session with backend to persist phone and email into Neon PostgreSQL
+  try {
+    const syncRes = await fetch("/api/auth/clerk-sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clerk_user_id: user.id,
+        email: email,
+        phone: phone,
+        name: fullName,
+        company_name: "Luxe Saloon & Spa Guest"
+      })
+    });
+    const syncData = await syncRes.json();
+    if (syncData.token) {
+      localStorage.setItem("paroi_auth_token", syncData.token);
+      currentTenantId = "salon";
+    }
+  } catch (err) {
+    console.warn("Clerk sync warning:", err);
+  }
+
+  const container = document.getElementById("clerkAuthHeader");
+  if (container) {
+    container.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); padding:4px 12px; border-radius:var(--radius-full); border:1px solid var(--border-color);">
+        <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:22px; height:22px; border-radius:50%;" alt="avatar">
+        <span style="font-size:12px; font-weight:600; color:#fff;">👑 VIP: ${escapeHtml(fullName)}</span>
+        ${phone ? `<span style="font-size:10px; color:#38bdf8; font-family:var(--font-mono);">${escapeHtml(phone)}</span>` : ''}
+        <button onclick="window.Clerk.signOut().then(() => window.location.reload())" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; margin-left:4px;" title="Sign out">✕</button>
+      </div>
+    `;
+  }
+
+  const banner = document.getElementById("clerkAuthBanner");
+  if (banner) {
+    banner.innerHTML = `
+      <div style="display:flex; align-items:center; gap:12px;">
+        <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:36px; height:36px; border-radius:50%; border:2px solid #38bdf8;" alt="avatar">
+        <div>
+          <div style="font-size:14px; font-weight:700; color:#fff;">Welcome Back, ${escapeHtml(fullName)}! 👑 VIP Member</div>
+          <div style="font-size:11px; color:#38bdf8;">${email} ${phone ? '• ' + phone : ''} • 1-Click Priority Booking Active</div>
+        </div>
+      </div>
+      <button onclick="window.Clerk.signOut().then(() => window.location.reload())" class="btn-ghost" style="padding:6px 14px; font-size:12px;">Sign Out</button>
+    `;
+  }
+
+  const hubStatus = document.getElementById("hubClerkStatus");
+  if (hubStatus) {
+    hubStatus.textContent = `🟢 Signed in (${email}${phone ? ' • ' + phone : ''})`;
+    hubStatus.style.color = "var(--accent-emerald)";
+  }
+
+  loadTenantIntegrations("salon");
+}
+
+function renderClerkSignedOutState() {
+  const container = document.getElementById("clerkAuthHeader");
+  if (container) {
+    container.innerHTML = `
+      <button class="btn-ghost" onclick="openClerkSignIn()" style="font-size:12px; padding:6px 14px; font-weight:600;">Sign In</button>
+      <button class="btn-primary" onclick="openClerkSignUp()" style="font-size:12px; padding:6px 14px; font-weight:700; background:linear-gradient(135deg, #6366f1, #8b5cf6);">✨ Join VIP</button>
+    `;
+  }
+
+  const banner = document.getElementById("clerkAuthBanner");
+  if (banner) {
+    banner.innerHTML = `
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:22px;">👑</span>
+        <div style="text-align:left;">
+          <div style="font-size:13px; font-weight:700; color:#fff;">Luxe VIP Guest Membership</div>
+          <div style="font-size:11px; color:var(--text-muted);">Sign in with Clerk to auto-save phone & email for 1-click booking and WhatsApp VIP alerts.</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:6px 12px; font-size:12px;">Sign In</button>
+        <button onclick="openClerkSignUp()" class="btn-primary" style="padding:6px 14px; font-size:12px; background:#6366f1;">Join VIP</button>
+      </div>
+    `;
+  }
+
+  const hubStatus = document.getElementById("hubClerkStatus");
+  if (hubStatus) {
+    hubStatus.textContent = "Clerk: Guest (Sign in to sync)";
+    hubStatus.style.color = "var(--text-muted)";
+  }
+}
+
 async function initClerkAuth() {
   const container = document.getElementById("clerkAuthHeader");
-  const hubStatus = document.getElementById("hubClerkStatus");
   if (!container) return;
 
   try {
     const res = await fetch("/api/auth/clerk-config");
     const cfg = await res.json();
+    const pubKey = cfg.publishableKey || CLERK_FALLBACK_PK;
 
-    if (!cfg.enabled || !cfg.publishableKey) {
-      container.innerHTML = `
-        <button class="btn-ghost" onclick="showClerkSetupModal()" style="font-size:12px; padding:6px 12px; border-color:rgba(138,43,226,0.4); color:#c084fc;">
-          🔑 Connect Clerk Auth
-        </button>
-      `;
-      if (hubStatus) {
-        hubStatus.textContent = "Clerk: Local Dev (Add CLERK_PUBLISHABLE_KEY)";
-        hubStatus.style.color = "var(--accent-amber)";
-      }
-      loadTenantIntegrations(currentTenantId);
-      return;
-    }
+    const clerk = await ensureClerkReady(pubKey);
 
-    // Load Clerk JS SDK if not present
-    if (!window.Clerk) {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
-        s.crossOrigin = "anonymous";
-        s.setAttribute("data-clerk-publishable-key", cfg.publishableKey);
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
+    // Register Clerk session listener
+    if (clerk && typeof clerk.addListener === "function") {
+      clerk.addListener(({ user }) => {
+        if (user) {
+          closeClerkMountModal();
+          handleClerkUserSignedIn(user);
+        } else {
+          renderClerkSignedOutState();
+        }
       });
     }
 
-    await window.Clerk.load({
-      publishableKey: cfg.publishableKey
-    });
-
-    if (window.Clerk.user) {
-      const user = window.Clerk.user;
-      const email = user.primaryEmailAddress ? user.primaryEmailAddress.emailAddress : "vip@luxesalon.com";
-      const phone = user.primaryPhoneNumber ? user.primaryPhoneNumber.phoneNumber : (user.phoneNumbers && user.phoneNumbers.length ? user.phoneNumbers[0].phoneNumber : "");
-      const fullName = user.fullName || user.firstName || email.split("@")[0] || "VIP Guest";
-
-      // Auto-populate phone and name into fast call and appointment booking inputs
-      if (phone) {
-        const pInput = document.getElementById("outboundPhone");
-        if (pInput) pInput.value = phone;
-        const tPhone = document.getElementById("telnyxToPhone");
-        if (tPhone) tPhone.value = phone;
-      }
-      if (fullName) {
-        const nInput = document.getElementById("outboundName");
-        if (nInput) nInput.value = fullName;
-      }
-
-      // Sync session with backend to store phone number and email into Neon PostgreSQL
-      try {
-        const syncRes = await fetch("/api/auth/clerk-sync", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clerk_user_id: user.id,
-            email: email,
-            phone: phone,
-            name: fullName,
-            company_name: "Luxe Saloon & Spa Guest"
-          })
-        });
-        const syncData = await syncRes.json();
-        if (syncData.token) {
-          localStorage.setItem("paroi_auth_token", syncData.token);
-          currentTenantId = "salon";
-        }
-      } catch (err) {
-        console.warn("Clerk sync warning:", err);
-      }
-
-      container.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); padding:4px 12px; border-radius:var(--radius-full); border:1px solid var(--border-color);">
-          <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:22px; height:22px; border-radius:50%;" alt="avatar">
-          <span style="font-size:12px; font-weight:600; color:#fff;">👑 VIP: ${escapeHtml(fullName)}</span>
-          ${phone ? `<span style="font-size:10px; color:#38bdf8; font-family:var(--font-mono);">${escapeHtml(phone)}</span>` : ''}
-          <button onclick="window.Clerk.signOut().then(() => window.location.reload())" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; margin-left:4px;" title="Sign out">✕</button>
-        </div>
-      `;
-
-      const banner = document.getElementById("clerkAuthBanner");
-      if (banner) {
-        banner.innerHTML = `
-          <div style="display:flex; align-items:center; gap:12px;">
-            <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:36px; height:36px; border-radius:50%; border:2px solid #38bdf8;" alt="avatar">
-            <div>
-              <div style="font-size:14px; font-weight:700; color:#fff;">Welcome Back, ${escapeHtml(fullName)}! 👑 VIP Member</div>
-              <div style="font-size:11px; color:#38bdf8;">${email} ${phone ? '• ' + phone : ''} • 1-Click Priority Booking Active</div>
-            </div>
-          </div>
-          <button onclick="window.Clerk.signOut().then(() => window.location.reload())" class="btn-ghost" style="padding:6px 14px; font-size:12px;">Sign Out</button>
-        `;
-      }
-
-      if (hubStatus) {
-        hubStatus.textContent = `🟢 Signed in (${email}${phone ? ' • ' + phone : ''})`;
-        hubStatus.style.color = "var(--accent-emerald)";
-      }
-
-      loadTenantIntegrations("salon");
+    if (clerk && clerk.user) {
+      await handleClerkUserSignedIn(clerk.user);
     } else {
-      container.innerHTML = `
-        <button class="btn-ghost" onclick="window.Clerk.openSignIn()" style="font-size:12px; padding:6px 14px; font-weight:600;">Sign In</button>
-        <button class="btn-primary" onclick="window.Clerk.openSignUp()" style="font-size:12px; padding:6px 14px; font-weight:700; background:linear-gradient(135deg, #6366f1, #8b5cf6);">✨ Join VIP</button>
-      `;
-
-      const banner = document.getElementById("clerkAuthBanner");
-      if (banner) {
-        banner.innerHTML = `
-          <div style="display:flex; align-items:center; gap:10px;">
-            <span style="font-size:22px;">👑</span>
-            <div style="text-align:left;">
-              <div style="font-size:13px; font-weight:700; color:#fff;">Luxe VIP Guest Membership</div>
-              <div style="font-size:11px; color:var(--text-muted);">Sign in with Clerk to auto-save phone & email for 1-click booking and WhatsApp VIP alerts.</div>
-            </div>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button onclick="window.Clerk?.openSignIn()" class="btn-ghost" style="padding:6px 12px; font-size:12px;">Sign In</button>
-            <button onclick="window.Clerk?.openSignUp()" class="btn-primary" style="padding:6px 14px; font-size:12px; background:#6366f1;">Join VIP</button>
-          </div>
-        `;
-      }
-
-      if (hubStatus) {
-        hubStatus.textContent = "Clerk: Guest (Sign in to sync)";
-        hubStatus.style.color = "var(--text-muted)";
-      }
+      renderClerkSignedOutState();
       loadTenantIntegrations(currentTenantId);
     }
   } catch (err) {
     console.error("Failed to initialize Clerk auth:", err);
-    if (hubStatus) hubStatus.textContent = "Clerk: Standalone Mode";
+    renderClerkSignedOutState();
     loadTenantIntegrations(currentTenantId);
   }
 }
