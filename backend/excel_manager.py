@@ -6,7 +6,22 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-EXCEL_FILE = os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
+def _resolve_excel_path() -> str:
+    is_serverless = bool(
+        os.getenv("VERCEL")
+        or os.getenv("VERCEL_ENV")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+        or os.getenv("LAMBDA_TASK_ROOT")
+        or not os.access(".", os.W_OK)
+    )
+    if is_serverless:
+        custom = os.getenv("SALON_EXCEL_PATH")
+        if custom and custom.startswith("/tmp"):
+            return custom
+        return "/tmp/salon_appointments.xlsx"
+    return os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
+
+EXCEL_FILE = _resolve_excel_path()
 
 HEADERS = [
     "Booking ID",

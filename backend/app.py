@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Header, HTTPException, Request, Response
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, Dict, Any
 import logging
@@ -20,6 +21,7 @@ from backend.database import (
     check_slots_availability,
     book_new_appointment,
     lookup_by_phone,
+    reschedule_existing_appointment,
     cancel_existing_appointment,
     get_tenant_by_inbound_phone,
     get_tenant,
@@ -27,12 +29,33 @@ from backend.database import (
     create_tenant,
     get_tenant_services,
     get_tenant_stylists,
-    get_db_connection
+    get_db_connection,
+    list_all_appointments,
+    get_excel_path
 )
 from backend.reminder_service import run_reminder_cycle
 
+from backend.routers.voice import router as voice_router
+from backend.routers.chat import router as chat_router
+from backend.routers.messaging import router as messaging_router
+from backend.routers.tenants import router as tenants_router
+from backend.routers.streaming_voice import router as streaming_voice_router
+from backend.routers.auth import router as auth_router
+from backend.routers.testing_suite import router as testing_suite_router
+from backend.routers.knowledge import router as knowledge_router
+from backend.routers.oauth import router as oauth_router
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("SalonVoiceReceptionist")
+
+def is_serverless_runtime() -> bool:
+    return bool(
+        os.getenv("VERCEL")
+        or os.getenv("VERCEL_ENV")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+        or os.getenv("LAMBDA_TASK_ROOT")
+        or not os.access(".", os.W_OK)
+    )
 
 async def reminder_background_worker():
     logger.info("Starting background reminder worker (checking every 60s)...")
@@ -45,18 +68,40 @@ async def reminder_background_worker():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_db()
-    logger.info("Salon SQLite Database & Excel store initialized successfully.")
-    worker_task = asyncio.create_task(reminder_background_worker())
+    try:
+        init_db()
+        logger.info("Salon Multi-Tenant Database initialized successfully.")
+    except Exception as e:
+        logger.error(f"Error initializing database in lifespan: {e}")
+    worker_task = None
+    if not is_serverless_runtime():
+        worker_task = asyncio.create_task(reminder_background_worker())
     yield
-    worker_task.cancel()
+    if worker_task:
+        worker_task.cancel()
 
 app = FastAPI(
-    title="Luxe Salon AI Voice Receptionist API",
-    description="High-throughput tool webhook server integrating Vapi and n8n",
-    version="1.0.0",
-    lifespan=lifespan
+    title="Universal AI Voice & Chat Receptionist API",
+    description="Enterprise Multi-Tenant Omnichannel Receptionist for Salon, Dental, Automotive, and Medical verticals",
+    version="2.0.0",
+    lifespan=None if is_serverless_runtime() else lifespan
 )
+
+@app.middleware("http")
+async def vercel_path_rewrite_middleware(request: Request, call_next):
+    try:
+        matched_path = request.headers.get("x-matched-path")
+        if matched_path and request.scope.get("path") in ("/api/index", "/api/index.py", "/api"):
+            request.scope["path"] = matched_path
+        return await call_next(request)
+    except Exception as exc:
+        import traceback
+        return JSONResponse(status_code=500, content={"error": str(exc), "traceback": traceback.format_exc()})
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    return JSONResponse(status_code=500, content={"error": str(exc), "traceback": traceback.format_exc()})
 
 app.add_middleware(
     CORSMiddleware,
@@ -66,132 +111,73 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount Omnichannel Routers
+app.include_router(voice_router)
+app.include_router(chat_router)
+app.include_router(messaging_router)
+app.include_router(tenants_router)
+app.include_router(streaming_voice_router)
+app.include_router(auth_router)
+app.include_router(testing_suite_router)
+app.include_router(knowledge_router)
+app.include_router(oauth_router)
+
+# Mount Static Web Studio Dashboard
+web_dir = Path(__file__).resolve().parent.parent / "web"
+if web_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(web_dir)), name="static")
+
+    @app.get("/")
+    def serve_index():
+        index_path = web_dir / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
+        return {"service": "Universal AI Voice Receptionist", "status": "online"}
+
+    @app.get("/site/{tenant_id}")
+    @app.get("/tenant/{tenant_id}")
+    def serve_tenant_site(tenant_id: str):
+        """
+        Renders custom customer-facing website embedded with Sofia voice receptionist,
+        service catalog, pricing, and omnichannel launchers.
+        """
+        tenant_site_path = web_dir / "tenant_site.html"
+        if tenant_site_path.exists():
+            return FileResponse(str(tenant_site_path))
+        return {"error": f"Tenant site template not found for {tenant_id}"}
+
+    @app.get("/vapi-test")
+    @app.get("/test-vapi")
+    def serve_vapi_web_sdk_test():
+        """
+        Renders the dedicated Vapi Web SDK browser testing harness for WebRTC audio calls,
+        transcription streaming, volume metering, and in-call message injection.
+        """
+        test_path = web_dir / "vapi_web_sdk_test.html"
+        if test_path.exists():
+            return FileResponse(str(test_path))
+        return {"error": "Vapi Web SDK test page template not found"}
+
+@app.get("/api/voice/vapi-config")
+def get_vapi_web_sdk_config():
+    """Returns public Vapi Web SDK configuration for browser calling."""
+    public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
+    assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or "").strip()
+    return {
+        "status": "success",
+        "publicKey": public_key,
+        "assistantId": assistant_id,
+        "sdkLoaded": bool(public_key and assistant_id)
+    }
+
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "service": "Salon Voice AI Receptionist", "timestamp": time.time()}
-
-@app.post("/webhook/vapi-tools", response_model=VapiToolResponse)
-async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str] = None):
-    """
-    Synchronous mid-call tool execution router for Vapi.
-    Receives function call requests and dispatches domain logic with multi-tenant routing.
-    """
-    start_ts = time.time()
-    message = payload.message
-    tool_calls = message.toolCalls or []
-
-    if not tool_calls:
-        logger.warning("Webhook received without toolCalls in payload.")
-        return VapiToolResponse(results=[])
-
-    # Dynamic Multi-Tenant Routing
-    if not tenant_id:
-        inbound_phone = ""
-        call_obj = message.call or {}
-        if isinstance(call_obj, dict):
-            phone_obj = call_obj.get("phoneNumber") or {}
-            if isinstance(phone_obj, dict):
-                inbound_phone = phone_obj.get("number", "")
-        tenant = get_tenant_by_inbound_phone(inbound_phone)
-        resolved_tenant_id = tenant.get("id", "default_salon")
-        salon_name = tenant.get("name", "Luxe Salon")
-    else:
-        tenant = get_tenant(tenant_id)
-        resolved_tenant_id = tenant.get("id", "default_salon")
-        salon_name = tenant.get("name", "Luxe Salon")
-
-    logger.info(f"Routed Call to Tenant: {resolved_tenant_id} ('{salon_name}')")
-
-    results = []
-
-    for tool_call in tool_calls:
-        call_id = tool_call.id
-        fn_name = tool_call.function.name
-        args = tool_call.function.arguments
-        if isinstance(args, str):
-            try:
-                args = json.loads(args)
-            except Exception:
-                args = {}
-        elif not isinstance(args, dict):
-            args = {}
-
-        logger.info(f"Processing tool call: '{fn_name}' [ID: {call_id}] with args: {args}")
-
-        if fn_name == "check_availability":
-            service = args.get("service_name") or "Womens Haircut"
-            target_date = args.get("target_date")
-            if not target_date or target_date.strip() == "":
-                target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
-            stylist = args.get("preferred_stylist") or "any"
-
-            slots = check_slots_availability(target_date, service, stylist, tenant_id=resolved_tenant_id)
-            if slots:
-                slots_str = ", ".join(slots)
-                stylist_mention = f" with {stylist}" if stylist and stylist != "any" else ""
-                res_text = (
-                    f"For a {service}{stylist_mention} at {salon_name} on {target_date}, "
-                    f"we have openings at {slots_str}. Which of those works best for you?"
-                )
-            else:
-                res_text = f"We are fully booked for {service} on {target_date}. Would you like to check the following day?"
-
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        elif fn_name == "book_appointment":
-            name = args.get("caller_name") or "Valued Guest"
-            phone = args.get("caller_phone") or "+16673070119"
-            service = args.get("service_name") or "Womens Haircut"
-            dt = args.get("appointment_datetime")
-            if not dt or dt.strip() == "":
-                dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT14:00:00")
-            stylist = args.get("stylist_name") or "Elena"
-            if stylist.lower() == "any":
-                stylist = "Elena"
-
-            booking = book_new_appointment(name, phone, service, dt, stylist, tenant_id=resolved_tenant_id)
-            res_text = (
-                f"You're all set, {name}! Your appointment for a {service} with {stylist} is confirmed at {salon_name} for "
-                f"{booking['start_time']}. Your booking reference is {booking['booking_id']}. "
-                f"A confirmation SMS has been sent to {phone}."
-            )
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        elif fn_name == "lookup_appointment":
-            phone = args.get("caller_phone", "")
-            booking = lookup_by_phone(phone, tenant_id=resolved_tenant_id)
-            if booking:
-                res_text = (
-                    f"I found your reservation: {booking['service_name']} with {booking['stylist_name']} "
-                    f"on {booking['start_time']} (Ref: {booking['booking_id']}). How would you like to modify it?"
-                )
-            else:
-                res_text = f"I couldn't find an active reservation under {phone} at {salon_name}. Would you like me to book a new appointment for you?"
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        elif fn_name == "cancel_appointment":
-            phone = args.get("caller_phone", "")
-            booking_id = args.get("booking_id")
-            success = cancel_existing_appointment(phone, booking_id, tenant_id=resolved_tenant_id)
-            if success:
-                res_text = f"Your appointment has been successfully canceled at {salon_name}. No fee was charged. We hope to welcome you another time!"
-            else:
-                res_text = f"I could not locate an active booking to cancel under {phone}. Please check the number and let me know."
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        elif fn_name == "transfer_to_manager":
-            reason = args.get("escalation_reason", "Customer request")
-            logger.info(f"Escalating call to salon manager. Reason: {reason}")
-            res_text = "I'm connecting you directly with our front desk manager right now. Please hold for just a few seconds."
-            results.append(ToolResult(toolCallId=call_id, result=res_text))
-
-        else:
-            logger.warning(f"Unknown function requested: {fn_name}")
-            results.append(ToolResult(toolCallId=call_id, result="Function processed successfully."))
-
-    duration_ms = (time.time() - start_ts) * 1000
-    logger.info(f"Completed {len(results)} tool calls in {duration_ms:.2f}ms")
-    return VapiToolResponse(results=results)
+    return {
+        "status": "healthy",
+        "service": "Universal AI Voice Receptionist",
+        "version": "2.0.0",
+        "timestamp": time.time()
+    }
 
 @app.post("/webhook/vapi-end-of-call")
 async def handle_end_of_call(payload: Dict[str, Any]):
@@ -211,7 +197,7 @@ async def handle_end_of_call(payload: Dict[str, Any]):
 @app.get("/admin/appointments/excel")
 def download_excel_sheet():
     """Download the current live Excel spreadsheet containing all appointments and reminder statuses."""
-    excel_path = os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
+    excel_path = get_excel_path()
     if not os.path.exists(excel_path):
         init_db()
     return FileResponse(
@@ -250,32 +236,32 @@ def onboard_tenant(payload: Dict[str, Any]):
 @app.get("/admin/appointments")
 def list_appointments(tenant_id: Optional[str] = None):
     """Query appointments across all tenants or for a specific salon."""
-    conn = get_db_connection()
-    c = conn.cursor()
-    if tenant_id:
-        c.execute("SELECT * FROM appointments WHERE tenant_id = ? ORDER BY start_time DESC", (tenant_id,))
-    else:
-        c.execute("SELECT * FROM appointments ORDER BY start_time DESC")
-    rows = [dict(r) for r in c.fetchall()]
-    conn.close()
-    return {"appointments": rows}
+    return {"appointments": list_all_appointments(tenant_id)}
 
 @app.post("/test/quick-booking")
 def quick_test_booking(
     name: str = "Test Client",
     service: str = "Womens Haircut",
     stylist: str = "Elena",
-    phone: str = "+16673070119"
+    phone: str = "+16673070119",
+    tenant_id: str = "salon"
 ):
     """
     Minimal 1-click test booking endpoint.
-    Instantly writes a booking to SQLite, Excel, and live Google Sheets.
+    Instantly writes a booking to SQLite, Google Calendar, Excel, and live Google Sheets.
     """
     dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT15:00:00")
-    booking = book_new_appointment(name, phone, service, dt, stylist, tenant_id="default_salon")
+    booking = book_new_appointment(
+        caller_name=name,
+        caller_phone=phone,
+        service_name=service,
+        appointment_datetime=dt,
+        stylist_name=stylist,
+        tenant_id=tenant_id
+    )
     logger.info(f"⚡ [MINIMAL TEST] Quick booking created: {booking['booking_id']}")
     return {
         "status": "success",
-        "message": f"Appointment {booking['booking_id']} created and synced to Excel & Google Sheets!",
+        "message": f"Appointment {booking['booking_id']} created and synced to Google Calendar, Excel & Google Sheets!",
         "booking": booking
     }
