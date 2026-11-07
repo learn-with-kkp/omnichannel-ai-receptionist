@@ -88,7 +88,7 @@ def is_serverless() -> bool:
 def is_postgres() -> bool:
     """True if configured to connect to PostgreSQL / Neon (safely falls back to SQLite for test databases)."""
     custom_db = os.getenv("SALON_DB_PATH", "")
-    if custom_db.startswith("test_") or "test" in custom_db:
+    if custom_db.startswith("test_") or "test_" in custom_db:
         return False
     return bool(PSYCOPG2_AVAILABLE and get_database_url())
 
