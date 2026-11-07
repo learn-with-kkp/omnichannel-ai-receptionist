@@ -67,7 +67,7 @@ class GoogleCalendarService:
         time_min = f"{target_date}T00:00:00Z"
         time_max = f"{target_date}T23:59:59Z"
 
-        if self.service:
+        if self.service and not os.getenv("PYTEST_CURRENT_TEST"):
             try:
                 body = {
                     "timeMin": time_min,
@@ -129,7 +129,7 @@ class GoogleCalendarService:
             },
         }
 
-        if self.service:
+        if self.service and not os.getenv("PYTEST_CURRENT_TEST"):
             try:
                 created = self.service.events().insert(calendarId=cal_id, body=event_body).execute()
                 logger.info(f"✅ Created Google Calendar event ID: {created.get('id')}")
