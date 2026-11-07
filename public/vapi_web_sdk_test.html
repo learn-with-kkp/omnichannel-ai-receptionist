@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vapi Web SDK Diagnostic Test Harness | Sofia AI Voice Receptionist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(18, 24, 38, 0.85);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.4);
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-light: rgba(99, 102, 241, 0.15);
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      background-image: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 60%);
+      color: var(--text);
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      min-height: 100vh;
+      padding: 32px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 1100px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #fff 40%, var(--primary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .header p {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    .status-badge.connecting .status-dot { background: var(--warning); animation: pulse 1.5s infinite; }
+    .status-badge.in-call .status-dot { background: var(--success); animation: pulse 1.2s infinite; }
+    .status-badge.in-call { background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.3); color: #34d399; }
+    .status-badge.error .status-dot { background: var(--danger); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Grid Layout */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .btn {
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-danger:hover:not(:disabled) {
+      background: #dc2626;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.12);
+    }
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Audio Visualizer */
+    .visualizer-box {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    canvas#volumeCanvas {
+      width: 100%;
+      height: 60px;
+      border-radius: 8px;
+    }
+    .volume-meta {
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    /* Transcripts Feed */
+    .chat-feed {
+      height: 280px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 6px;
+    }
+    .chat-bubble {
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      line-height: 1.45;
+      max-width: 85%;
+      word-break: break-word;
+      animation: fadeIn 0.25s ease;
+    }
+    .chat-bubble.user {
+      align-self: flex-end;
+      background: var(--primary);
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .chat-bubble.assistant {
+      align-self: flex-start;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .chat-meta {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-bottom: 2px;
+      font-weight: 600;
+    }
+
+    /* Logs & Tool Calls */
+    .log-box {
+      background: #060911;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      height: 220px;
+      overflow-y: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11.5px;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+    .log-item {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .log-ts { color: #64748b; }
+    .log-type { color: var(--primary); font-weight: 600; }
+    .log-item.error .log-type { color: var(--danger); }
+    .log-item.tool .log-type { color: #38bdf8; }
+
+    /* Inputs */
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    input[type="text"] {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13.5px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input[type="text"]:focus {
+      border-color: var(--primary);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <h1>🎙️ Vapi Web SDK Test Harness</h1>
+        <p>Direct WebRTC browser calling & audio streaming with Sofia AI Receptionist</p>
+      </div>
+      <div id="statusBadge" class="status-badge">
+        <div class="status-dot"></div>
+        <span id="statusText">Disconnected</span>
+      </div>
+    </div>
+
+    <!-- Configuration Strip -->
+    <div class="card" style="padding: 16px 20px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; font-size: 13px;">
+        <div>
+          <span style="color: var(--text-muted);">Public Key:</span>
+          <code id="displayPubKey" style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Loading...</code>
+        </div>
+        <div>
+          <span style="color: var(--text-muted);">Assistant ID:</span>
+          <code id="displayAsstId" style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; margin-left: 6px;">Loading...</code>
+        </div>
+        <div>
+          <span style="color: var(--text-muted);">Voice Engine:</span>
+          <span style="color: #38bdf8; font-weight: 600; margin-left: 6px;">Cartesia Sonic-3.5 + Nova-2</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="grid">
+      <!-- Left Column: Call Controls & Visualizer -->
+      <div class="card">
+        <div class="card-title">Interactive WebRTC Controls</div>
+
+        <div class="controls">
+          <button id="btnStart" class="btn btn-primary" onclick="startWebCall()">
+            <span>📞</span> Start Web Call
+          </button>
+          <button id="btnStop" class="btn btn-danger" onclick="stopWebCall()" disabled>
+            <span>🛑</span> Stop Call
+          </button>
+          <button id="btnMute" class="btn btn-secondary" onclick="toggleMute()" disabled>
+            <span id="muteIcon">🎙️</span> <span id="muteText">Mute Mic</span>
+          </button>
+        </div>
+
+        <!-- Volume Meter -->
+        <div class="visualizer-box">
+          <canvas id="volumeCanvas"></canvas>
+          <div class="volume-meta">
+            Audio Amplitude: <span id="volumeVal" style="color: #fff;">0.00</span> | Mic: <span id="micState">Active</span>
+          </div>
+        </div>
+
+        <!-- In-Call Message Injection -->
+        <div class="card-title" style="margin-top: 8px;">In-Call Text Injection</div>
+        <div class="input-row">
+          <input type="text" id="inCallMsg" placeholder="Type a message to inject into conversation (e.g. 'Can I book Balayage?')" onkeydown="if(event.key==='Enter') sendInCallMessage()">
+          <button id="btnSendMsg" class="btn btn-secondary" onclick="sendInCallMessage()" disabled>Send</button>
+        </div>
+      </div>
+
+      <!-- Right Column: Live Transcripts -->
+      <div class="card">
+        <div class="card-title">Real-Time Transcription Stream</div>
+        <div id="chatFeed" class="chat-feed">
+          <div style="color: var(--text-muted); font-size: 13px; text-align: center; margin-top: 80px;">
+            Click <strong>"Start Web Call"</strong> to speak with Sofia via your browser microphone.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Row: Event Logs & Tool Executions -->
+    <div class="grid">
+      <div class="card">
+        <div class="card-title">Vapi Web SDK Event Log</div>
+        <div id="logBox" class="log-box"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Real-Time Tool Calls Inspector</div>
+        <div id="toolBox" class="log-box">
+          <div style="color: var(--text-muted);">Waiting for tool execution events...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Load official Vapi Web SDK via ES Module -->
+  <script type="module">
+    import Vapi from "https://esm.sh/@vapi-ai/web";
+
+    let vapi = null;
+    let isCallActive = false;
+    let isMuted = false;
+    let pubKey = "";
+    let asstId = "";
+
+    const statusBadge = document.getElementById("statusBadge");
+    const statusText = document.getElementById("statusText");
+    const btnStart = document.getElementById("btnStart");
+    const btnStop = document.getElementById("btnStop");
+    const btnMute = document.getElementById("btnMute");
+    const btnSendMsg = document.getElementById("btnSendMsg");
+    const chatFeed = document.getElementById("chatFeed");
+    const logBox = document.getElementById("logBox");
+    const toolBox = document.getElementById("toolBox");
+    const volumeVal = document.getElementById("volumeVal");
+    const muteIcon = document.getElementById("muteIcon");
+    const muteText = document.getElementById("muteText");
+    const canvas = document.getElementById("volumeCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let currentVolume = 0;
+
+    // Logging helper
+    function appendLog(type, msg, isError = false, isTool = false) {
+      const now = new Date().toTimeString().split(" ")[0];
+      const div = document.createElement("div");
+      div.className = `log-item ${isError ? 'error' : ''} ${isTool ? 'tool' : ''}`;
+      div.innerHTML = `<span class="log-ts">[${now}]</span> <span class="log-type">[${type}]</span> <span>${escapeHtml(msg)}</span>`;
+      logBox.appendChild(div);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function appendToolCall(fnName, args, result) {
+      const now = new Date().toTimeString().split(" ")[0];
+      if (toolBox.children.length === 1 && toolBox.innerText.includes("Waiting")) {
+        toolBox.innerHTML = "";
+      }
+      const div = document.createElement("div");
+      div.style.marginBottom = "8px";
+      div.style.borderLeft = "2px solid #38bdf8";
+      div.style.paddingLeft = "8px";
+      div.innerHTML = `
+        <div style="color: #38bdf8; font-weight: 600;">[${now}] ⚙️ Tool Invoked: ${fnName}</div>
+        <div style="color: #94a3b8; font-size: 11px;">Args: ${JSON.stringify(args)}</div>
+        ${result ? `<div style="color: #34d399; font-size: 11px;">Result: ${escapeHtml(result)}</div>` : ''}
+      `;
+      toolBox.appendChild(div);
+      toolBox.scrollTop = toolBox.scrollHeight;
+    }
+
+    function appendChatBubble(role, text) {
+      if (chatFeed.children.length === 1 && chatFeed.innerText.includes("Click")) {
+        chatFeed.innerHTML = "";
+      }
+      const bubble = document.createElement("div");
+      bubble.className = `chat-bubble ${role}`;
+      bubble.innerHTML = `
+        <div class="chat-meta">${role === 'user' ? '👤 Caller' : '✨ Sofia (Receptionist)'}</div>
+        <div>${escapeHtml(text)}</div>
+      `;
+      chatFeed.appendChild(bubble);
+      chatFeed.scrollTop = chatFeed.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+    }
+
+    // Canvas volume visualizer
+    function drawVisualizer() {
+      requestAnimationFrame(drawVisualizer);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const width = canvas.width;
+      const height = canvas.height;
+      const bars = 24;
+      const barWidth = width / bars;
+
+      for (let i = 0; i < bars; i++) {
+        const factor = Math.sin((i / bars) * Math.PI);
+        const barHeight = Math.max(4, currentVolume * height * factor * 1.8);
+        const x = i * barWidth;
+        const y = (height - barHeight) / 2;
+        ctx.fillStyle = isCallActive ? `rgba(99, 102, 241, ${0.4 + currentVolume * 0.6})` : "rgba(255, 255, 255, 0.1)";
+        ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
+      }
+    }
+
+    // 1. Fetch Vapi Web SDK Configuration
+    async function loadConfig() {
+      try {
+        const r = await fetch("/api/voice/vapi-config");
+        const data = await r.json();
+        pubKey = data.publicKey;
+        asstId = data.assistantId;
+
+        document.getElementById("displayPubKey").textContent = pubKey ? `${pubKey.slice(0, 12)}...` : "Missing in .env";
+        document.getElementById("displayAsstId").textContent = asstId ? `${asstId.slice(0, 12)}...` : "Missing in .env";
+
+        if (!pubKey || !asstId) {
+          appendLog("CONFIG_ERROR", "VAPI_PUBLIC_API_KEY or VAPI_ASSISTANT_ID is missing from .env", true);
+          return;
+        }
+
+        // Initialize Vapi Web SDK Instance
+        vapi = new Vapi(pubKey);
+        setupVapiEventListeners();
+        appendLog("SDK_INITIALIZED", "Vapi Web SDK instance loaded and ready for browser WebRTC audio streaming.");
+      } catch (err) {
+        appendLog("CONFIG_FETCH_ERROR", err.message, true);
+      }
+    }
+
+    // 2. Setup Vapi SDK Event Listeners
+    function setupVapiEventListeners() {
+      if (!vapi) return;
+
+      vapi.on("call-start", () => {
+        isCallActive = true;
+        statusBadge.className = "status-badge in-call";
+        statusText.textContent = "Live WebRTC Call Active";
+        btnStart.disabled = true;
+        btnStop.disabled = false;
+        btnMute.disabled = false;
+        btnSendMsg.disabled = false;
+        appendLog("CALL_START", "WebRTC bidirectional audio session established.");
+      });
+
+      vapi.on("call-end", () => {
+        isCallActive = false;
+        currentVolume = 0;
+        volumeVal.textContent = "0.00";
+        statusBadge.className = "status-badge";
+        statusText.textContent = "Call Ended";
+        btnStart.disabled = false;
+        btnStop.disabled = true;
+        btnMute.disabled = true;
+        btnSendMsg.disabled = true;
+        appendLog("CALL_END", "WebRTC audio connection terminated.");
+      });
+
+      vapi.on("speech-start", () => {
+        appendLog("SPEECH_START", "User speech activity detected (VAD).");
+      });
+
+      vapi.on("speech-end", () => {
+        appendLog("SPEECH_END", "User speech turn completed.");
+      });
+
+      vapi.on("volume-level", (volume) => {
+        currentVolume = volume;
+        volumeVal.textContent = volume.toFixed(3);
+      });
+
+      vapi.on("message", (msg) => {
+        if (!msg) return;
+
+        // Transcript message
+        if (msg.type === "transcript") {
+          if (msg.transcriptType === "final") {
+            appendChatBubble(msg.role, msg.transcript);
+            appendLog("TRANSCRIPT", `${msg.role}: ${msg.transcript}`);
+          }
+        }
+
+        // Function / Tool Call
+        if (msg.type === "function-call") {
+          const fn = msg.functionCall?.name || "unnamed_function";
+          const args = msg.functionCall?.parameters || {};
+          appendToolCall(fn, args, null);
+          appendLog("TOOL_CALL", `Assistant invoking tool: ${fn}`, false, true);
+        }
+
+        if (msg.type === "tool-calls") {
+          const list = msg.toolCallList || [];
+          for (const tc of list) {
+            appendToolCall(tc.function?.name || "tool", tc.function?.arguments || {}, null);
+          }
+        }
+      });
+
+      vapi.on("error", (err) => {
+        appendLog("SDK_ERROR", err?.message || JSON.stringify(err), true);
+        statusBadge.className = "status-badge error";
+        statusText.textContent = "Connection Error";
+      });
+    }
+
+    // 3. User Actions
+    window.startWebCall = async function() {
+      if (!vapi || !asstId) {
+        alert("Vapi SDK is not initialized. Please ensure VAPI_PUBLIC_API_KEY and VAPI_ASSISTANT_ID are set.");
+        return;
+      }
+      try {
+        statusBadge.className = "status-badge connecting";
+        statusText.textContent = "Connecting WebRTC...";
+        btnStart.disabled = true;
+        appendLog("CALL_CONNECTING", `Initiating WebRTC call with Assistant ID: ${asstId}...`);
+        await vapi.start(asstId);
+      } catch (err) {
+        appendLog("START_FAILED", err.message, true);
+        statusBadge.className = "status-badge error";
+        statusText.textContent = "Start Failed";
+        btnStart.disabled = false;
+      }
+    };
+
+    window.stopWebCall = function() {
+      if (!vapi) return;
+      appendLog("USER_DISCONNECT", "Stopping active call...");
+      vapi.stop();
+    };
+
+    window.toggleMute = function() {
+      if (!vapi) return;
+      isMuted = !isMuted;
+      vapi.setMuted(isMuted);
+      muteIcon.textContent = isMuted ? "🔇" : "🎙️";
+      muteText.textContent = isMuted ? "Unmute Mic" : "Mute Mic";
+      document.getElementById("micState").textContent = isMuted ? "Muted" : "Active";
+      appendLog("MIC_TOGGLE", `Microphone ${isMuted ? 'Muted' : 'Unmuted'}`);
+    };
+
+    window.sendInCallMessage = function() {
+      const input = document.getElementById("inCallMsg");
+      const text = input.value.trim();
+      if (!text || !vapi) return;
+
+      appendChatBubble("user", text);
+      vapi.send({
+        type: "add-message",
+        message: {
+          role: "user",
+          content: text
+        }
+      });
+      appendLog("INJECT_MSG", `Injected user message: "${text}"`);
+      input.value = "";
+    };
+
+    // Initialize
+    canvas.width = canvas.parentElement.clientWidth;
+    canvas.height = 60;
+    drawVisualizer();
+    loadConfig();
+  </script>
+
+</body>
+</html>

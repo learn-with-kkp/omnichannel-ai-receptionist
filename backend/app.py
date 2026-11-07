@@ -146,6 +146,18 @@ if web_dir.exists():
             return FileResponse(str(tenant_site_path))
         return {"error": f"Tenant site template not found for {tenant_id}"}
 
+    @app.get("/vapi-test")
+    @app.get("/test-vapi")
+    def serve_vapi_web_sdk_test():
+        """
+        Renders the dedicated Vapi Web SDK browser testing harness for WebRTC audio calls,
+        transcription streaming, volume metering, and in-call message injection.
+        """
+        test_path = web_dir / "vapi_web_sdk_test.html"
+        if test_path.exists():
+            return FileResponse(str(test_path))
+        return {"error": "Vapi Web SDK test page template not found"}
+
 @app.get("/health")
 def health_check():
     return {

@@ -96,7 +96,7 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
     if not phone:
         raise HTTPException(status_code=400, detail="phone_number is required")
 
-    vapi_key = os.getenv("VAPI_API_KEY", "").strip()
+    vapi_key = (os.getenv("VAPI_PRIVATE_API_KEY") or os.getenv("VAPI_API_KEY") or "").strip()
     asst_id = os.getenv("VAPI_ASSISTANT_ID", "").strip()
     phone_id = os.getenv("VAPI_PHONE_NUMBER_ID", "").strip()
 
@@ -143,6 +143,22 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
     except Exception as e:
         logger.error(f"Failed to place Vapi call: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/voice/vapi-config")
+def get_vapi_web_sdk_config():
+    """
+    Returns public Vapi Web SDK configuration parameters for browser WebRTC voice calls.
+    Exposes only the Public Key and Assistant ID safe for browser runtime.
+    """
+    public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
+    assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or "").strip()
+    return {
+        "status": "success",
+        "publicKey": public_key,
+        "assistantId": assistant_id,
+        "sdkLoaded": bool(public_key and assistant_id)
+    }
 
 
 
