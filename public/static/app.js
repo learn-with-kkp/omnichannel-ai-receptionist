@@ -497,6 +497,30 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
 }
 
+async function ensureVapiWebSdk() {
+  if (window.Vapi) return window.Vapi;
+  if (window.vapiSDK && window.vapiSDK.Vapi) {
+    window.Vapi = window.vapiSDK.Vapi;
+    return window.Vapi;
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "/vapi-sdk.js";
+    script.async = true;
+    script.onload = () => {
+      const cls = window.Vapi || (window.vapiSDK && window.vapiSDK.Vapi);
+      if (cls) {
+        window.Vapi = cls;
+        resolve(cls);
+      } else {
+        reject(new Error("Vapi Web SDK loaded but window.Vapi is undefined."));
+      }
+    };
+    script.onerror = () => reject(new Error("Failed to load /vapi-sdk.js"));
+    document.head.appendChild(script);
+  });
+}
+
 async function toggleVapiWebRTCCall() {
   const callBtn = document.getElementById("btnLiveVapiCall");
   const callLabel = document.getElementById("vapiCallBtnLabel");
@@ -522,12 +546,10 @@ async function toggleVapiWebRTCCall() {
       throw new Error("Missing VAPI_PUBLIC_API_KEY or VAPI_ASSISTANT_ID in backend.");
     }
 
-    if (!window.Vapi) {
-      throw new Error("Vapi Web SDK is not loaded. Please refresh.");
-    }
+    const VapiClass = await ensureVapiWebSdk();
 
     if (!vapiStudioClient) {
-      vapiStudioClient = new window.Vapi(cfg.publicKey);
+      vapiStudioClient = new VapiClass(cfg.publicKey);
 
       vapiStudioClient.on("call-start", () => {
         isVapiStudioCalling = true;
@@ -1316,10 +1338,23 @@ async function initClerkAuth() {
 
     if (window.Clerk.user) {
       const user = window.Clerk.user;
-      const email = user.primaryEmailAddress ? user.primaryEmailAddress.emailAddress : "user@luxesalon.com";
-      const fullName = user.fullName || email.split("@")[0];
+      const email = user.primaryEmailAddress ? user.primaryEmailAddress.emailAddress : "vip@luxesalon.com";
+      const phone = user.primaryPhoneNumber ? user.primaryPhoneNumber.phoneNumber : (user.phoneNumbers && user.phoneNumbers.length ? user.phoneNumbers[0].phoneNumber : "");
+      const fullName = user.fullName || user.firstName || email.split("@")[0] || "VIP Guest";
 
-      // Sync session with backend to get tenant workspace
+      // Auto-populate phone and name into fast call and appointment booking inputs
+      if (phone) {
+        const pInput = document.getElementById("outboundPhone");
+        if (pInput) pInput.value = phone;
+        const tPhone = document.getElementById("telnyxToPhone");
+        if (tPhone) tPhone.value = phone;
+      }
+      if (fullName) {
+        const nInput = document.getElementById("outboundName");
+        if (nInput) nInput.value = fullName;
+      }
+
+      // Sync session with backend to store phone number and email into Neon PostgreSQL
       try {
         const syncRes = await fetch("/api/auth/clerk-sync", {
           method: "POST",
@@ -1327,42 +1362,39 @@ async function initClerkAuth() {
           body: JSON.stringify({
             clerk_user_id: user.id,
             email: email,
+            phone: phone,
             name: fullName,
-            company_name: `${fullName}'s Salon`
+            company_name: "Luxe Saloon & Spa Guest"
           })
         });
         const syncData = await syncRes.json();
         if (syncData.token) {
           localStorage.setItem("paroi_auth_token", syncData.token);
-          if (syncData.user && syncData.user.tenant_id) {
-            currentTenantId = syncData.user.tenant_id;
-            const displayEl = document.getElementById("hubTenantDisplay");
-            if (displayEl) displayEl.textContent = currentTenantId;
-            updateEmbedSnippet();
-          }
+          currentTenantId = "salon";
         }
       } catch (err) {
         console.warn("Clerk sync warning:", err);
       }
 
       container.innerHTML = `
-        <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); padding:4px 10px; border-radius:var(--radius-full); border:1px solid var(--border-color);">
+        <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); padding:4px 12px; border-radius:var(--radius-full); border:1px solid var(--border-color);">
           <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:22px; height:22px; border-radius:50%;" alt="avatar">
-          <span style="font-size:12px; font-weight:600; color:#fff;">${escapeHtml(fullName)}</span>
+          <span style="font-size:12px; font-weight:600; color:#fff;">👑 VIP: ${escapeHtml(fullName)}</span>
+          ${phone ? `<span style="font-size:10px; color:#38bdf8; font-family:var(--font-mono);">${escapeHtml(phone)}</span>` : ''}
           <button onclick="window.Clerk.signOut().then(() => window.location.reload())" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; margin-left:4px;" title="Sign out">✕</button>
         </div>
       `;
 
       if (hubStatus) {
-        hubStatus.textContent = `🟢 Signed in (${email})`;
+        hubStatus.textContent = `🟢 Signed in (${email}${phone ? ' • ' + phone : ''})`;
         hubStatus.style.color = "var(--accent-emerald)";
       }
 
-      loadTenantIntegrations(currentTenantId);
+      loadTenantIntegrations("salon");
     } else {
       container.innerHTML = `
         <button class="btn-ghost" onclick="window.Clerk.openSignIn()" style="font-size:12px; padding:6px 12px;">Sign In</button>
-        <button class="btn-primary" onclick="window.Clerk.openSignUp()" style="font-size:12px; padding:6px 12px;">Sign Up</button>
+        <button class="btn-primary" onclick="window.Clerk.openSignUp()" style="font-size:12px; padding:6px 12px; background:#6366f1;">Join VIP</button>
       `;
       if (hubStatus) {
         hubStatus.textContent = "Clerk: Guest (Sign in to sync)";
@@ -1477,6 +1509,12 @@ function copyWidgetSnippet(btn) {
   copyText(snippet, btn);
 }
 
+function copyEmbedSnippet() {
+  const code = document.getElementById("embedCodeSnippet")?.innerText || '<script src="https://ai-voice-receptionist.kishor.tech/widget.js" data-tenant="salon"></script>';
+  const btn = document.getElementById("btnCopyEmbed");
+  copyText(code, btn);
+}
+
 function copyText(text, btn) {
   if (!navigator.clipboard) {
     const ta = document.createElement("textarea");
@@ -1492,5 +1530,220 @@ function copyText(text, btn) {
     const orig = btn.textContent;
     btn.textContent = "✅ Copied!";
     setTimeout(() => { btn.textContent = orig; }, 2000);
+  }
+}
+
+// --- Instant 500ms Callback ---
+async function triggerInstant500msCall() {
+  const phoneInput = document.getElementById("outboundPhone");
+  const nameInput = document.getElementById("outboundName");
+  const resultEl = document.getElementById("fastCallResult");
+  const btn = document.getElementById("btnFastCall");
+
+  const phone = (phoneInput?.value || "").trim();
+  const name = (nameInput?.value || "VIP Salon Guest").trim();
+
+  if (!phone) {
+    if (resultEl) {
+      resultEl.style.display = "block";
+      resultEl.style.color = "#f87171";
+      resultEl.innerHTML = "⚠️ Please enter a valid phone number (e.g. +16175550199) to receive Sofia's call.";
+    }
+    phoneInput?.focus();
+    return;
+  }
+
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = "⚡ Dialing in 500ms..."; }
+    if (resultEl) {
+      resultEl.style.display = "block";
+      resultEl.style.color = "#38bdf8";
+      resultEl.innerHTML = `⚡ Connecting to Vapi telephony core... Dialing <b>${escapeHtml(phone)}</b> now.`;
+    }
+
+    const res = await fetch("/api/voice/vapi-call", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone_number: phone,
+        customer_name: name,
+        tenant_id: "salon"
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.status !== "error") {
+      if (resultEl) {
+        resultEl.style.color = "#34d399";
+        resultEl.innerHTML = `✅ <b>Call initiated!</b> Sofia is ringing <b>${escapeHtml(phone)}</b> right now. Answer your phone to speak with your Luxe receptionist. (Call ID: ${escapeHtml(data.call_id || data.id || "live")})`;
+      }
+    } else {
+      if (resultEl) {
+        resultEl.style.color = "#f87171";
+        resultEl.innerHTML = `❌ Outbound dial failed: ${escapeHtml(data.detail || data.message || "Unknown error")}`;
+      }
+    }
+  } catch (err) {
+    if (resultEl) {
+      resultEl.style.color = "#f87171";
+      resultEl.innerHTML = `❌ Network error triggering outbound call: ${escapeHtml(err.message)}`;
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "⚡ Call My Phone in 500ms"; }
+  }
+}
+
+// --- Salon Menu PDF Knowledge Upload (Qdrant RAG) ---
+async function uploadSalonMenuPdf() {
+  const fileInput = document.getElementById("salonPdfInput");
+  const statusEl = document.getElementById("pdfUploadStatus");
+
+  if (!fileInput || !fileInput.files || !fileInput.files.length) return;
+  const file = fileInput.files[0];
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("tenant_id", "salon");
+
+  try {
+    if (statusEl) {
+      statusEl.style.display = "block";
+      statusEl.style.color = "#38bdf8";
+      statusEl.innerHTML = `⏳ Parsing <b>${escapeHtml(file.name)}</b> and indexing into Qdrant Cloud vector memory...`;
+    }
+
+    const res = await fetch("/api/knowledge/upload-pdf", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await res.json();
+    if (res.ok && data.status === "success") {
+      if (statusEl) {
+        statusEl.style.color = "#34d399";
+        statusEl.innerHTML = `✅ <b>Knowledge Indexed!</b> Added <b>${escapeHtml(file.name)}</b> (${data.total_pages} pages, ${data.indexed_chunks} semantic chunks). Sofia and Marcus can now answer pricing & policy questions from this document.`;
+      }
+      appendChatBubble("bot", `📚 I've digested the new salon menu document <b>${file.name}</b> (${data.indexed_chunks} chunks indexed in Qdrant). Feel free to ask me about any services, prices, or policies!`);
+    } else {
+      if (statusEl) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerHTML = `❌ Failed to index PDF: ${escapeHtml(data.detail || data.message || "Unknown error")}`;
+      }
+    }
+  } catch (err) {
+    if (statusEl) {
+      statusEl.style.color = "#f87171";
+      statusEl.innerHTML = `❌ PDF upload error: ${escapeHtml(err.message)}`;
+    }
+  } finally {
+    fileInput.value = "";
+  }
+}
+
+// --- Telnyx Direct SMS/WhatsApp Hub ---
+async function sendTelnyxDirectMessage() {
+  const phoneInput = document.getElementById("telnyxToPhone");
+  const msgInput = document.getElementById("telnyxMessageText");
+  const statusEl = document.getElementById("telnyxStatus");
+
+  const toPhone = (phoneInput?.value || "").trim();
+  const message = (msgInput?.value || "").trim();
+
+  if (!toPhone || !message) {
+    if (statusEl) {
+      statusEl.style.display = "block";
+      statusEl.style.color = "#f87171";
+      statusEl.innerHTML = "⚠️ Please provide both recipient phone number and message.";
+    }
+    return;
+  }
+
+  try {
+    if (statusEl) {
+      statusEl.style.display = "block";
+      statusEl.style.color = "#38bdf8";
+      statusEl.innerHTML = "⏳ Sending SMS via Telnyx (+1-912-499-9633)...";
+    }
+
+    const res = await fetch("/api/messaging/telnyx/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to_phone: toPhone,
+        message: message,
+        tenant_id: "salon"
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.status === "success") {
+      if (statusEl) {
+        statusEl.style.color = "#34d399";
+        statusEl.innerHTML = `✅ <b>Telnyx SMS Delivered!</b> Sent from <code>${escapeHtml(data.from || "+19124999633")}</code> to <code>${escapeHtml(toPhone)}</code> (Msg ID: ${escapeHtml(data.message_id || "sent")}).`;
+      }
+      if (msgInput) msgInput.value = "";
+    } else {
+      if (statusEl) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerHTML = `❌ Telnyx send failed: ${escapeHtml(data.detail || data.error || "Unknown error")}`;
+      }
+    }
+  } catch (err) {
+    if (statusEl) {
+      statusEl.style.color = "#f87171";
+      statusEl.innerHTML = `❌ Telnyx API error: ${escapeHtml(err.message)}`;
+    }
+  }
+}
+
+// --- WhatsApp Business VIP Marketing Broadcast ---
+async function sendWhatsAppMarketingBroadcast() {
+  const msgInput = document.getElementById("waCampaignMessage");
+  const statusEl = document.getElementById("waCampaignStatus");
+
+  const message = (msgInput?.value || "").trim();
+  if (!message) {
+    if (statusEl) {
+      statusEl.style.display = "block";
+      statusEl.style.color = "#f87171";
+      statusEl.innerHTML = "⚠️ Please enter campaign message copy.";
+    }
+    return;
+  }
+
+  try {
+    if (statusEl) {
+      statusEl.style.display = "block";
+      statusEl.style.color = "#38bdf8";
+      statusEl.innerHTML = "⏳ Dispatching WhatsApp broadcast from Luxe Saloon & Spa Business Account...";
+    }
+
+    const res = await fetch("/api/messaging/whatsapp/broadcast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: message,
+        audience: "all_vip",
+        tenant_id: "salon"
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.status === "success") {
+      if (statusEl) {
+        statusEl.style.color = "#34d399";
+        statusEl.innerHTML = `🎉 <b>WhatsApp Broadcast Dispatched!</b> Successfully sent to ${data.sent_count || 1} VIP customer(s) from Luxe Saloon & Spa WhatsApp Business!`;
+      }
+    } else {
+      if (statusEl) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerHTML = `❌ Broadcast error: ${escapeHtml(data.detail || data.error || "Unknown error")}`;
+      }
+    }
+  } catch (err) {
+    if (statusEl) {
+      statusEl.style.color = "#f87171";
+      statusEl.innerHTML = `❌ WhatsApp Broadcast request failed: ${escapeHtml(err.message)}`;
+    }
   }
 }

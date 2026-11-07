@@ -400,3 +400,66 @@ def test_clerk_sync_new_and_existing_user():
     assert data2["token"].startswith("clerk_sess_")
 
 
+def test_clerk_sync_with_phone_persisted():
+    payload = {
+        "clerk_user_id": "user_vip_phone_999",
+        "email": "vip_customer@luxesalon.com",
+        "phone": "+19124999633",
+        "name": "Sarah VIP Guest",
+        "company_name": "Luxe Saloon & Spa Guest"
+    }
+    res = client.post("/api/auth/clerk-sync", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["user"]["email"] == "vip_customer@luxesalon.com"
+
+
+def test_vapi_sdk_static_serving():
+    res = client.get("/vapi-sdk.js")
+    assert res.status_code == 200
+    assert "javascript" in res.headers["content-type"]
+    assert "window.Vapi" in res.text
+
+
+def test_telnyx_send_and_webhook():
+    payload = {
+        "to_phone": "+16175550199",
+        "message": "Your Luxe Saloon & Spa appointment is confirmed for tomorrow 2PM!",
+        "tenant_id": "salon"
+    }
+    res = client.post("/api/messaging/telnyx/send", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert "message_id" in data
+
+    # Webhook delivery receipt
+    wh_payload = {
+        "data": {
+            "event_type": "message.finalized",
+            "payload": {
+                "id": data["message_id"],
+                "to": [{"phone_number": "+16175550199", "status": "delivered"}]
+            }
+        }
+    }
+    wh_res = client.post("/webhook/telnyx", json=wh_payload)
+    assert wh_res.status_code == 200
+    assert wh_res.json()["status"] == "received"
+
+
+def test_whatsapp_marketing_broadcast():
+    payload = {
+        "message": "Exclusive 20% off all Balayage & HydraFacials this week at Luxe Saloon & Spa!",
+        "audience": "all_vip",
+        "tenant_id": "salon"
+    }
+    res = client.post("/api/messaging/whatsapp/broadcast", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "success"
+    assert data["sent_count"] >= 1
+
+
+

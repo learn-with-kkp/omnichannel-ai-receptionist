@@ -89,6 +89,36 @@ class NotificationDispatcher:
         logger.info(f"📱 [SIMULATION SMS] To: {to_phone} | Content: {text}")
         return {"status": "simulated", "channel": "sms", "recipient": to_phone, "content": text}
 
+    def send_telnyx_sms(self, to_phone: str, text: str) -> Dict[str, Any]:
+        """Dispatches an SMS/MMS message using Telnyx API."""
+        telnyx_key = os.getenv("TELNYX_API_KEY", "")
+        telnyx_from = os.getenv("TELNYX_PHONE_NUMBER", "+19124999633")
+        if telnyx_key and not telnyx_key.startswith("your_"):
+            try:
+                import httpx
+                headers = {
+                    "Authorization": f"Bearer {telnyx_key}",
+                    "Content-Type": "application/json"
+                }
+                payload = {
+                    "from": telnyx_from,
+                    "to": to_phone if to_phone.startswith("+") else f"+{to_phone}",
+                    "text": text
+                }
+                resp = httpx.post("https://api.telnyx.com/v2/messages", json=payload, headers=headers, timeout=10.0)
+                data = resp.json()
+                if resp.status_code in (200, 201, 202):
+                    msg_id = data.get("data", {}).get("id", "telnyx_msg")
+                    logger.info(f"✅ Dispatched Telnyx SMS to {to_phone} (ID: {msg_id})")
+                    return {"status": "sent", "provider": "telnyx", "message_id": msg_id, "to": to_phone}
+                else:
+                    logger.error(f"Telnyx SMS error {resp.status_code}: {resp.text}")
+            except Exception as e:
+                logger.error(f"Error sending Telnyx SMS: {e}")
+
+        logger.info(f"📱 [SIMULATION TELNYX SMS] To: {to_phone} | Content: {text}")
+        return {"status": "simulated", "provider": "telnyx", "to": to_phone, "content": text}
+
     def trigger_outbound_call(self, to_phone: str, twiml_url: Optional[str] = None, twiml_say: Optional[str] = None) -> Dict[str, Any]:
         """Triggers an outbound voice phone call via Twilio."""
         if self.is_twilio_configured():

@@ -509,4 +509,88 @@ def send_message_from_vapi_number(payload: DirectSMSRequest):
     }
 
 
+class TelnyxSendRequest(BaseModel):
+    to_phone: str
+    message: str
+    tenant_id: Optional[str] = "salon"
+
+
+class WhatsAppBroadcastRequest(BaseModel):
+    phone_numbers: Optional[list[str]] = None
+    audience: Optional[str] = "all_vip"
+    message: str
+    tenant_id: Optional[str] = "salon"
+    campaign_name: Optional[str] = "Luxe Salon VIP Special"
+
+
+@router.post("/api/messaging/telnyx/send")
+def send_telnyx_message(payload: TelnyxSendRequest):
+    """Sends SMS/MMS from Telnyx number to customer phone."""
+    res = notification_dispatcher.send_telnyx_sms(to_phone=payload.to_phone, text=payload.message)
+    msg_id = res.get("message_id") or "telnyx_msg_sim_01"
+    return {
+        "status": "success" if res.get("status") in ("sent", "simulated") else "failed",
+        "provider": "telnyx",
+        "to_number": payload.to_phone,
+        "from": os.getenv("TELNYX_PHONE_NUMBER", "+19124999633"),
+        "message_id": msg_id,
+        "detail": res
+    }
+
+
+@router.post("/api/messaging/whatsapp/broadcast")
+def broadcast_whatsapp_marketing(payload: WhatsAppBroadcastRequest):
+    """Pushes a marketing promotional message from Luxe Saloon & Spa WhatsApp Business account to customer numbers."""
+    numbers = payload.phone_numbers or []
+    if not numbers:
+        try:
+            from backend.database import get_all_customer_phones
+            numbers = get_all_customer_phones(payload.tenant_id or "salon")
+        except Exception as e:
+            logger.warning(f"Could not load customer phones from db: {e}")
+            numbers = []
+
+    if not numbers:
+        numbers = ["+19124999633", "+16175550199"]
+
+    deliveries = []
+    for num in numbers:
+        clean_num = str(num).strip()
+        if not clean_num:
+            continue
+        res = notification_dispatcher.send_whatsapp(to_phone=clean_num, text=payload.message)
+        deliveries.append({"phone": clean_num, "result": res})
+    return {
+        "status": "success",
+        "campaign": payload.campaign_name,
+        "total_sent": len(deliveries),
+        "sent_count": len(deliveries),
+        "deliveries": deliveries
+    }
+
+
+@router.post("/webhook/telnyx")
+async def handle_telnyx_inbound(request: Request):
+    """Receives inbound messages from Telnyx webhook and replies with AI receptionist orchestration."""
+    try:
+        body = await request.json()
+        data = body.get("data", {})
+        payload = data.get("payload", {})
+        from_phone = payload.get("from", {}).get("phone_number", "")
+        text = payload.get("text", "")
+        if from_phone and text:
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=text,
+                session_id=from_phone,
+                tenant_id="salon",
+                channel=OmniChannelType.SMS,
+                caller_phone=from_phone
+            )
+            notification_dispatcher.send_telnyx_sms(from_phone, orchestration["reply"])
+            return {"status": "success", "reply": orchestration["reply"]}
+    except Exception as e:
+        logger.error(f"Error handling Telnyx inbound: {e}")
+    return {"status": "received"}
+
+
 

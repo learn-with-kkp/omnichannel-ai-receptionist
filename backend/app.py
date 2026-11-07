@@ -170,6 +170,16 @@ if web_dir.exists():
             return FileResponse(str(widget_path), media_type="application/javascript")
         return Response(content="console.warn('Widget script not found');", media_type="application/javascript")
 
+    @app.get("/vapi-sdk.js")
+    def serve_vapi_sdk_script():
+        """
+        Serves the self-hosted, resilient Vapi Web SDK script.
+        """
+        sdk_path = web_dir / "vapi-sdk.js"
+        if sdk_path.exists():
+            return FileResponse(str(sdk_path), media_type="application/javascript")
+        return Response(content="console.warn('Vapi SDK script not found');", media_type="application/javascript")
+
 @app.get("/api/voice/vapi-config")
 def get_vapi_web_sdk_config():
     """Returns public Vapi Web SDK configuration for browser calling."""

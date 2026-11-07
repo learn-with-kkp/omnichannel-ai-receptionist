@@ -278,6 +278,19 @@ def _init_postgres_schema(db: DBConnectionContext):
         )
     """)
 
+    # 5b. Customers & VIP Profiles Table (Clerk & Omnichannel Sync)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            id VARCHAR(64) PRIMARY KEY,
+            clerk_id VARCHAR(128),
+            email VARCHAR(255),
+            phone VARCHAR(64),
+            full_name TEXT,
+            tenant_id VARCHAR(64) DEFAULT 'salon',
+            created_at TEXT NOT NULL
+        )
+    """)
+
     # 6. Tenant Integrations Table
     db.execute("""
         CREATE TABLE IF NOT EXISTS tenant_integrations (
@@ -441,6 +454,19 @@ def _init_sqlite_schema(db: DBConnectionContext):
             plan TEXT DEFAULT 'growth',
             created_at TEXT NOT NULL,
             FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        )
+    """)
+
+    # 5b. Customers & VIP Profiles Table (Clerk & Omnichannel Sync)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            clerk_id TEXT,
+            email TEXT,
+            phone TEXT,
+            full_name TEXT,
+            tenant_id TEXT DEFAULT 'salon',
+            created_at TEXT NOT NULL
         )
     """)
 
@@ -1278,3 +1304,84 @@ def update_tenant_plan(tenant_id: str, new_plan: str) -> bool:
     with DBConnectionContext() as db:
         db.execute("UPDATE users SET plan = ? WHERE tenant_id = ?", (new_plan, tenant_id))
         return db.rowcount > 0
+
+
+def save_customer_profile(
+    email: str = "",
+    phone: str = "",
+    full_name: str = "",
+    clerk_id: str = "",
+    tenant_id: str = "salon"
+) -> Dict[str, Any]:
+    """Saves or updates customer email, phone, and name into Neon PostgreSQL or SQLite."""
+    init_db()
+    clean_email = email.lower().strip() if email else ""
+    clean_phone = phone.strip() if phone else ""
+    now = datetime.now().isoformat()
+
+    with DBConnectionContext() as db:
+        existing = None
+        if clerk_id:
+            db.execute("SELECT * FROM customers WHERE clerk_id = ? LIMIT 1", (clerk_id,))
+            existing = db.fetchone()
+        if not existing and clean_email:
+            db.execute("SELECT * FROM customers WHERE email = ? LIMIT 1", (clean_email,))
+            existing = db.fetchone()
+        if not existing and clean_phone:
+            db.execute("SELECT * FROM customers WHERE phone = ? LIMIT 1", (clean_phone,))
+            existing = db.fetchone()
+
+        if existing:
+            cust_id = existing["id"]
+            db.execute(
+                "UPDATE customers SET email = ?, phone = ?, full_name = ?, clerk_id = ? WHERE id = ?",
+                (
+                    clean_email or existing.get("email", ""),
+                    clean_phone or existing.get("phone", ""),
+                    full_name or existing.get("full_name", ""),
+                    clerk_id or existing.get("clerk_id", ""),
+                    cust_id
+                )
+            )
+        else:
+            cust_id = f"cust_{secrets.token_hex(8)}"
+            db.execute(
+                "INSERT INTO customers (id, clerk_id, email, phone, full_name, tenant_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (cust_id, clerk_id, clean_email, clean_phone, full_name, tenant_id, now)
+            )
+
+    return {
+        "id": cust_id,
+        "clerk_id": clerk_id,
+        "email": clean_email,
+        "phone": clean_phone,
+        "full_name": full_name,
+        "tenant_id": tenant_id
+    }
+
+
+def get_customer_by_phone_or_email(phone: str = "", email: str = "") -> Optional[Dict[str, Any]]:
+    """Look up customer by phone or email address."""
+    init_db()
+    with DBConnectionContext() as db:
+        if phone:
+            db.execute("SELECT * FROM customers WHERE phone = ? LIMIT 1", (phone.strip(),))
+            row = db.fetchone()
+            if row:
+                return row
+        if email:
+            db.execute("SELECT * FROM customers WHERE email = ? LIMIT 1", (email.lower().strip(),))
+            row = db.fetchone()
+            if row:
+                return row
+    return None
+
+
+def get_all_customer_phones(tenant_id: str = "salon") -> List[str]:
+    """Retrieve distinct customer phone numbers for marketing broadcasts."""
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT DISTINCT phone FROM customers WHERE phone IS NOT NULL AND phone != '' AND tenant_id = ?", (tenant_id,))
+        rows = db.fetchall()
+        return [r["phone"] for r in rows if r.get("phone")]
+

@@ -12,6 +12,10 @@
       "dest": "/widget.js"
     },
     {
+      "src": "/vapi-sdk.js",
+      "dest": "/vapi-sdk.js"
+    },
+    {
       "src": "/vapi-call",
       "dest": "/vapi_web_sdk_test.html"
     },

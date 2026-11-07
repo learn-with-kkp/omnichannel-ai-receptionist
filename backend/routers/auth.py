@@ -19,6 +19,7 @@ from backend.database import (
     get_user_by_email,
     get_user_by_id,
     get_or_create_clerk_user,
+    save_customer_profile,
     get_tenant,
     verify_password,
     update_tenant_plan,
@@ -51,6 +52,7 @@ class LoginRequest(BaseModel):
 class ClerkSyncRequest(BaseModel):
     clerk_user_id: str
     email: str
+    phone: Optional[str] = ""
     name: Optional[str] = ""
     company_name: Optional[str] = ""
 
@@ -243,13 +245,23 @@ def get_clerk_config():
 def sync_clerk_session(payload: ClerkSyncRequest):
     """
     Synchronizes an authenticated Clerk user with tenant workspace,
-    returning a valid session token, tenant profile, and social integrations.
+    persisting email and phone into Neon PostgreSQL for future bookings and omnichannel messaging.
     """
     user = get_or_create_clerk_user(
         clerk_user_id=payload.clerk_user_id,
         email=payload.email,
-        company_name=payload.company_name or payload.name or "My Business"
+        company_name=payload.company_name or payload.name or "Luxe Saloon & Spa Guest"
     )
+
+    # Persist customer contact details (phone, email, name) for future use
+    customer = save_customer_profile(
+        email=payload.email,
+        phone=payload.phone or "",
+        full_name=payload.name or "",
+        clerk_id=payload.clerk_user_id,
+        tenant_id="salon"
+    )
+
     token = f"clerk_sess_{secrets.token_hex(20)}"
     ACTIVE_SESSIONS[token] = user["id"]
     
@@ -262,10 +274,13 @@ def sync_clerk_session(payload: ClerkSyncRequest):
         "user": {
             "id": user["id"],
             "email": user["email"],
+            "phone": payload.phone or "",
+            "name": payload.name or "",
             "company_name": user.get("company_name", ""),
             "tenant_id": user["tenant_id"],
             "plan": user.get("plan", "growth")
         },
+        "customer": customer,
         "tenant": tenant,
         "integrations": integrations
     }

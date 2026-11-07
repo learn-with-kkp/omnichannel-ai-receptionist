@@ -18,3 +18,4 @@ google-auth>=2.20.0
 twilio>=9.0.0
 openai>=1.20.0
 cartesia>=1.0.0
+pypdf>=5.0.0

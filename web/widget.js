@@ -656,19 +656,39 @@
   tabCall.addEventListener('click', () => switchTab('call'));
   tabChat.addEventListener('click', () => switchTab('chat'));
 
-  // 6. Dynamically load Vapi Web SDK script
+  // 6. Dynamically load Vapi Web SDK script with local + CDN fallback
   function ensureVapiSdkLoaded() {
     return new Promise((resolve, reject) => {
       if (window.Vapi) return resolve(window.Vapi);
-      const script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/index.umd.js';
-      script.async = true;
-      script.onload = () => {
-        if (window.Vapi) resolve(window.Vapi);
-        else reject(new Error('Vapi SDK loaded but window.Vapi undefined'));
-      };
-      script.onerror = () => reject(new Error('Failed to load Vapi Web SDK CDN'));
-      document.head.appendChild(script);
+      if (window.vapiSDK && window.vapiSDK.Vapi) {
+        window.Vapi = window.vapiSDK.Vapi;
+        return resolve(window.Vapi);
+      }
+
+      const localUrl = `${config.apiBase || ''}/vapi-sdk.js`;
+      const fallbackUrl = 'https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js';
+
+      function loadScript(url, onFail) {
+        const script = document.createElement('script');
+        script.src = url;
+        script.async = true;
+        script.onload = () => {
+          if (window.Vapi) return resolve(window.Vapi);
+          if (window.vapiSDK && window.vapiSDK.Vapi) {
+            window.Vapi = window.vapiSDK.Vapi;
+            return resolve(window.Vapi);
+          }
+          if (onFail) onFail();
+          else reject(new Error('Vapi SDK loaded but window.Vapi undefined'));
+        };
+        script.onerror = () => {
+          if (onFail) onFail();
+          else reject(new Error('Failed to load Vapi Web SDK'));
+        };
+        document.head.appendChild(script);
+      }
+
+      loadScript(localUrl, () => loadScript(fallbackUrl, null));
     });
   }
 
