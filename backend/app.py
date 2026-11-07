@@ -158,6 +158,18 @@ if web_dir.exists():
             return FileResponse(str(test_path))
         return {"error": "Vapi Web SDK test page template not found"}
 
+@app.get("/api/voice/vapi-config")
+def get_vapi_web_sdk_config():
+    """Returns public Vapi Web SDK configuration for browser calling."""
+    public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
+    assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or "").strip()
+    return {
+        "status": "success",
+        "publicKey": public_key,
+        "assistantId": assistant_id,
+        "sdkLoaded": bool(public_key and assistant_id)
+    }
+
 @app.get("/health")
 def health_check():
     return {
