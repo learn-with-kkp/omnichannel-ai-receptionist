@@ -1164,3 +1164,143 @@ tr:hover td {
   .hero-stats-row { grid-template-columns: 1fr; }
   .telemetry-row { flex-direction: column; align-items: stretch; }
 }
+
+/* =====================================================================
+   LUXE SALOON & SPA MODERN CONCIERGE & CHAT ENHANCEMENTS
+   ===================================================================== */
+
+.chat-container {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 !important;
+  width: 100% !important;
+  min-height: 420px !important;
+}
+
+.chat-messages {
+  flex: 1 !important;
+  min-height: 320px !important;
+  max-height: 440px !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  background: rgba(11, 15, 25, 0.75) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  margin-bottom: 12px !important;
+  scroll-behavior: smooth !important;
+}
+
+.chat-input-row {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  width: 100% !important;
+  margin-top: auto !important;
+}
+
+.chat-input-row input[type="text"] {
+  flex: 1 !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 44px !important;
+  padding: 0 16px !important;
+  background: rgba(18, 24, 38, 0.85) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 10px !important;
+  color: #ffffff !important;
+  font-size: 13.5px !important;
+  outline: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.chat-input-row input[type="text"]:focus {
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25) !important;
+}
+
+.chat-doc-btn {
+  height: 44px !important;
+  width: 44px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 10px !important;
+  color: #a5b4fc !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.chat-doc-btn:hover {
+  background: rgba(99, 102, 241, 0.2) !important;
+  border-color: rgba(99, 102, 241, 0.45) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+.chat-send-btn {
+  height: 44px !important;
+  padding: 0 20px !important;
+  background: linear-gradient(135deg, #0284c7, #0369a1) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 10px !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 13.5px !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.chat-send-btn:hover {
+  background: linear-gradient(135deg, #0ea5e9, #0284c7) !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.4) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Toast Notifications */
+@keyframes toastSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.booking-toast {
+  pointer-events: auto;
+  border-radius: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  animation: toastSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast-booked, .toast-success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45), 0 0 18px rgba(16, 185, 129, 0.4);
+}
+
+.toast-cancelled, .toast-cancel {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45), 0 0 18px rgba(239, 68, 68, 0.4);
+}
+
