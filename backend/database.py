@@ -58,7 +58,7 @@ try:
 except ImportError:
     PSYCOPG2_AVAILABLE = False
 
-DEFAULT_TENANT_ID = "default_salon"
+DEFAULT_TENANT_ID = os.getenv("DEFAULT_TENANT_ID", "salon")
 
 def get_database_url() -> Optional[str]:
     """Retrieves Neon / PostgreSQL connection string from environment."""
@@ -724,9 +724,12 @@ def book_new_appointment(
     tenant_id: str = DEFAULT_TENANT_ID,
     channel: str = "voice",
     accent: str = "red_american",
-    notes: str = ""
+    notes: str = "",
+    caller_email: str = ""
 ) -> Dict[str, Any]:
     init_db()
+    if not tenant_id or tenant_id in ("default_salon", "default"):
+        tenant_id = "salon"
     dt_clean = appointment_datetime.replace("Z", "")
     start_dt = datetime.fromisoformat(dt_clean)
 
@@ -756,7 +759,8 @@ def book_new_appointment(
                     duration_minutes=duration,
                     description=f"Staff: {stylist_name}\nChannel: {channel}\nAccent: {accent}\nNotes: {notes}",
                     location=tenant_info.get("address", ""),
-                    attendee_phone=caller_phone
+                    attendee_phone=caller_phone,
+                    attendee_email=caller_email
                 )
                 gcal_event_id = gcal_res.get("id", "")
             except Exception as e:

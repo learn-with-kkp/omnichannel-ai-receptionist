@@ -51,14 +51,17 @@ def sync_appointment_to_google_sheets(appointment: Dict[str, Any], tenant_id: st
         logger.info(f"🧪 [TEST RUNNER] Skipped live Google Sheets sync for test booking {appointment.get('booking_id')}")
         return True
 
-    # Filter out default_salon and synthetic test appointments
+    # Filter out synthetic automated test appointments
     try:
         from backend.excel_manager import is_real_user_appointment
-        if not is_real_user_appointment(appointment) or tenant_id == "default_salon":
-            logger.info(f"🛡️ Skipped Google Sheets sync for synthetic test/default_salon booking '{appointment.get('booking_id')}'")
+        if not is_real_user_appointment(appointment):
+            logger.info(f"🛡️ Skipped Google Sheets sync for test booking '{appointment.get('booking_id')}'")
             return True
     except Exception:
         pass
+
+    if not tenant_id or tenant_id in ("default_salon", "default"):
+        tenant_id = "salon"
 
     load_dotenv(dotenv_path=env_path)
     sheet_id = get_google_sheet_id()
@@ -124,7 +127,6 @@ def rebuild_real_user_google_sheet(sheet_id: Optional[str] = None) -> bool:
                 SELECT id, tenant_id, caller_name, caller_phone, service_name, stylist_name,
                        start_time, status, created_at, whatsapp_24h_sent, call_1h_sent
                 FROM appointments
-                WHERE tenant_id != 'default_salon'
                 ORDER BY start_time ASC
             """)
             rows = db.fetchall() if hasattr(db, 'fetchall') else cursor.fetchall()

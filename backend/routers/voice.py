@@ -333,6 +333,9 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
         resolved_tenant_id = db_tenant.get("id", tenant_id)
         salon_name = db_tenant.get("name", "Luxe Salon & Spa")
 
+    if resolved_tenant_id in ("default_salon", "default", ""):
+        resolved_tenant_id = "salon"
+
     resolved_tenant = tenant_registry.get_tenant(resolved_tenant_id)
     results = []
 
@@ -373,14 +376,14 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
             name = args.get("caller_name") or "Valued Guest"
             # Default fallback: if no explicit whatsapp_number is provided, use caller_phone or inbound caller phone!
             phone = args.get("whatsapp_number") or args.get("caller_phone") or inbound_phone or "+16673070119"
-            email = args.get("caller_email") or ""
+            email = args.get("caller_email") or args.get("email") or ""
             service_name = args.get("service_name") or "Womens Haircut"
             dt = args.get("appointment_datetime") or "2026-11-06T14:00:00"
             stylist_name = args.get("stylist_name") or "Elena"
             if stylist_name.lower() == "any":
                 stylist_name = "Elena"
 
-            booking = book_new_appointment(name, phone, service_name, dt, stylist_name, tenant_id=resolved_tenant_id)
+            booking = book_new_appointment(name, phone, service_name, dt, stylist_name, tenant_id=resolved_tenant_id, caller_email=email)
             
             # Send WhatsApp confirmation message directly
             try:
@@ -396,10 +399,23 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
             except Exception as wa_err:
                 logger.warning(f"WhatsApp dispatch notice: {wa_err}")
 
+            # Send Instant Email Confirmation
+            if email and "@" in email:
+                try:
+                    notification_dispatcher.send_email(
+                        to_email=email,
+                        subject=f"✨ Your Appointment is Confirmed at {salon_name} (#{booking['booking_id']})",
+                        booking_data=booking
+                    )
+                    logger.info(f"✅ Instant email confirmation dispatched to {email}")
+                except Exception as mail_err:
+                    logger.warning(f"Email dispatch warning: {mail_err}")
+
+            email_mention = f" and an email confirmation has been sent to {email}" if email else ""
             res_text = (
                 f"You're all set, {name}! Your appointment for a {service_name} with {stylist_name} is confirmed for "
                 f"{booking['start_time']}. Your booking reference is {booking['booking_id']}. "
-                f"A calendar invite has been created and a WhatsApp confirmation has been sent to {phone}."
+                f"A calendar invite has been created, a WhatsApp confirmation has been sent to {phone}{email_mention}."
             )
             results.append(ToolResult(toolCallId=call_id, result=res_text))
 

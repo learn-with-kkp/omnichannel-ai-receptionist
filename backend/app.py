@@ -279,8 +279,7 @@ def list_appointments(tenant_id: Optional[str] = None):
     all_appts = list_all_appointments(tenant_id)
     real_appts = [
         a for a in all_appts
-        if a.get("tenant_id") != "default_salon"
-        and a.get("caller_name", "").lower() not in (
+        if a.get("caller_name", "").lower() not in (
             "sarah connor", "elena fisher", "automated verification test", "test client", "david beckham", "alexander hamilton", "grace hopper"
         )
     ]

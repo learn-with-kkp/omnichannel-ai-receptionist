@@ -99,10 +99,12 @@ class GoogleCalendarService:
         description: str = "",
         location: str = "",
         attendee_phone: str = "",
+        attendee_email: Optional[str] = None,
         calendar_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Inserts a confirmed booking event onto Google Calendar.
+        Automatically dispatches Google Calendar invitation email if attendee_email is provided.
         """
         cal_id = calendar_id or self.calendar_id
         start_dt = datetime.fromisoformat(start_time_iso)
@@ -111,7 +113,7 @@ class GoogleCalendarService:
         event_body = {
             "summary": summary,
             "location": location,
-            "description": f"{description}\nCustomer Phone: {attendee_phone}",
+            "description": f"{description}\nCustomer Phone: {attendee_phone}" + (f"\nCustomer Email: {attendee_email}" if attendee_email else ""),
             "start": {
                 "dateTime": start_dt.isoformat(),
                 "timeZone": "America/New_York",
@@ -129,10 +131,20 @@ class GoogleCalendarService:
             },
         }
 
+        if attendee_email and "@" in attendee_email:
+            event_body["attendees"] = [{"email": attendee_email, "displayName": summary.split(" - ")[-1] if " - " in summary else "Guest"}]
+
         if self.service and not os.getenv("PYTEST_CURRENT_TEST"):
             try:
-                created = self.service.events().insert(calendarId=cal_id, body=event_body).execute()
-                logger.info(f"✅ Created Google Calendar event ID: {created.get('id')}")
+                created = self.service.events().insert(
+                    calendarId=cal_id,
+                    body=event_body,
+                    sendUpdates="all" if attendee_email else "none"
+                ).execute()
+                logger.info(f"✅ Created Google Calendar event ID: {created.get('id')} (Email notification sent to: {attendee_email})")
+                return created
+            except Exception as e:
+                logger.error(f"Failed to create Google Calendar event: {e}")
                 return created
             except Exception as e:
                 logger.error(f"Failed to create Google Calendar event: {e}")

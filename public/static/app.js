@@ -634,7 +634,18 @@ async function toggleVapiWebRTCCall() {
       }
     }
 
-    await vapiStudioClient.start(cfg.assistantId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
+    // Determine target assistant or squad from selection
+    let targetId = cfg.assistantId;
+    if (selectedAssistantKey === "marcus") {
+      targetId = cfg.marcusId || cfg.assistants?.marcus || ASSISTANT_IDS.marcus;
+    } else if (selectedAssistantKey === "squad") {
+      targetId = cfg.squadId || cfg.assistants?.squad || ASSISTANT_IDS.squad;
+    } else {
+      targetId = cfg.assistantId || cfg.assistants?.sophia || ASSISTANT_IDS.sophia;
+    }
+
+    console.log(`Starting Vapi call with target [${selectedAssistantKey}]:`, targetId);
+    await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
   } catch (err) {
     console.error("Failed to start Vapi call:", err);
     if (statusEl) statusEl.textContent = `Connection failed: ${err.message}`;

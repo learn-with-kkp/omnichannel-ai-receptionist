@@ -284,6 +284,64 @@ class UniversalReceptionistOrchestrator:
         """
         return text
 
+    def generate_rag_answer(
+        self,
+        tenant: Any,
+        user_message: str,
+        retrieved_context: str,
+        accent: AccentProfile,
+        caller_name: Optional[str] = None
+    ) -> str:
+        """
+        Synthesizes an intelligent, accurate response using OpenAI gpt-4o-mini grounded in
+        tenant knowledge and any uploaded PDF / salon documents retrieved from Qdrant.
+        """
+        api_key = os.getenv("OPENAI_API_KEY", "")
+        if not api_key or api_key.startswith("your_"):
+            return (
+                f"Thank you for contacting {tenant.name}! We are located at {tenant.address}. "
+                f"Our business hours are {tenant.business_hours.open_time} to {tenant.business_hours.close_time}. "
+                f"We offer professional {', '.join([s.name for s in tenant.services[:3]])} and more. "
+                f"Would you like to check availability or book an appointment?"
+            )
+
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+
+            system_prompt = (
+                f"You are Sophia, the warm, articulate, and attentive AI receptionist at {tenant.name}, "
+                f"located at {tenant.address}. Phone: {tenant.phone}.\n\n"
+                f"=== SALON SERVICES & KNOWLEDGE BASE ===\n"
+                f"{tenant.to_system_prompt_context()}\n\n"
+                f"=== UPLOADED DOCUMENTS & POLICIES (FROM QDRANT VECTOR RAG) ===\n"
+                f"{retrieved_context or 'No external document uploaded yet.'}\n\n"
+                f"Directives:\n"
+                f"1. Answer the guest's question warmly, concisely (2-3 spoken sentences), and accurately based on the salon knowledge and uploaded PDF documents.\n"
+                f"2. If the guest asks about custom services, bridal packages, or policies found in the uploaded documents, cite the details clearly.\n"
+                f"3. Offer to check availability or reserve an appointment.\n"
+                f"4. Never hallucinate services not in the catalog or documents."
+            )
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ]
+
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                max_tokens=220,
+                temperature=0.3
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f"OpenAI RAG generation warning: {e}")
+            return (
+                f"Thank you for reaching out to {tenant.name}! We offer {', '.join([s.name for s in tenant.services[:3]])}. "
+                f"How can I assist you with booking or service details today?"
+            )
+
     @observe(name="receptionist-turn", as_type="agent")
     def process_conversation_turn(
         self,
@@ -483,11 +541,29 @@ class UniversalReceptionistOrchestrator:
                 )
 
             else:
-                response_text = (
-                    f"Thank you for contacting {tenant.name}! We are located at {tenant.address}. "
-                    f"Our business hours are {tenant.business_hours.open_time} to {tenant.business_hours.close_time}. "
-                    f"We offer professional {', '.join([s.name for s in tenant.services[:3]])} and more. "
-                    f"Would you like to book an appointment or check open slots?"
+                # FAQ, general inquiry, policy query, or questions about uploaded PDF / salon documents
+                doc_context = ""
+                try:
+                    from core.engine.qdrant_rag import qdrant_engine
+                    clean_tid = (tenant.id or "salon").lower()
+                    if clean_tid in ("salon_luxe", "salon"):
+                        q_res = qdrant_engine.retrieve(tenant_id="salon", query=user_message, top_k=3)
+                        if not q_res.get("context_text"):
+                            q_res = qdrant_engine.retrieve(tenant_id="salon_luxe", query=user_message, top_k=3)
+                    else:
+                        q_res = qdrant_engine.retrieve(tenant_id=clean_tid, query=user_message, top_k=3)
+                    if q_res and q_res.get("context_text"):
+                        doc_context = q_res["context_text"]
+                except Exception as q_err:
+                    logger.debug(f"Qdrant query exception: {q_err}")
+
+                combined_context = f"{retrieval.get('context_text', '')}\n\n{doc_context}".strip()
+                response_text = self.generate_rag_answer(
+                    tenant=tenant,
+                    user_message=user_message,
+                    retrieved_context=combined_context,
+                    accent=accent,
+                    caller_name=caller_name
                 )
 
         styled_response = self.format_accented_response(response_text, accent)

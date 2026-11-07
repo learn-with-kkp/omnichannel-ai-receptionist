@@ -66,12 +66,12 @@ def is_real_user_appointment(appointment: Dict[str, Any]) -> bool:
     caller_name = str(appointment.get("caller_name", "")).strip().lower()
     caller_phone = str(appointment.get("caller_phone", "")).strip().lower()
 
-    # Explicitly filter out default_salon test records
-    if tenant_id in ("default_salon", "test_salon", "test"):
-        return False
-
     # Filter out explicit test tags
     if appointment.get("is_test"):
+        return False
+
+    # Filter out test tenants (allow salon, salon_luxe, default_salon)
+    if tenant_id in ("test_salon", "test", "demo_tenant"):
         return False
 
     # Filter out synthetic mock names
