@@ -23,6 +23,7 @@ class ChatMessageRequest(BaseModel):
     accent: Optional[str] = "red_american"
     caller_name: Optional[str] = "Guest"
     caller_phone: Optional[str] = "+16673070119"
+    caller_email: Optional[str] = ""
     session_id: Optional[str] = "default-session"
     channel: Optional[str] = "website_chat"
 
@@ -47,7 +48,8 @@ async def send_chat_message(payload: ChatMessageRequest):
         channel=ch_type,
         accent_key=payload.accent or "red_american",
         caller_phone=payload.caller_phone,
-        caller_name=payload.caller_name
+        caller_name=payload.caller_name,
+        caller_email=payload.caller_email or ""
     )
 
     return result

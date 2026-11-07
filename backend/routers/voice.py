@@ -377,6 +377,14 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
             # Default fallback: if no explicit whatsapp_number is provided, use caller_phone or inbound caller phone!
             phone = args.get("whatsapp_number") or args.get("caller_phone") or inbound_phone or "+16673070119"
             email = args.get("caller_email") or args.get("email") or ""
+            if not email:
+                try:
+                    from backend.database import get_customer_by_phone_or_email
+                    cust = get_customer_by_phone_or_email(phone=phone)
+                    if cust and cust.get("email"):
+                        email = cust["email"]
+                except Exception:
+                    pass
             service_name = args.get("service_name") or "Womens Haircut"
             dt = args.get("appointment_datetime") or "2026-11-06T14:00:00"
             stylist_name = args.get("stylist_name") or "Elena"

@@ -351,7 +351,8 @@ class UniversalReceptionistOrchestrator:
         channel: OmniChannelType = OmniChannelType.WEBSITE_CHAT,
         accent_key: Optional[str] = "general_american",
         caller_phone: Optional[str] = None,
-        caller_name: Optional[str] = None
+        caller_name: Optional[str] = None,
+        caller_email: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Universal entry point processing a single conversational turn across ANY channel.
@@ -428,9 +429,10 @@ class UniversalReceptionistOrchestrator:
                             stylist_name=st_name,
                             tenant_id=tenant.id,
                             channel=channel.value,
-                            accent=accent.key
+                            accent=accent.key,
+                            caller_email=caller_email or ""
                         )
-                        notification_dispatcher.dispatch_booking_confirmation(booking_res, channel=channel.value)
+                        notification_dispatcher.dispatch_booking_confirmation(booking_res, channel=channel.value, recipient_email=caller_email)
 
                     booking_data = booking_res
                     action_performed = "booked"

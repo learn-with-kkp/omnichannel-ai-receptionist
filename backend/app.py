@@ -322,11 +322,12 @@ class DirectBookRequest(BaseModel):
     appointment_datetime: Optional[str] = None
     tenant_id: Optional[str] = "salon"
     notes: Optional[str] = ""
+    caller_email: Optional[str] = ""
 
 
 @app.post("/api/appointments/book")
 def direct_book_appointment(payload: DirectBookRequest):
-    """Direct 1-click slot booking into Neon PostgreSQL and Google Calendar."""
+    """Direct 1-click slot booking into Neon PostgreSQL, Google Calendar, and automated email confirmation."""
     dt = payload.appointment_datetime
     if not dt:
         dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT14:00:00")
@@ -338,11 +339,12 @@ def direct_book_appointment(payload: DirectBookRequest):
         stylist_name=payload.stylist_name or "Marcus",
         tenant_id=payload.tenant_id or "salon",
         channel="web_portal",
-        notes=payload.notes or "Booked via Luxe Saloon VIP Schedule"
+        notes=payload.notes or "Booked via Luxe Saloon VIP Schedule",
+        caller_email=payload.caller_email or ""
     )
     try:
         from backend.database import save_customer_profile
-        save_customer_profile(phone=payload.caller_phone, full_name=payload.caller_name, tenant_id=payload.tenant_id or "salon")
+        save_customer_profile(phone=payload.caller_phone, full_name=payload.caller_name, email=payload.caller_email or "", tenant_id=payload.tenant_id or "salon")
     except Exception as e:
         logger.warning(f"Could not save customer profile: {e}")
     return {"status": "success", "booking": res}

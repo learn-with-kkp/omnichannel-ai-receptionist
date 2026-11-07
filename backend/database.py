@@ -730,6 +730,13 @@ def book_new_appointment(
     init_db()
     if not tenant_id or tenant_id in ("default_salon", "default"):
         tenant_id = "salon"
+    
+    # Auto-resolve customer email if not provided explicitly
+    if not caller_email:
+        cust = get_customer_by_phone_or_email(phone=caller_phone)
+        if cust and cust.get("email"):
+            caller_email = cust["email"]
+
     dt_clean = appointment_datetime.replace("Z", "")
     start_dt = datetime.fromisoformat(dt_clean)
 
@@ -804,6 +811,19 @@ def book_new_appointment(
         sync_appointment_to_google_sheets(booking_record, tenant_id=tenant_id)
     except Exception as e:
         logger.error(f"❌ Google sheets sync failed: {e}", exc_info=True)
+
+    # 3. Automatic Email Confirmation to Customer (Signup Email or Stated Email)
+    if caller_email and "@" in caller_email:
+        try:
+            from core.notifications import notification_dispatcher
+            notification_dispatcher.send_email(
+                to_email=caller_email,
+                subject=f"✨ Luxe Saloon & Spa Booking Confirmation (#{booking_id})",
+                booking_data=booking_record
+            )
+            logger.info(f"✅ Dispatched automated confirmation email to {caller_email}")
+        except Exception as mail_err:
+            logger.warning(f"Email dispatch warning: {mail_err}")
 
     return {
         "booking_id": booking_id,
@@ -1365,10 +1385,16 @@ def save_customer_profile(
 
 
 def get_customer_by_phone_or_email(phone: str = "", email: str = "") -> Optional[Dict[str, Any]]:
-    """Look up customer by phone or email address."""
+    """Look up customer by phone or email address with suffix matching."""
     init_db()
     with DBConnectionContext() as db:
         if phone:
+            clean_digits = "".join(filter(str.isdigit, phone))[-10:]
+            if clean_digits:
+                db.execute("SELECT * FROM customers WHERE phone LIKE ? AND email IS NOT NULL AND email != '' LIMIT 1", (f"%{clean_digits}%",))
+                row = db.fetchone()
+                if row:
+                    return row
             db.execute("SELECT * FROM customers WHERE phone = ? LIMIT 1", (phone.strip(),))
             row = db.fetchone()
             if row:

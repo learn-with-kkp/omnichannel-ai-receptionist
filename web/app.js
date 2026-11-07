@@ -818,6 +818,8 @@ function sendQuickMsg(text) {
 async function processMessageTurn(messageText) {
   const phone = document.getElementById("outboundPhone")?.value.trim() || "+16673070119";
   const name = document.getElementById("outboundName")?.value.trim() || "Web Guest";
+  const user = getCachedVipUser();
+  const email = (user && user.email) || document.getElementById("modalGuestEmail")?.value.trim() || "";
 
   try {
     const t0 = performance.now();
@@ -830,6 +832,7 @@ async function processMessageTurn(messageText) {
         accent: currentAccentKey,
         caller_name: name,
         caller_phone: phone,
+        caller_email: email,
         session_id: "web-session-user"
       })
     });
@@ -1561,6 +1564,75 @@ function getCachedVipUser() {
   return null;
 }
 
+
+function setVipGatedState(isSignedIn) {
+  const overlay = document.getElementById("vipGateOverlay");
+  const bannerBtn = document.getElementById("btnHighlightTestVoice");
+  const heroBtn = document.getElementById("btnHeroTestVoice");
+  
+  if (overlay) {
+    if (isSignedIn) {
+      overlay.classList.add("hidden");
+    } else {
+      overlay.classList.remove("hidden");
+    }
+  }
+
+  if (bannerBtn) {
+    if (isSignedIn) {
+      bannerBtn.innerHTML = '<span>🎙️</span> Start Live Voice Call with Sofia';
+      bannerBtn.onclick = () => {
+        document.getElementById("voice-studio")?.scrollIntoView({ behavior: "smooth" });
+        toggleVapiWebRTCCall();
+      };
+    } else {
+      bannerBtn.innerHTML = '<span>✨</span> FREE TEST VOICE AI ASSISTANT';
+      bannerBtn.onclick = () => openClerkSignUp();
+    }
+  }
+
+  if (heroBtn) {
+    if (isSignedIn) {
+      heroBtn.innerHTML = '<span>🎙️</span> Talk with Sofia Live (WebRTC)';
+      heroBtn.onclick = () => {
+        document.getElementById("voice-studio")?.scrollIntoView({ behavior: "smooth" });
+        toggleVapiWebRTCCall();
+      };
+    } else {
+      heroBtn.innerHTML = '<span>✨</span> Free Test Voice AI Assistant';
+      heroBtn.onclick = () => openClerkSignUp();
+    }
+  }
+}
+
+function handleHeroVoiceClick() {
+  const user = getCachedVipUser();
+  if (user) {
+    document.getElementById("voice-studio")?.scrollIntoView({ behavior: "smooth" });
+    toggleVapiWebRTCCall();
+  } else {
+    openClerkSignUp();
+  }
+}
+
+function dismissLuxePreloader() {
+  const preloader = document.getElementById("luxePreloader");
+  if (preloader) {
+    preloader.classList.add("fade-out");
+    setTimeout(() => {
+      preloader.style.display = "none";
+    }, 450);
+  }
+}
+
+if (document.readyState === "loading") {
+  window.addEventListener("DOMContentLoaded", () => {
+    setTimeout(dismissLuxePreloader, 350);
+  });
+} else {
+  setTimeout(dismissLuxePreloader, 350);
+}
+
 function renderClerkSignedInUI(profile) {
   if (!profile) return;
   const fullName = profile.name || "VIP Guest";
@@ -1623,6 +1695,7 @@ function renderClerkSignedInUI(profile) {
     hubStatus.style.color = "var(--accent-emerald)";
   }
 
+  setVipGatedState(true);
   loadTenantIntegrations("salon");
 }
 
@@ -1673,6 +1746,8 @@ function renderClerkSignedOutState() {
     hubStatus.textContent = "Clerk: Guest (Sign in to sync)";
     hubStatus.style.color = "var(--text-muted)";
   }
+
+  setVipGatedState(false);
 }
 
 async function initClerkAuth() {
@@ -2171,8 +2246,11 @@ function openBookingModal(serviceText, stylistText) {
   const savedPhone = document.getElementById("outboundPhone")?.value || "";
   const savedName = document.getElementById("outboundName")?.value || "";
 
+  const eInput = document.getElementById("modalGuestEmail");
+  const cachedUser = getCachedVipUser();
   if (pInput && savedPhone) pInput.value = savedPhone;
   if (nInput && savedName) nInput.value = savedName;
+  if (eInput && !eInput.value && cachedUser && cachedUser.email) eInput.value = cachedUser.email;
 
   modal.style.display = "flex";
 }
@@ -2188,8 +2266,11 @@ async function submitModalBooking() {
   const feedback = document.getElementById("modalBookingFeedback");
   const btn = document.getElementById("btnConfirmModalBooking");
 
+  const emailInput = document.getElementById("modalGuestEmail");
+  const cachedUser = getCachedVipUser();
   const name = (nameInput?.value || "").trim();
   const phone = (phoneInput?.value || "").trim();
+  const email = (emailInput?.value || "").trim() || (cachedUser?.email || "");
 
   if (!name || !phone) {
     if (feedback) {
@@ -2201,7 +2282,7 @@ async function submitModalBooking() {
 
   try {
     if (btn) { btn.disabled = true; btn.textContent = "⏳ Confirming & Syncing..."; }
-    if (feedback) { feedback.style.color = "#38bdf8"; feedback.textContent = "Connecting to Neon PostgreSQL & Calendar..."; }
+    if (feedback) { feedback.style.color = "#38bdf8"; feedback.textContent = "Connecting to Neon PostgreSQL, Calendar & Email Dispatch..."; }
 
     const res = await fetch("/api/appointments/book", {
       method: "POST",
@@ -2209,6 +2290,7 @@ async function submitModalBooking() {
       body: JSON.stringify({
         caller_name: name,
         caller_phone: phone,
+        caller_email: email,
         service_name: activeBookingPayload.service,
         stylist_name: activeBookingPayload.stylist,
         tenant_id: "salon",
@@ -2219,10 +2301,11 @@ async function submitModalBooking() {
     const data = await res.json();
     if (res.ok && data.status === "success") {
       const b = data.booking || {};
-      showToastNotification("booked", "VIP Appointment Confirmed!", `${escapeHtml(activeBookingPayload.service)} with ${escapeHtml(activeBookingPayload.stylist)} for ${escapeHtml(name)} (Ref: ${b.booking_id || "LUXE-VIP"}).`);
+      const emailNote = email ? ` A confirmation email has been dispatched to ${escapeHtml(email)}.` : "";
+      showToastNotification("booked", "VIP Appointment Confirmed!", `${escapeHtml(activeBookingPayload.service)} with ${escapeHtml(activeBookingPayload.stylist)} for ${escapeHtml(name)} (Ref: ${b.booking_id || "LUXE-VIP"}).${emailNote}`);
       if (feedback) {
         feedback.style.color = "#34d399";
-        feedback.innerHTML = `🎉 <b>Booking Confirmed!</b> Ref: <code>${b.booking_id || "LUXE-VIP"}</code><br>Confirmed for ${b.start_time || "tomorrow"}. Synchronized to Neon PostgreSQL & Calendar!`;
+        feedback.innerHTML = `🎉 <b>Booking Confirmed!</b> Ref: <code>${b.booking_id || "LUXE-VIP"}</code><br>Confirmed for ${b.start_time || "tomorrow"}. Synced to Neon & Calendar!${email ? "<br>✉️ Confirmation email sent to " + escapeHtml(email) : ""}`;
       }
       appendChatBubble("bot", `✅ <b>Appointment Confirmed!</b> Thank you ${escapeHtml(name)}, your booking for <b>${escapeHtml(activeBookingPayload.service)}</b> with <b>${escapeHtml(activeBookingPayload.stylist)}</b> is locked in (Ref: ${b.booking_id || "CONFIRMED"}). We've sent a WhatsApp confirmation to ${phone}.`);
       setTimeout(() => {

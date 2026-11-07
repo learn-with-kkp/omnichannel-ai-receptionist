@@ -327,8 +327,8 @@ class NotificationDispatcher:
         stylist = booking_data.get("stylist_name", "Specialist")
         start_time = booking_data.get("start_time", "")
         ref_id = booking_data.get("booking_id", "")
-        salon_name = "Luxe Hair & Wellness Salon"
-        address = "450 Newbury Street, Boston, MA 02115"
+        salon_name = "Luxe Saloon & Spa"
+        address = "120 Newbury Street, Boston, MA 02116"
 
         default_html = f"""<!DOCTYPE html>
 <html>
@@ -361,7 +361,7 @@ class NotificationDispatcher:
     </div>
     <p style="font-size: 13px; color: #94a3b8;">A calendar invite has been automatically sent to your email. If you need to reschedule or cancel, please provide at least 24 hours notice.</p>
     <div class="footer">
-      Luxe Hair & Wellness Salon • 450 Newbury Street, Boston, MA • (617) 555-0119
+      Luxe Saloon & Spa • 120 Newbury Street, Boston, MA 02116 • (617) 555-LUXE
     </div>
   </div>
 </body>
