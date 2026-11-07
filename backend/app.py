@@ -198,8 +198,14 @@ async def handle_end_of_call(payload: Dict[str, Any]):
 def download_excel_sheet():
     """Download the current live Excel spreadsheet containing all appointments and reminder statuses."""
     excel_path = get_excel_path()
-    if not os.path.exists(excel_path):
-        init_db()
+    try:
+        from backend.excel_manager import rebuild_real_user_excel_sheet
+        rebuild_real_user_excel_sheet(excel_path)
+    except Exception as e:
+        logger.warning(f"Excel real user rebuild warning: {e}")
+        if not os.path.exists(excel_path):
+            init_db()
+
     return FileResponse(
         path=excel_path,
         filename="salon_appointments.xlsx",
@@ -235,8 +241,16 @@ def onboard_tenant(payload: Dict[str, Any]):
 
 @app.get("/admin/appointments")
 def list_appointments(tenant_id: Optional[str] = None):
-    """Query appointments across all tenants or for a specific salon."""
-    return {"appointments": list_all_appointments(tenant_id)}
+    """Query appointments across all tenants or for a specific salon, surfacing only real user appointments."""
+    all_appts = list_all_appointments(tenant_id)
+    real_appts = [
+        a for a in all_appts
+        if a.get("tenant_id") != "default_salon"
+        and a.get("caller_name", "").lower() not in (
+            "sarah connor", "elena fisher", "automated verification test", "test client", "david beckham", "alexander hamilton", "grace hopper"
+        )
+    ]
+    return {"appointments": real_appts}
 
 @app.post("/test/quick-booking")
 def quick_test_booking(
