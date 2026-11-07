@@ -1299,20 +1299,35 @@ const ASSISTANT_IDS = {
 let currentActiveClerkModal = null;
 const CLERK_FALLBACK_PK = "pk_test_c2F2ZWQtbWFybGluLTQ3My5jbGVyay5hY2NvdW50cy5kZXYk";
 
+function getClerkBundleUrl(pubKey) {
+  try {
+    const raw = (pubKey || "").split("_")[2] || "";
+    if (raw) {
+      const decoded = atob(raw).replace(/\$$/, "");
+      if (decoded) {
+        return `https://${decoded}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`;
+      }
+    }
+  } catch (e) {}
+  return "https://saved-marlin-473.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+}
+
 async function ensureClerkReady(pubKey) {
   const key = pubKey || window.__clerk_publishable_key || CLERK_FALLBACK_PK;
   window.__clerk_publishable_key = key;
+  const scriptUrl = getClerkBundleUrl(key);
 
   if (!window.Clerk) {
     await new Promise((resolve) => {
-      const existing = document.querySelector("script[data-clerk-publishable-key]");
+      const existing = document.querySelector(`script[src*="clerk-js@5"]`);
       if (existing) {
+        if (window.Clerk) return resolve();
         existing.addEventListener("load", resolve);
         existing.addEventListener("error", resolve);
         return;
       }
       const s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js";
+      s.src = scriptUrl;
       s.crossOrigin = "anonymous";
       s.setAttribute("data-clerk-publishable-key", key);
       s.onload = resolve;
