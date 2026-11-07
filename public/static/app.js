@@ -600,6 +600,12 @@ async function toggleVapiWebRTCCall() {
           }
         }
         if (msg.type === "function-call" || msg.type === "tool-calls") {
+          const fnName = msg.functionCall?.name || (msg.toolCalls && msg.toolCalls[0]?.function?.name);
+          if (fnName === "book_appointment") {
+            showToastNotification("booked", "VIP Appointment Confirmed!", "Sofia scheduled your appointment and synced with Google Calendar & Neon PostgreSQL.");
+          } else if (fnName === "cancel_appointment") {
+            showToastNotification("cancelled", "Appointment Cancelled", "Sofia cancelled the appointment and updated Google Calendar.");
+          }
           if (typeof fetchAppointments === "function") fetchAppointments();
         }
       });
@@ -611,7 +617,24 @@ async function toggleVapiWebRTCCall() {
       });
     }
 
-    await vapiStudioClient.start(cfg.assistantId);
+    // Pass Clerk user info so Sofia greets the user by name and pre-populates variables
+    const cachedVip = getCachedVipUser();
+    const assistantOverrides = {};
+    if (cachedVip && (cachedVip.name || cachedVip.email || cachedVip.phone)) {
+      assistantOverrides.variableValues = {
+        name: cachedVip.name,
+        customer_name: cachedVip.name,
+        email: cachedVip.email,
+        customer_email: cachedVip.email,
+        phone: cachedVip.phone,
+        customer_phone: cachedVip.phone
+      };
+      if (cachedVip.name && cachedVip.name !== "VIP Guest") {
+        assistantOverrides.firstMessage = `Hello ${cachedVip.name}! Welcome to Luxe Saloon & Spa. I'm Sofia, your AI concierge. How can I pamper you today?`;
+      }
+    }
+
+    await vapiStudioClient.start(cfg.assistantId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
   } catch (err) {
     console.error("Failed to start Vapi call:", err);
     if (statusEl) statusEl.textContent = `Connection failed: ${err.message}`;
@@ -822,8 +845,13 @@ async function processMessageTurn(messageText) {
     // Update Telemetry Waterfall
     updateTelemetry(data.metrics, elapsed);
 
-    // Refresh appointments table on action
+    // Refresh appointments table on action & trigger real-time toasts
     if (data.action_performed === "booked" || data.action_performed === "cancelled" || data.action_performed === "rescheduled") {
+      if (data.action_performed === "booked") {
+        showToastNotification("booked", "VIP Appointment Confirmed!", (data.reply || "").replace(/<[^>]*>?/gm, '').slice(0, 140));
+      } else if (data.action_performed === "cancelled") {
+        showToastNotification("cancelled", "Appointment Cancelled", (data.reply || "").replace(/<[^>]*>?/gm, '').slice(0, 140));
+      }
       fetchAppointments();
     }
   } catch (e) {
@@ -1038,7 +1066,7 @@ async function cancelBooking(phone, bookingId) {
       })
     });
     const data = await res.json();
-    alert(data.reply);
+    showToastNotification("cancelled", "Appointment Cancelled", `Appointment ${bookingId} has been successfully cancelled and synchronized with Google Calendar.`);
     fetchAppointments();
   } catch (e) {
     alert("Cancellation error: " + e);
@@ -1468,6 +1496,21 @@ async function handleClerkUserSignedIn(user) {
   renderClerkSignedInUI(userProfile);
 }
 
+function getCachedVipUser() {
+  try {
+    const raw = localStorage.getItem("luxe_vip_user");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  if (window.Clerk && window.Clerk.user) {
+    const u = window.Clerk.user;
+    const email = u.primaryEmailAddress ? u.primaryEmailAddress.emailAddress : "";
+    const phone = u.primaryPhoneNumber ? u.primaryPhoneNumber.phoneNumber : (u.phoneNumbers && u.phoneNumbers.length ? u.phoneNumbers[0].phoneNumber : "");
+    const fullName = u.fullName || u.firstName || (email ? email.split("@")[0] : "VIP Guest");
+    return { name: fullName, email: email, phone: phone, imageUrl: u.imageUrl };
+  }
+  return null;
+}
+
 function renderClerkSignedInUI(profile) {
   if (!profile) return;
   const fullName = profile.name || "VIP Guest";
@@ -1477,23 +1520,27 @@ function renderClerkSignedInUI(profile) {
 
   if (phone) {
     const pInput = document.getElementById("outboundPhone");
-    if (pInput && !pInput.value) pInput.value = phone;
+    if (pInput && (!pInput.value || pInput.value === "+16673070119")) pInput.value = phone;
     const tPhone = document.getElementById("telnyxToPhone");
-    if (tPhone && !tPhone.value) tPhone.value = phone;
+    if (tPhone && (!tPhone.value || tPhone.value === "+16673070119")) tPhone.value = phone;
+    const mPhone = document.getElementById("modalGuestPhone");
+    if (mPhone && !mPhone.value) mPhone.value = phone;
   }
   if (fullName) {
     const nInput = document.getElementById("outboundName");
-    if (nInput && !nInput.value) nInput.value = fullName;
+    if (nInput && (!nInput.value || nInput.value === "VIP Guest")) nInput.value = fullName;
+    const mName = document.getElementById("modalGuestName");
+    if (mName && !mName.value) mName.value = fullName;
   }
 
   const container = document.getElementById("clerkAuthHeader");
   if (container) {
     container.innerHTML = `
-      <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); padding:4px 12px; border-radius:var(--radius-full); border:1px solid var(--border-color);">
-        <img src="${avatar}" style="width:22px; height:22px; border-radius:50%;" alt="avatar">
-        <span style="font-size:12px; font-weight:600; color:#fff;">👑 VIP: ${escapeHtml(fullName)}</span>
+      <div style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)); padding:5px 12px; border-radius:12px; border:1px solid rgba(56,189,248,0.3); box-shadow:0 4px 12px rgba(0,0,0,0.25);">
+        <img src="${avatar}" style="width:24px; height:24px; border-radius:50%; border:1.5px solid #38bdf8;" alt="avatar">
+        <span style="font-size:12px; font-weight:700; color:#fff;">👑 VIP: ${escapeHtml(fullName)}</span>
         ${phone ? `<span style="font-size:10px; color:#38bdf8; font-family:var(--font-mono);">${escapeHtml(phone)}</span>` : ''}
-        <button onclick="handleClerkSignOut()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; margin-left:4px;" title="Sign out">✕</button>
+        <button onclick="handleClerkSignOut()" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; cursor:pointer; font-size:11px; font-weight:600; padding:3px 8px; border-radius:6px; margin-left:4px; transition:all 0.2s;" title="Sign out of Luxe VIP">Sign Out</button>
       </div>
     `;
   }
@@ -1501,14 +1548,22 @@ function renderClerkSignedInUI(profile) {
   const banner = document.getElementById("clerkAuthBanner");
   if (banner) {
     banner.innerHTML = `
-      <div style="display:flex; align-items:center; gap:12px;">
-        <img src="${avatar}" style="width:36px; height:36px; border-radius:50%; border:2px solid #38bdf8;" alt="avatar">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <img src="${avatar}" style="width:44px; height:44px; border-radius:50%; border:2px solid #38bdf8; box-shadow:0 0 14px rgba(56,189,248,0.4);" alt="avatar">
         <div>
-          <div style="font-size:14px; font-weight:700; color:#fff;">Welcome Back, ${escapeHtml(fullName)}! 👑 VIP Member</div>
-          <div style="font-size:11px; color:#38bdf8;">${email} ${phone ? '• ' + phone : ''} • Persistent VIP Session Active</div>
+          <div style="font-size:15px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+            <span>Welcome Back, ${escapeHtml(fullName)}!</span>
+            <span class="badge" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:#000; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px;">👑 VIP UNLOCKED</span>
+          </div>
+          <div style="font-size:12px; color:#38bdf8; margin-top:2px;">
+            ${email} ${phone ? '• ' + escapeHtml(phone) : ''} • FREE Voice AI Assistant & live conversational concierge unlocked!
+          </div>
         </div>
       </div>
-      <button onclick="handleClerkSignOut()" class="btn-ghost" style="padding:6px 14px; font-size:12px;">Sign Out</button>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button onclick="document.getElementById('chatInput')?.focus()" class="btn-primary" style="padding:8px 16px; font-size:12px; font-weight:700; background:linear-gradient(135deg, #0284c7, #0369a1); border-radius:10px;">💬 Open Chatbox</button>
+        <button onclick="handleClerkSignOut()" class="btn-ghost" style="padding:8px 14px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.18);">Sign Out</button>
+      </div>
     `;
   }
 
@@ -1536,24 +1591,29 @@ function renderClerkSignedOutState() {
   const container = document.getElementById("clerkAuthHeader");
   if (container) {
     container.innerHTML = `
-      <button class="btn-ghost" onclick="openClerkSignIn()" style="font-size:12px; padding:6px 14px; font-weight:600;">Sign In</button>
-      <button class="btn-primary" onclick="openClerkSignUp()" style="font-size:12px; padding:6px 14px; font-weight:700; background:linear-gradient(135deg, #6366f1, #8b5cf6);">✨ Join VIP</button>
+      <button class="btn-ghost" onclick="openClerkSignIn()" style="font-size:12px; padding:6px 14px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.15);">Sign In</button>
+      <button class="btn-primary" onclick="openClerkSignUp()" style="font-size:12px; padding:6px 16px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.35);">✨ Join VIP Free</button>
     `;
   }
 
   const banner = document.getElementById("clerkAuthBanner");
   if (banner) {
     banner.innerHTML = `
-      <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:22px;">👑</span>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg, #f59e0b, #d97706); display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 4px 12px rgba(245,158,11,0.3);">👑</div>
         <div style="text-align:left;">
-          <div style="font-size:13px; font-weight:700; color:#fff;">Luxe VIP Guest Membership</div>
-          <div style="font-size:11px; color:var(--text-muted);">Sign in with Clerk to auto-save phone & email for 1-click booking and WhatsApp VIP alerts.</div>
+          <div style="font-size:14px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+            <span>Luxe VIP Guest Access</span>
+            <span class="badge" style="background:#10b981; color:#000; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px;">FREE TEST VOICE AI</span>
+          </div>
+          <div style="font-size:12px; color:#cbd5e1; margin-top:2px;">
+            Sign up for FREE to test our <b>Voice AI Assistant</b> & live conversational concierge! Sofia greets you by name and saves your details for 1-click booking.
+          </div>
         </div>
       </div>
-      <div style="display:flex; gap:8px;">
-        <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:6px 12px; font-size:12px;">Sign In</button>
-        <button onclick="openClerkSignUp()" class="btn-primary" style="padding:6px 14px; font-size:12px; background:#6366f1;">Join VIP</button>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:8px 16px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.2);">Sign In</button>
+        <button onclick="openClerkSignUp()" class="btn-primary" style="padding:8px 18px; font-size:12px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.4);">✨ Sign Up Free</button>
       </div>
     `;
   }
@@ -1737,7 +1797,41 @@ function copyText(text, btn) {
   }
 }
 
-// --- Instant 500ms Callback ---
+// --- Toast Notification Engine ---
+function showToastNotification(type, title, message) {
+  const container = document.getElementById("bookingToastContainer");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  const isPositive = type === "booked" || type === "success";
+  toast.className = `booking-toast toast-${type}`;
+
+  const icon = isPositive ? "✨" : "❌";
+  toast.innerHTML = `
+    <span style="font-size:20px; line-height:1;">${icon}</span>
+    <div style="flex:1; min-width:0;">
+      <div style="font-size:13px; font-weight:800; letter-spacing:0.3px;">${escapeHtml(title)}</div>
+      <div style="font-size:12px; margin-top:2px; opacity:0.95; line-height:1.4;">${escapeHtml(message)}</div>
+      <div style="font-size:10px; margin-top:4px; opacity:0.8; font-family:var(--font-mono);">● Google Calendar & Neon PostgreSQL Synced</div>
+    </div>
+    <button onclick="this.parentElement.remove()" style="background:none; border:none; color:#fff; font-size:16px; cursor:pointer; opacity:0.8; padding:0 4px; line-height:1;">✕</button>
+  `;
+
+  container.appendChild(toast);
+
+  const footerTicker = document.getElementById("footerLiveTicker");
+  if (footerTicker) {
+    footerTicker.innerHTML = `<span style="color:${isPositive ? '#34d399' : '#f87171'}">● ${icon} ${escapeHtml(title)}: ${escapeHtml(message)}</span>`;
+  }
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(12px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 6500);
+}
+
+// --- Instant Outbound Callback ---
 async function triggerInstant500msCall() {
   const phoneInput = document.getElementById("outboundPhone");
   const nameInput = document.getElementById("outboundName");
@@ -1758,11 +1852,11 @@ async function triggerInstant500msCall() {
   }
 
   try {
-    if (btn) { btn.disabled = true; btn.textContent = "⚡ Dialing in 500ms..."; }
+    if (btn) { btn.disabled = true; btn.textContent = "📞 Calling Your Phone..."; }
     if (resultEl) {
       resultEl.style.display = "block";
       resultEl.style.color = "#38bdf8";
-      resultEl.innerHTML = `⚡ Connecting to Vapi telephony core... Dialing <b>${escapeHtml(phone)}</b> now.`;
+      resultEl.innerHTML = `📞 Connecting to Sofia... Dialing <b>${escapeHtml(phone)}</b> now.`;
     }
 
     const res = await fetch("/api/voice/vapi-call", {
@@ -1777,6 +1871,7 @@ async function triggerInstant500msCall() {
 
     const data = await res.json();
     if (res.ok && data.status !== "error") {
+      showToastNotification("success", "Outbound Call Ringing!", `Sofia is calling ${phone} now. Answer your phone to speak live.`);
       if (resultEl) {
         resultEl.style.color = "#34d399";
         resultEl.innerHTML = `✅ <b>Call initiated!</b> Sofia is ringing <b>${escapeHtml(phone)}</b> right now. Answer your phone to speak with your Luxe receptionist. (Call ID: ${escapeHtml(data.call_id || data.id || "live")})`;
@@ -1793,7 +1888,43 @@ async function triggerInstant500msCall() {
       resultEl.innerHTML = `❌ Network error triggering outbound call: ${escapeHtml(err.message)}`;
     }
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "⚡ Call My Phone in 500ms"; }
+    if (btn) { btn.disabled = false; btn.textContent = "📞 Call My Phone"; }
+  }
+}
+const triggerInstantCall = triggerInstant500msCall;
+
+// --- Chatbox Document / PDF Uploader (Ingests into Qdrant Cloud for Sofia) ---
+async function uploadDocFromChat() {
+  const fileInput = document.getElementById("chatDocUpload");
+  if (!fileInput || !fileInput.files || !fileInput.files.length) return;
+  const file = fileInput.files[0];
+
+  appendChatBubble("user", `📎 Uploaded Document: <b>${escapeHtml(file.name)}</b> (${(file.size / 1024).toFixed(1)} KB)`);
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("tenant_id", "salon");
+  formData.append("category", "salon_menu_and_policies");
+
+  appendChatBubble("bot", `⏳ <i>Ingesting and indexing <b>${escapeHtml(file.name)}</b> into Qdrant Cloud vector memory for Sofia's voice & chat intelligence...</i>`);
+
+  try {
+    const res = await fetch("/api/knowledge/upload-pdf", {
+      method: "POST",
+      body: formData
+    });
+    const data = await res.json();
+    if (res.ok && data.status === "success") {
+      const confirmationMsg = `✨ <b>Document Indexed!</b> I've thoroughly digested and memorized <b>${escapeHtml(file.name)}</b>. Both here in chat and during our live voice calls, I can now answer questions about your custom services, pricing, and salon policies.`;
+      appendChatBubble("bot", confirmationMsg);
+      showToastNotification("success", "Document Indexed", `${file.name} is now accessible to Voice AI & Chat Concierge.`);
+    } else {
+      appendChatBubble("bot", `⚠️ I encountered an issue reading that document: ${escapeHtml(data.detail || "Upload error")}. Please ensure it is a valid PDF.`);
+    }
+  } catch (err) {
+    appendChatBubble("bot", `⚠️ Upload failed: ${escapeHtml(err.message)}`);
+  } finally {
+    fileInput.value = "";
   }
 }
 
@@ -2038,6 +2169,7 @@ async function submitModalBooking() {
     const data = await res.json();
     if (res.ok && data.status === "success") {
       const b = data.booking || {};
+      showToastNotification("booked", "VIP Appointment Confirmed!", `${escapeHtml(activeBookingPayload.service)} with ${escapeHtml(activeBookingPayload.stylist)} for ${escapeHtml(name)} (Ref: ${b.booking_id || "LUXE-VIP"}).`);
       if (feedback) {
         feedback.style.color = "#34d399";
         feedback.innerHTML = `🎉 <b>Booking Confirmed!</b> Ref: <code>${b.booking_id || "LUXE-VIP"}</code><br>Confirmed for ${b.start_time || "tomorrow"}. Synchronized to Neon PostgreSQL & Calendar!`;

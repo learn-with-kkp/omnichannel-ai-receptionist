@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Luxe Saloon & Spa — 24/7 AI Voice & Omnichannel Concierge</title>
-  <meta name="description" content="Luxe Saloon & Spa premier AI Voice Receptionist. Sub-500ms WebRTC voice calls, WhatsApp booking, Instagram & Messenger automation, synchronized with Google Calendar and Neon PostgreSQL.">
-  <link rel="stylesheet" href="/static/style.css?v=3.1">
+  <meta name="description" content="Luxe Saloon & Spa premier AI Voice Receptionist. Ultra-responsive WebRTC voice calls, WhatsApp booking, Instagram & Messenger automation, synchronized with Google Calendar and Neon PostgreSQL.">
+  <link rel="stylesheet" href="/static/style.css?v=6.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
   
   <!-- Self-Hosted Resilient Vapi Web SDK -->
@@ -48,11 +48,11 @@
       <!-- Action & Clerk Auth Buttons -->
       <div class="header-badges" style="display:flex; align-items:center; gap:10px;">
         <div id="clerkAuthHeader" style="display:inline-flex; align-items:center; gap:8px;">
-          <button onclick="window.Clerk?.openSignIn()" class="btn-ghost" style="padding:6px 14px; font-size:12px; font-weight:600;">Sign In</button>
-          <button onclick="window.Clerk?.openSignUp()" class="btn-primary" style="padding:6px 14px; font-size:12px; font-weight:700; background:linear-gradient(135deg, #6366f1, #8b5cf6);">✨ Join VIP</button>
+          <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:6px 14px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.15);">Sign In</button>
+          <button onclick="openClerkSignUp()" class="btn-primary" style="padding:6px 16px; font-size:12px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.35);">✨ Join VIP Free</button>
         </div>
-        <button onclick="document.getElementById('instant-call')?.scrollIntoView({behavior:'smooth'})" class="btn-secondary" style="padding:6px 12px; font-size:12px; font-weight:600; border-color:rgba(56,189,248,0.3); color:#38bdf8;">
-          ⚡ 500ms Call
+        <button onclick="document.getElementById('instant-call')?.scrollIntoView({behavior:'smooth'})" class="btn-secondary" style="padding:6px 14px; font-size:12px; font-weight:600; border-color:rgba(56,189,248,0.4); color:#38bdf8; display:inline-flex; align-items:center; gap:6px; border-radius:10px;">
+          📞 Call My Phone
         </button>
       </div>
     </header>
@@ -66,21 +66,26 @@
         Meet Sofia — <em>Luxe Saloon's</em> 24/7 AI Voice & WhatsApp Receptionist.
       </h1>
       <p class="hero-subtitle">
-        Experience sub-500ms WebRTC voice consultation, atomic Google Calendar booking, and instant WhatsApp confirmations. Speak live in your browser, upload your service menu PDF, or have Sofia ring your phone in under 500ms.
+        Experience ultra-responsive WebRTC voice consultation, atomic Google Calendar booking, and instant WhatsApp confirmations. Speak live in your browser, attach your service menu, or have Sofia call your phone directly.
       </p>
 
       <!-- VIP Club Onboarding Callout -->
-      <div id="clerkAuthBanner" style="max-width:680px; margin:0 auto 28px auto; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25); border-radius:14px; padding:12px 18px; display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span style="font-size:22px;">👑</span>
+      <div id="clerkAuthBanner" style="max-width:740px; margin:0 auto 28px auto; background:linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.08)); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; box-shadow:0 8px 30px rgba(99,102,241,0.15);">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg, #f59e0b, #d97706); display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 4px 12px rgba(245,158,11,0.3);">👑</div>
           <div style="text-align:left;">
-            <div style="font-size:13px; font-weight:700; color:#fff;">Luxe VIP Guest Membership</div>
-            <div style="font-size:11px; color:var(--text-muted);">Sign in with Clerk to auto-save phone & email for 1-click booking and WhatsApp VIP alerts.</div>
+            <div style="font-size:14px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
+              <span>Luxe VIP Guest Access</span>
+              <span class="badge" style="background:#10b981; color:#000; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px;">FREE TEST VOICE AI</span>
+            </div>
+            <div style="font-size:12px; color:#cbd5e1; margin-top:2px;">
+              Sign up for FREE to test our <b>Voice AI Assistant</b> & live conversational concierge! Sofia greets you by name and saves your details for 1-click booking.
+            </div>
           </div>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button onclick="window.Clerk?.openSignIn()" class="btn-ghost" style="padding:6px 12px; font-size:12px;">Sign In</button>
-          <button onclick="window.Clerk?.openSignUp()" class="btn-primary" style="padding:6px 14px; font-size:12px; background:#6366f1;">Join VIP</button>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:8px 16px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.2);">Sign In</button>
+          <button onclick="openClerkSignUp()" class="btn-primary" style="padding:8px 18px; font-size:12px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.4);">✨ Sign Up Free</button>
         </div>
       </div>
 
@@ -119,130 +124,122 @@
     <!-- Main Dual Voice & Chat Grid -->
     <main class="main-grid" id="voice-studio">
 
-      <!-- Left Column: Voice Interaction Studio & 500ms Call -->
-      <div class="card">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-          <div>
-            <h2 class="card-title"><span>🎙️</span> Sofia AI Voice Studio</h2>
-            <p class="card-desc">Sub-500ms lifelike voice via Cartesia Sonic-3.5 with natural barge-in interruptions.</p>
+      <!-- Left Column: Voice Interaction Studio & Callback -->
+      <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <h2 class="card-title"><span>🎙️</span> Sofia AI Voice Studio</h2>
+              <p class="card-desc">Lifelike conversational voice via Cartesia Sonic-3.5 with natural barge-in interruptions.</p>
+            </div>
+            <span class="status-chip" style="color:var(--accent-emerald);">
+              ⚡ Live WebRTC Active
+            </span>
           </div>
-          <span class="status-chip" style="color:var(--accent-emerald);">
-            ⚡ Live WebRTC Active
-          </span>
+
+          <!-- WebRTC Browser Calling with Sofia -->
+          <div class="voice-hero">
+            <div style="display:flex; gap:10px; margin-bottom:14px; width:100%; justify-content:center; flex-wrap:wrap;">
+              <button class="btn-primary" id="btnLiveVapiCall" onclick="toggleVapiWebRTCCall()" style="padding:10px 22px; font-size:13px; font-weight:700; width:auto; display:inline-flex; align-items:center; gap:8px;">
+                <span>📞</span> <span id="vapiCallBtnLabel">Call Sofia Live (WebRTC)</span>
+              </button>
+              <button class="btn-secondary" id="btnMuteVapi" onclick="toggleVapiMute()" style="display:none; padding:10px 14px; font-size:13px; width:auto;">
+                <span id="muteIconLabel">🎤 Mute</span>
+              </button>
+              <a href="/vapi-call" target="_blank" class="btn-secondary" style="padding:10px 14px; font-size:13px; width:auto; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
+                <span>🖥️</span> Fullscreen Studio
+              </a>
+            </div>
+
+            <button class="mic-button" id="micBtn" onclick="toggleVoice()" title="Click to speak with Sofia">
+              <span id="micIcon">🎙️</span>
+            </button>
+            <div class="voice-status-text" id="voiceStatus">Click "Call Sofia Live" to speak in real-time or tap microphone</div>
+            
+            <div class="waveform" id="waveform">
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+            </div>
+
+            <div style="margin-top:14px; display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-muted);">
+              <span>Speech Endpointing:</span>
+              <input type="range" min="300" max="1000" step="50" value="500" id="silenceSlider" style="width:100px; accent-color:var(--accent-cyan);">
+              <span id="silenceValue" style="font-family:var(--font-mono); color:var(--accent-cyan);">500 ms (Standard)</span>
+            </div>
+
+            <div id="vapiLiveTranscript" style="display:none; margin-top:12px; font-size:12px; color:#a5b4fc; max-height:100px; overflow-y:auto; padding:8px 12px; background:rgba(0,0,0,0.3); border-radius:8px; width:100%; text-align:left;"></div>
+          </div>
         </div>
 
-        <!-- WebRTC Browser Calling with Sofia -->
-        <div class="voice-hero">
-          <div style="display:flex; gap:10px; margin-bottom:14px; width:100%; justify-content:center; flex-wrap:wrap;">
-            <button class="btn-primary" id="btnLiveVapiCall" onclick="toggleVapiWebRTCCall()" style="padding:10px 22px; font-size:13px; font-weight:700; width:auto; display:inline-flex; align-items:center; gap:8px;">
-              <span>📞</span> <span id="vapiCallBtnLabel">Call Sofia Live (WebRTC)</span>
-            </button>
-            <button class="btn-secondary" id="btnMuteVapi" onclick="toggleVapiMute()" style="display:none; padding:10px 14px; font-size:13px; width:auto;">
-              <span id="muteIconLabel">🎤 Mute</span>
-            </button>
-            <a href="/vapi-call" target="_blank" class="btn-secondary" style="padding:10px 14px; font-size:13px; width:auto; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-              <span>🖥️</span> Fullscreen Studio
-            </a>
-          </div>
-
-          <button class="mic-button" id="micBtn" onclick="toggleVoice()" title="Click to speak with Sofia">
-            <span id="micIcon">🎙️</span>
-          </button>
-          <div class="voice-status-text" id="voiceStatus">Click "Call Sofia Live" to speak in real-time or tap microphone</div>
-          
-          <div class="waveform" id="waveform">
-            <div class="wave-bar"></div>
-            <div class="wave-bar"></div>
-            <div class="wave-bar"></div>
-            <div class="wave-bar"></div>
-            <div class="wave-bar"></div>
-            <div class="wave-bar"></div>
-            <div class="wave-bar"></div>
-          </div>
-
-          <div style="margin-top:14px; display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-muted);">
-            <span>Speech Endpointing:</span>
-            <input type="range" min="300" max="1000" step="50" value="500" id="silenceSlider" style="width:100px; accent-color:var(--accent-cyan);">
-            <span id="silenceValue" style="font-family:var(--font-mono); color:var(--accent-cyan);">500 ms (Standard)</span>
-          </div>
-
-          <div id="vapiLiveTranscript" style="display:none; margin-top:12px; font-size:12px; color:#a5b4fc; max-height:100px; overflow-y:auto; padding:8px 12px; background:rgba(0,0,0,0.3); border-radius:8px; width:100%; text-align:left;"></div>
-        </div>
-
-        <!-- ⚡ Instant 500ms Callback Section -->
-        <div id="instant-call" style="margin-top:20px; padding:16px; background:rgba(56,189,248,0.04); border:1px solid rgba(56,189,248,0.25); border-radius:12px;">
+        <!-- 📞 Instant Callback Section -->
+        <div id="instant-call" style="margin-top:18px; padding:18px; background:linear-gradient(135deg, rgba(56,189,248,0.06), rgba(14,165,233,0.02)); border:1px solid rgba(56,189,248,0.25); border-radius:14px;">
           <h3 style="font-size:14px; font-weight:700; color:#38bdf8; display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-            <span>⚡</span> Instant 500ms Call Back
+            <span>📞</span> Instant Callback
           </h3>
           <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
-            Enter your phone number below — Sofia will trigger an immediate outbound call to your phone in under 500ms.
+            Enter your phone number below — Sofia will trigger an immediate outbound call directly to your phone.
           </p>
           <div style="display:flex; flex-direction:column; gap:8px;">
             <input type="tel" id="outboundPhone" class="form-input" placeholder="Your Phone (+1 617-555-0199)" value="+16673070119">
             <input type="text" id="outboundName" class="form-input" placeholder="Your Name" value="VIP Guest">
-            <button class="btn-primary" id="btnFastCall" onclick="triggerInstant500msCall()" style="background:#0284c7; color:#fff; font-weight:700; justify-content:center;">
-              ⚡ Call My Phone in 500ms
+            <button class="btn-primary" id="btnFastCall" onclick="triggerInstantCall()" style="background:linear-gradient(135deg, #0284c7, #0369a1); color:#fff; font-weight:700; justify-content:center; padding:12px; font-size:13.5px; border-radius:10px; box-shadow:0 4px 14px rgba(2,132,199,0.3);">
+              📞 Call My Phone
             </button>
           </div>
           <div id="fastCallResult" style="font-size:12px; margin-top:8px; display:none;"></div>
         </div>
-
-        <!-- 📚 PDF Menu & Policy Knowledge Uploader (Qdrant RAG) -->
-        <div id="pdf-knowledge" style="margin-top:16px; padding:16px; background:rgba(16,185,129,0.04); border:1px solid rgba(16,185,129,0.25); border-radius:12px;">
-          <h3 style="font-size:14px; font-weight:700; color:#34d399; display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-            <span>📚</span> Salon Menu & Policy PDF Uploader
-          </h3>
-          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
-            Upload your salon price sheet or policies PDF — it will be indexed in Qdrant Cloud (381 points active) so Sofia can answer dynamic pricing questions.
-          </p>
-          <div style="display:flex; gap:8px; align-items:center;">
-            <input type="file" id="salonPdfInput" accept=".pdf" style="display:none;" onchange="uploadSalonMenuPdf()">
-            <button class="btn-secondary" onclick="document.getElementById('salonPdfInput').click()" style="width:100%; justify-content:center; font-size:12px;">
-              📁 Select Salon PDF Menu
-            </button>
-          </div>
-          <div id="pdfUploadStatus" style="font-size:12px; margin-top:8px; display:none;"></div>
-        </div>
       </div>
 
-      <!-- Right Column: Interactive Chat Concierge & WhatsApp Sync -->
-      <div class="card" id="chat-section">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-          <div>
-            <h2 class="card-title"><span>💬</span> Luxe Saloon Chat Concierge</h2>
-            <p class="card-desc">Interactive booking assistant synchronized across Website, WhatsApp, and Instagram.</p>
-          </div>
-          <div class="sentiment-indicator" id="sentimentPill">
-            <span id="sentimentLabel">Mood: Neutral</span>
-            <span id="sentimentEmoji">💬</span>
-          </div>
-        </div>
-
-        <div class="chat-container">
-          <div class="chat-messages" id="chatMessages">
-            <div class="message bot">
-              <div class="bubble">
-                Welcome to <b>Luxe Saloon & Spa</b>! I'm Sofia, your AI concierge. Would you like to schedule a Balayage, precision haircut, keratin treatment, or check our stylists' availability?
-              </div>
-              <div class="meta">Sofia (Director)</div>
+      <!-- Right Column: Interactive Chat Concierge & Document Knowledge Integration -->
+      <div class="card" id="chat-section" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+            <div>
+              <h2 class="card-title"><span>💬</span> Luxe Saloon Chat Concierge</h2>
+              <p class="card-desc">Interactive booking assistant synchronized across Website, WhatsApp, and Instagram.</p>
+            </div>
+            <div class="sentiment-indicator" id="sentimentPill">
+              <span id="sentimentLabel">Mood: Neutral</span>
+              <span id="sentimentEmoji">💬</span>
             </div>
           </div>
 
-          <!-- Quick Action Booking Chips -->
-          <div class="quick-chips" style="padding:8px 0; display:flex; gap:6px; flex-wrap:wrap;">
-            <span class="chip" onclick="sendQuickMsg('Book Haircut Tomorrow 2:00 PM')">💇 Book Haircut Tomorrow 2:00 PM</span>
-            <span class="chip" onclick="sendQuickMsg('I want to book Signature Balayage with Marcus')">🎨 Balayage & Highlights</span>
-            <span class="chip" onclick="sendQuickMsg('Check available slots tomorrow')">🕒 Check Available Slots</span>
-            <span class="chip" onclick="sendQuickMsg('Reschedule my appointment')">🔄 Reschedule Appointment</span>
-            <span class="chip" onclick="sendQuickMsg('Cancel my appointment')">❌ Cancel Booking</span>
-          </div>
+          <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+              <div class="message bot">
+                <div class="bubble">
+                  Welcome to <b>Luxe Saloon & Spa</b>! I'm Sofia, your AI concierge. Would you like to schedule a Signature Balayage, precision haircut, keratin treatment, or check our stylists' availability?
+                </div>
+                <div class="meta">Sofia (Director)</div>
+              </div>
+            </div>
 
-          <div class="chat-input-row">
-            <input type="text" id="chatInput" placeholder="Ask about services, prices, or say 'Book Balayage tomorrow at 2 PM'..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-            <button class="btn-primary" onclick="sendChatMessage()" style="width:auto; padding:0 20px;">
-              Send
-            </button>
+            <!-- Quick Action Booking Chips -->
+            <div class="quick-chips" style="padding:6px 0; display:flex; gap:6px; flex-wrap:wrap;">
+              <span class="chip" onclick="sendQuickMsg('Book Haircut Tomorrow 2:00 PM')">💇 Book Haircut Tomorrow 2:00 PM</span>
+              <span class="chip" onclick="sendQuickMsg('I want to book Signature Balayage with Marcus')">🎨 Balayage & Highlights</span>
+              <span class="chip" onclick="sendQuickMsg('Check available slots tomorrow')">🕒 Check Available Slots</span>
+              <span class="chip" onclick="sendQuickMsg('Reschedule my appointment')">🔄 Reschedule Appointment</span>
+              <span class="chip" onclick="sendQuickMsg('Cancel my appointment')">❌ Cancel Booking</span>
+            </div>
           </div>
+        </div>
+
+        <!-- Chat Input Row with Document Attachment for Voice AI -->
+        <div class="chat-input-row" style="margin-top:12px;">
+          <input type="file" id="chatDocUpload" accept=".pdf,.txt" style="display:none;" onchange="uploadDocFromChat()">
+          <button type="button" class="chat-doc-btn" onclick="document.getElementById('chatDocUpload').click()" title="Attach Salon Menu or Policy PDF to Sofia's Knowledge">
+            📎
+          </button>
+          <input type="text" id="chatInput" placeholder="Ask Sofia anything, or attach document (📎)..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+          <button class="chat-send-btn" onclick="sendChatMessage()">
+            Send
+          </button>
         </div>
       </div>
 
@@ -711,25 +708,36 @@
         <button onclick="copyEmbedSnippet()" style="position:absolute; right:10px; top:10px; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:#fff; padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer;" id="copyEmbedBtn">Copy Code</button>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
-        <button class="btn-primary" onclick="window.SofiaWidget?.toggle()" style="padding:8px 16px; font-size:13px; width:auto;">
+        <button class="btn-primary" onclick="window.SofiaWidget?.toggle()" style="padding:8px 18px; font-size:13px; width:auto; border-radius:10px;">
           ✨ Open Floating Widget
         </button>
-        <a href="/site/salon" target="_blank" class="btn-secondary" style="padding:8px 16px; font-size:13px; width:auto; text-decoration:none;">
-          🌐 View Customer Salon Website
-        </a>
       </div>
     </section>
 
-    <!-- Footer -->
-    <footer style="margin-top:40px; padding:24px; text-align:center; border-top:1px solid var(--border-color); color:var(--text-muted); font-size:12px;">
-      <p>Luxe Saloon & Spa • 120 Newbury Street, Boston, MA • Powered by Universal AI Voice Receptionist Engine</p>
-      <p style="margin-top:4px;">Protected by Neon PostgreSQL 18.6, Clerk Authentication, and Qdrant Cloud 381-Vector Semantic Search.</p>
+    <!-- Luxury Salon Footer -->
+    <footer style="margin-top:48px; padding:32px 20px; text-align:center; border-top:1px solid rgba(255,255,255,0.08); background:rgba(10,14,24,0.6); color:var(--text-muted); font-size:12px; border-radius:16px 16px 0 0;">
+      <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:8px;">
+        <span style="color:#f59e0b; font-size:16px;">✦</span>
+        <span style="color:#fff; font-size:15px; font-weight:800; letter-spacing:0.5px;">Luxe Saloon & Spa</span>
+      </div>
+      <p style="color:var(--text-secondary); margin-bottom:6px; font-size:12.5px;">
+        120 Newbury Street, Back Bay, Boston, MA 02116 • (617) 555-LUXE • Open Daily 9:00 AM – 7:00 PM
+      </p>
+      <div id="footerLiveTicker" style="margin:12px auto; max-width:620px; padding:8px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); font-size:11.5px; font-family:var(--font-mono); color:var(--text-muted); transition:all 0.3s ease;">
+        <span style="color:#10b981;">● Active</span> • Google Calendar, Google Sheets & Neon PostgreSQL Live Synced
+      </div>
+      <p style="font-size:11px; opacity:0.65; margin-top:10px;">
+        © 2026 Luxe Saloon & Spa. All rights reserved.
+      </p>
     </footer>
 
   </div>
 
+  <!-- Real-time Floating Notification Toast Container -->
+  <div id="bookingToastContainer" style="position:fixed; bottom:24px; right:24px; z-index:999999; display:flex; flex-direction:column; gap:10px; max-width:420px; width:calc(100vw - 48px); pointer-events:none;"></div>
+
   <!-- Main Application Script -->
-  <script src="/static/app.js?v=5.0"></script>
+  <script src="/static/app.js?v=6.0"></script>
   <!-- Universal Floating Widget Script -->
   <script src="/widget.js" data-tenant="salon"></script>
 
