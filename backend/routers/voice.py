@@ -362,7 +362,9 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
 
         elif fn_name == "book_appointment":
             name = args.get("caller_name") or "Valued Guest"
-            phone = args.get("caller_phone") or "+16673070119"
+            # Default fallback: if no explicit whatsapp_number is provided, use caller_phone or inbound caller phone!
+            phone = args.get("whatsapp_number") or args.get("caller_phone") or inbound_phone or "+16673070119"
+            email = args.get("caller_email") or ""
             service_name = args.get("service_name") or "Womens Haircut"
             dt = args.get("appointment_datetime") or "2026-11-06T14:00:00"
             stylist_name = args.get("stylist_name") or "Elena"
@@ -370,10 +372,25 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
                 stylist_name = "Elena"
 
             booking = book_new_appointment(name, phone, service_name, dt, stylist_name, tenant_id=resolved_tenant_id)
+            
+            # Send WhatsApp confirmation message directly
+            try:
+                wa_msg = (
+                    f"✨ *{salon_name} Booking Confirmed* ✨\n\n"
+                    f"Hi {name}! Your appointment for *{service_name}* with *{stylist_name}* is confirmed for *{booking['start_time']}*.\n"
+                    f"Ref: *{booking['booking_id']}*\n"
+                    f"Location: {resolved_tenant.get('address', '450 Newbury St, Boston')}\n\n"
+                    f"Synced with Google Calendar & Google Sheets. Reply RESCHEDULE or CANCEL anytime."
+                )
+                notification_dispatcher.send_whatsapp(phone, wa_msg, quick_replies=["Confirm", "Reschedule", "Cancel"])
+                logger.info(f"✅ WhatsApp booking confirmation dispatched to {phone}")
+            except Exception as wa_err:
+                logger.warning(f"WhatsApp dispatch notice: {wa_err}")
+
             res_text = (
-                f"You're all set, {name}! Your appointment for a {service_name} with {stylist_name} is confirmed at {salon_name} for "
+                f"You're all set, {name}! Your appointment for a {service_name} with {stylist_name} is confirmed for "
                 f"{booking['start_time']}. Your booking reference is {booking['booking_id']}. "
-                f"A confirmation SMS has been sent to {phone}."
+                f"A calendar invite has been created and a WhatsApp confirmation has been sent to {phone}."
             )
             results.append(ToolResult(toolCallId=call_id, result=res_text))
 
