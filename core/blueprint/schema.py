@@ -13,6 +13,7 @@ class OmniChannelType(str, Enum):
     VOICE_CALL = "voice"
     WEBSITE_CHAT = "website_chat"
     WHATSAPP = "whatsapp"
+    SMS = "sms"
     MESSENGER = "messenger"
     INSTAGRAM = "instagram"
     TELEGRAM = "telegram"

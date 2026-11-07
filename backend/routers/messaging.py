@@ -47,29 +47,35 @@ def verify_whatsapp_webhook(
 
 
 @router.post("/webhook/whatsapp")
+@router.post("/webhook/sms")
 async def handle_whatsapp_incoming(request: Request):
     """
-    Receives incoming WhatsApp messages from Meta Cloud API or Twilio.
+    Receives incoming WhatsApp and SMS messages from Meta Cloud API or Twilio.
     Processes message through Universal Orchestrator and dispatches conversational reply.
     """
     content_type = request.headers.get("content-type", "")
     
-    # 1. Twilio WhatsApp Form POST
+    # 1. Twilio WhatsApp or SMS Form POST
     if "application/x-www-form-urlencoded" in content_type:
         form = await request.form()
         incoming_msg = form.get("Body", "")
-        from_number = form.get("From", "").replace("whatsapp:", "")
-        logger.info(f"Incoming Twilio WhatsApp from {from_number}: {incoming_msg}")
+        raw_from = form.get("From", "")
+        is_whatsapp = "whatsapp:" in raw_from
+        from_number = raw_from.replace("whatsapp:", "")
+        logger.info(f"Incoming Twilio {'WhatsApp' if is_whatsapp else 'SMS'} from {from_number}: {incoming_msg}")
 
         orchestration = universal_orchestrator.process_conversation_turn(
             user_message=incoming_msg,
             session_id=from_number,
             tenant_id="salon",
-            channel=OmniChannelType.WHATSAPP,
+            channel=OmniChannelType.WHATSAPP if is_whatsapp else OmniChannelType.SMS,
             caller_phone=from_number
         )
-        notification_dispatcher.send_whatsapp(from_number, orchestration["reply"])
-        return {"status": "success", "channel": "whatsapp_twilio"}
+        if is_whatsapp:
+            notification_dispatcher.send_whatsapp(from_number, orchestration["reply"])
+        else:
+            notification_dispatcher.send_sms(from_number, orchestration["reply"])
+        return {"status": "success", "channel": "whatsapp_twilio" if is_whatsapp else "sms_twilio"}
 
     # 2. Meta WhatsApp Cloud API JSON
     try:

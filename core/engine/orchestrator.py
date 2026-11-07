@@ -466,12 +466,14 @@ class UniversalReceptionistOrchestrator:
                     )
                     response_text = (
                         f"📞 Placing a live voice call to your phone right now at {target_phone}! "
-                        f"Sofia is dialing via Vapi using her native {accent.name} voice. Please answer your phone!"
+                        f"Sofia is dialing via Vapi using her native {accent.name} voice. Please answer your phone!\n\n"
+                        f"🎙️ You can also talk to me directly in your browser: https://ai-voice-receptionist.kishor.tech/vapi-call"
                     )
                 else:
                     response_text = (
-                        f"I would be delighted to call your phone right now! Kindly reply with your phone number "
-                        f"(for example: +1 667 307 0119), and Sofia will call you immediately."
+                        f"I would be delighted to speak with you! You have two instant options:\n"
+                        f"1. 🎙️ Tap to talk live in your browser: https://ai-voice-receptionist.kishor.tech/vapi-call\n"
+                        f"2. 📞 Reply with your mobile number (e.g., +1 667 307 0119) and Sofia will call your phone right now!"
                     )
 
             elif intent == "accent_switch":
