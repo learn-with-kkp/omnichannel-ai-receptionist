@@ -14,6 +14,11 @@ import hashlib
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
+
+env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 logger = logging.getLogger("MultiTenantQdrantEngine")
 
@@ -196,7 +201,10 @@ class MultiTenantQdrantEngine:
         # 1. Try Qdrant client retrieval
         if self.connected_to_cloud and self.client:
             try:
-                flt = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=clean_tenant))])
+                tenant_variants = [clean_tenant]
+                if clean_tenant in ("salon", "salon_luxe"):
+                    tenant_variants = ["salon", "salon_luxe"]
+                flt = Filter(should=[FieldCondition(key="tenant_id", match=MatchValue(value=t)) for t in tenant_variants])
                 if hasattr(self.client, "query_points"):
                     query_res = self.client.query_points(
                         collection_name=COLLECTION_NAME,
