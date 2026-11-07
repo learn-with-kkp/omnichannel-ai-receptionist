@@ -46,11 +46,32 @@ class NotificationDispatcher:
         # TikTok Direct Messaging
         self.tiktok_access_token = os.getenv("TIKTOK_ACCESS_TOKEN", "")
 
+        # Slack Webhook URL
+        self.slack_webhook_url = os.getenv("SLACK_WEBHOOK_URL", "")
+
     def is_twilio_configured(self) -> bool:
         return bool(self.twilio_account_sid and self.twilio_auth_token and not self.twilio_account_sid.startswith("your_"))
 
     def is_meta_configured(self) -> bool:
         return bool(self.meta_access_token and not self.meta_access_token.startswith("your_"))
+
+    def send_slack_alert(self, channel: str = "#appointments", message: str = "", title: Optional[str] = None) -> Dict[str, Any]:
+        """Dispatches an instant alert to a Slack channel via Webhook or structured logger."""
+        if self.slack_webhook_url and not self.slack_webhook_url.startswith("your_"):
+            try:
+                import httpx
+                payload = {
+                    "channel": channel,
+                    "text": f"*{title or 'Omnichannel Voice Receptionist Alert'}*\n{message}"
+                }
+                resp = httpx.post(self.slack_webhook_url, json=payload, timeout=5.0)
+                if resp.status_code == 200:
+                    logger.info(f"✅ Slack notification dispatched to {channel}")
+                    return {"status": "sent", "channel": channel, "title": title}
+            except Exception as e:
+                logger.error(f"Slack webhook delivery error: {e}")
+        logger.info(f"💬 [SIMULATION SLACK] Channel: {channel} | Title: {title} | Content: {message}")
+        return {"status": "simulated", "channel": channel, "title": title, "content": message}
 
     def send_sms(self, to_phone: str, text: str) -> Dict[str, Any]:
         """Dispatches an SMS message via Twilio or resilient simulator."""
@@ -86,6 +107,51 @@ class NotificationDispatcher:
 
         logger.info(f"📞 [SIMULATION CALL] Calling phone: {to_phone} | Message: {twiml_say}")
         return {"status": "simulated", "channel": "voice_call", "to": to_phone, "message": twiml_say}
+
+    def trigger_vapi_outbound_call(
+        self,
+        to_phone: str,
+        customer_name: str = "Valued Guest",
+        tenant_name: str = "Luxe Salon & Spa",
+        first_message: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Initiates an automated outbound phone call via Vapi REST API."""
+        vapi_key = os.getenv("VAPI_API_KEY")
+        asst_id = os.getenv("VAPI_ASSISTANT_ID")
+        phone_id = os.getenv("VAPI_PHONE_NUMBER_ID")
+
+        if vapi_key and asst_id and phone_id and not vapi_key.startswith("your_"):
+            try:
+                import httpx
+                payload = {
+                    "assistantId": asst_id,
+                    "phoneNumberId": phone_id,
+                    "customer": {
+                        "number": to_phone,
+                        "name": customer_name
+                    }
+                }
+                if first_message:
+                    payload["assistantOverrides"] = {
+                        "firstMessage": first_message
+                    }
+                with httpx.Client(timeout=15.0) as client:
+                    resp = client.post(
+                        "https://api.vapi.ai/call/phone",
+                        headers={"Authorization": f"Bearer {vapi_key}", "Content-Type": "application/json"},
+                        json=payload
+                    )
+                    if resp.status_code in (200, 201):
+                        data = resp.json()
+                        logger.info(f"🚀 [VAPI CALL] Outbound call placed to {to_phone} (ID: {data.get('id')})")
+                        return {"status": "success", "call_id": data.get("id"), "to": to_phone, "provider": "vapi"}
+                    else:
+                        logger.warning(f"Vapi API call error {resp.status_code}: {resp.text}")
+            except Exception as e:
+                logger.error(f"Vapi outbound call failed: {e}")
+
+        logger.info(f"📞 [SIMULATED VAPI CALL] Calling {to_phone} for {customer_name} at {tenant_name}")
+        return {"status": "simulated", "to": to_phone, "provider": "vapi_simulation"}
 
     def send_whatsapp(self, to_phone: str, text: str, quick_replies: Optional[List[str]] = None) -> Dict[str, Any]:
         """Dispatches WhatsApp push message via Meta Cloud API or Twilio WhatsApp."""

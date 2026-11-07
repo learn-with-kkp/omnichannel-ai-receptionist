@@ -227,9 +227,9 @@
           </div>
 
           <div style="display:flex; align-items:center; gap:12px; margin-top:16px; font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">
-            <span>Silence Threshold:</span>
-            <input type="range" id="silenceSlider" min="400" max="1400" step="100" value="700" style="width:90px; accent-color:var(--accent-cyan);">
-            <span id="silenceVal">700 ms</span>
+            <span>Speech Endpointing:</span>
+            <input type="range" id="silenceSlider" min="300" max="1000" step="50" value="500" style="width:100px; accent-color:var(--accent-cyan);">
+            <span id="silenceVal">500 ms (Standard)</span>
           </div>
         </div>
 
@@ -263,8 +263,8 @@
             Call Sofia live directly from your phone or click below to have Sofia ring your phone:
           </p>
           <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <a href="tel:+16673070119" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:8px 14px; font-size:12px; width:auto;">
-              📞 Dial +1 (667) 307-0119
+            <a href="tel:+19124999633" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:8px 14px; font-size:12px; width:auto;">
+              📞 Dial +1 (912) 499-9633
             </a>
             <button class="btn-secondary" id="btnVapiCall" onclick="triggerVapiOutboundCall()" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:12px; width:auto;">
               🚀 Call My Phone via Vapi
@@ -643,7 +643,7 @@
     </div>
   </div>
 
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=3.5"></script>
   <script>
     function switchCompareTab(vertical) {
       document.querySelectorAll('.compare-tab-pill').forEach(btn => btn.classList.remove('active'));

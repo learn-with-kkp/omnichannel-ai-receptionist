@@ -13,7 +13,7 @@ let isBotSpeaking = false;
 let recognition = null;
 let currentAccents = [];
 let currentTenants = [];
-let endpointSilenceMs = 700;
+let endpointSilenceMs = 500; // Industry standard conversational endpointing (500ms)
 let lastAppointmentCount = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -191,14 +191,16 @@ function renderAccentButtons(accents) {
   });
 }
 
-function switchAccent(accentKey) {
+function switchAccent(accentKey, announce = false) {
   currentAccentKey = accentKey;
   renderAccentButtons(currentAccents);
   const acc = currentAccents.find(a => a.key === accentKey);
   const accName = acc ? acc.name : accentKey;
   const descEl = document.getElementById("activeAccentDescription");
   if (descEl) descEl.textContent = accName;
-  appendChatBubble("bot", `Accent profile updated to <b>${accName}</b>. Sofia will converse using this regional dialect and voice timbre.`);
+  if (announce) {
+    appendChatBubble("bot", `Accent profile set to <b>${accName}</b>.`);
+  }
 }
 
 async function checkStatus() {
@@ -237,11 +239,78 @@ document.getElementById("ragToggle")?.addEventListener("change", async (e) => {
   }
 });
 
-// --- In-Browser WebRTC Voice Agent (Sofia) with Smart Silence Detection & Barge-In ---
+// --- In-Browser Nimbus-Inspired Real-Time Voice Agent with Adaptive VAD & Multi-Phrase Buffering ---
 
 let speechSilenceTimer = null;
-let currentTranscriptBuffer = "";
-const SILENCE_THRESHOLD_MS = 1800; // Wait 1.8s of silence after speaking before bot responds
+let currentTurnStartIndex = 0;
+let turnFinalizedTranscript = "";
+let lastInterimTranscript = "";
+let vadAudioContext = null;
+let vadAnalyser = null;
+let vadMicrophoneStream = null;
+let vadDataArray = null;
+let isUserAcousticallySpeaking = false;
+let vadLoopActive = false;
+
+// Connect hardware audio energy meter (Nimbus VAD inspiration)
+async function setupNimbusHardwareVAD() {
+  if (vadAudioContext && vadMicrophoneStream) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+    });
+    vadMicrophoneStream = stream;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    vadAudioContext = new AudioCtx();
+    const source = vadAudioContext.createMediaStreamSource(stream);
+    vadAnalyser = vadAudioContext.createAnalyser();
+    vadAnalyser.fftSize = 512;
+    vadDataArray = new Float32Array(vadAnalyser.fftSize);
+    source.connect(vadAnalyser);
+
+    startVADMonitoringLoop();
+  } catch (e) {
+    console.warn("Nimbus hardware VAD unavailable, fallback to adaptive endpointing:", e);
+  }
+}
+
+function startVADMonitoringLoop() {
+  if (vadLoopActive) return;
+  vadLoopActive = true;
+
+  function monitor() {
+    if (!isRecording) {
+      vadLoopActive = false;
+      return;
+    }
+    if (vadAnalyser && vadDataArray) {
+      vadAnalyser.getFloatTimeDomainData(vadDataArray);
+      let sum = 0;
+      for (let i = 0; i < vadDataArray.length; i++) {
+        sum += vadDataArray[i] * vadDataArray[i];
+      }
+      const rms = Math.sqrt(sum / vadDataArray.length);
+
+      // If user voice energy is actively detected, keep the turn buffer open
+      if (rms > 0.016 && !isBotSpeaking) {
+        isUserAcousticallySpeaking = true;
+        if (speechSilenceTimer) {
+          clearTimeout(speechSilenceTimer);
+          speechSilenceTimer = null;
+        }
+      } else {
+        isUserAcousticallySpeaking = false;
+      }
+    }
+    requestAnimationFrame(monitor);
+  }
+  requestAnimationFrame(monitor);
+}
+
+// Calculate silence threshold for endpointing (Industry standard 500ms)
+function calculateAdaptiveSilenceMs(text) {
+  return endpointSilenceMs;
+}
 
 function initVoiceRecognition() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -258,36 +327,76 @@ function initVoiceRecognition() {
 
   recognition.onstart = () => {
     isRecording = true;
-    currentTranscriptBuffer = "";
+    turnFinalizedTranscript = "";
+    lastInterimTranscript = "";
     if (speechSilenceTimer) {
       clearTimeout(speechSilenceTimer);
       speechSilenceTimer = null;
     }
+    setupNimbusHardwareVAD();
     triggerBargeIn();
     updateMicUI(true);
+  };
+
+  recognition.onspeechend = () => {
+    // Immediate fast endpointing when browser detects speech cessation
+    const liveText = (turnFinalizedTranscript + lastInterimTranscript).trim();
+    if (!liveText || isProcessingTurn) return;
+
+    if (speechSilenceTimer) clearTimeout(speechSilenceTimer);
+
+    speechSilenceTimer = setTimeout(async () => {
+      const completeTurn = (turnFinalizedTranscript + lastInterimTranscript).trim();
+      if (!completeTurn || isProcessingTurn) return;
+
+      currentTurnStartIndex = recognition.results ? recognition.results.length : 0;
+      turnFinalizedTranscript = "";
+      lastInterimTranscript = "";
+
+      try { recognition.stop(); } catch (e) {}
+      isRecording = false;
+      updateMicUI(false);
+
+      const statusEl = document.getElementById("voiceStatus");
+      if (statusEl) statusEl.textContent = `You said: "${completeTurn}"`;
+      appendChatBubble("user", completeTurn);
+
+      isProcessingTurn = true;
+      try {
+        await processMessageTurn(completeTurn);
+      } finally {
+        isProcessingTurn = false;
+      }
+    }, endpointSilenceMs);
   };
 
   recognition.onresult = (event) => {
     // Guard against re-entrant processing or bot's own speech
     if (isProcessingTurn || isBotSpeaking) return;
 
-    let interimTranscript = "";
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
+    let turnFinalized = "";
+    let interim = "";
+
+    // Accumulate all finalized chunks for the current turn starting from currentTurnStartIndex
+    for (let i = currentTurnStartIndex; i < event.results.length; ++i) {
       const piece = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
-        currentTranscriptBuffer += piece + " ";
+        turnFinalized += piece + " ";
       } else {
-        interimTranscript += piece;
+        interim += piece;
       }
     }
 
-    const liveText = (currentTranscriptBuffer + interimTranscript).trim();
+    turnFinalizedTranscript = turnFinalized;
+    lastInterimTranscript = interim;
+
+    const liveText = (turnFinalizedTranscript + interim).trim();
     if (!liveText) return;
 
-    // Show live streaming speech feedback so user knows they are heard
+    // Show live streaming speech feedback so user sees the FULL sentence building in real time
     const statusEl = document.getElementById("voiceStatus");
     if (statusEl) {
-      statusEl.textContent = `🎙️ Listening: "${liveText}" (take your time, waiting for pause...)`;
+      statusEl.textContent = `🎙️ Listening: "${liveText}"`;
     }
 
     // Reset silence timer on every new word or syllable
@@ -295,11 +404,18 @@ function initVoiceRecognition() {
       clearTimeout(speechSilenceTimer);
     }
 
+    // Calculate adaptive threshold (Nimbus-inspired, default 500ms)
+    const requiredSilenceMs = calculateAdaptiveSilenceMs(liveText);
+
     speechSilenceTimer = setTimeout(async () => {
-      const completeTurn = (currentTranscriptBuffer + interimTranscript).trim();
+      const completeTurn = (turnFinalizedTranscript + lastInterimTranscript).trim();
       if (!completeTurn || isProcessingTurn) return;
 
-      currentTranscriptBuffer = "";
+      // Advance turnStartIndex so next turn starts clean
+      currentTurnStartIndex = event.results.length;
+      turnFinalizedTranscript = "";
+      lastInterimTranscript = "";
+
       try {
         recognition.stop();
       } catch (e) {}
@@ -315,7 +431,7 @@ function initVoiceRecognition() {
       } finally {
         isProcessingTurn = false;
       }
-    }, SILENCE_THRESHOLD_MS);
+    }, requiredSilenceMs);
   };
 
   recognition.onerror = (event) => {
@@ -344,9 +460,15 @@ function initVoiceRecognition() {
 
 function triggerBargeIn() {
   isBotSpeaking = false;
+  if (activeAppAudio) {
+    activeAppAudio.pause();
+    activeAppAudio = null;
+  }
   if (window.speechSynthesis) {
     window.speechSynthesis.cancel();
   }
+  const waves = document.querySelectorAll(".wave-bar");
+  waves.forEach(w => w.classList.remove("speaking"));
   fetch("/api/voice/interrupt", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -402,8 +524,9 @@ function toggleVoice() {
       clearTimeout(speechSilenceTimer);
       speechSilenceTimer = null;
     }
-    const pendingText = currentTranscriptBuffer.trim();
-    currentTranscriptBuffer = "";
+    const pendingText = (turnFinalizedTranscript + lastInterimTranscript).trim();
+    turnFinalizedTranscript = "";
+    lastInterimTranscript = "";
     try { recognition.stop(); } catch (e) {}
     isRecording = false;
     updateMicUI(false);
@@ -416,7 +539,10 @@ function toggleVoice() {
     }
   } else {
     try {
-      currentTranscriptBuffer = "";
+      turnFinalizedTranscript = "";
+      lastInterimTranscript = "";
+      currentTurnStartIndex = 0;
+      setupNimbusHardwareVAD();
       recognition.lang = getLanguageCodeForAccent(currentAccentKey);
       recognition.start();
     } catch (err) {
@@ -533,6 +659,14 @@ async function processMessageTurn(messageText) {
     const data = await res.json();
     const elapsed = Math.round(performance.now() - t0);
 
+    // Auto-update accent dynamically if backend detected a talking style
+    if (data.accent && data.accent.key && data.accent.key !== currentAccentKey) {
+      currentAccentKey = data.accent.key;
+      renderAccentButtons(currentAccents);
+      const descEl = document.getElementById("activeAccentDescription");
+      if (descEl) descEl.textContent = data.accent.name;
+    }
+
     // Update Sentiment Badge
     updateSentimentBadge(data.sentiment);
 
@@ -596,9 +730,10 @@ function appendChatBubble(role, text, metadata = null) {
 
 // --- Voice Audio Synthesis (Sofia) ---
 
+let activeAppAudio = null;
+
 function playSpeech(rawText) {
   const decoded = decodeURIComponent(rawText);
-  if (!window.speechSynthesis) return;
 
   // 1. Force halt speech recognition so the microphone CANNOT hear the laptop speakers
   if (recognition) {
@@ -607,35 +742,83 @@ function playSpeech(rawText) {
     updateMicUI(false);
   }
 
-  window.speechSynthesis.cancel();
-
-  const utterance = new SpeechSynthesisUtterance(decoded);
-  utterance.lang = getLanguageCodeForAccent(currentAccentKey);
-
-  utterance.pitch = 1.15;
-  utterance.rate = 1.0;
+  if (activeAppAudio) {
+    activeAppAudio.pause();
+    activeAppAudio = null;
+  }
+  if (window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
 
   const waves = document.querySelectorAll(".wave-bar");
 
-  utterance.onstart = () => {
-    isBotSpeaking = true;
-    waves.forEach(w => w.classList.add("speaking"));
-  };
+  // Stream low-latency neural TTS (Cartesia / OpenAI nova) matching phone line
+  const audioUrl = `/api/chat/tts?text=${encodeURIComponent(decoded)}&accent=${encodeURIComponent(currentAccentKey)}`;
+  const audio = new Audio(audioUrl);
+  activeAppAudio = audio;
+  isBotSpeaking = true;
+  waves.forEach(w => w.classList.add("speaking"));
 
-  utterance.onend = () => {
+  audio.onended = () => {
+    activeAppAudio = null;
     waves.forEach(w => w.classList.remove("speaking"));
-    // Safety buffer after speaker playback finishes before allowing mic input
     setTimeout(() => {
       isBotSpeaking = false;
-    }, 500);
+    }, 400);
   };
 
-  utterance.onerror = () => {
+  audio.onerror = () => {
+    activeAppAudio = null;
     waves.forEach(w => w.classList.remove("speaking"));
-    isBotSpeaking = false;
+    // Browser fallback
+    if (window.speechSynthesis) {
+      const utterance = new SpeechSynthesisUtterance(decoded);
+      utterance.lang = getLanguageCodeForAccent(currentAccentKey);
+      utterance.pitch = 1.15;
+      utterance.rate = 1.0;
+      utterance.onstart = () => {
+        isBotSpeaking = true;
+        waves.forEach(w => w.classList.add("speaking"));
+      };
+      utterance.onend = () => {
+        waves.forEach(w => w.classList.remove("speaking"));
+        setTimeout(() => { isBotSpeaking = false; }, 400);
+      };
+      utterance.onerror = () => {
+        waves.forEach(w => w.classList.remove("speaking"));
+        isBotSpeaking = false;
+      };
+      window.speechSynthesis.speak(utterance);
+    } else {
+      isBotSpeaking = false;
+    }
   };
 
-  window.speechSynthesis.speak(utterance);
+  audio.play().catch(() => {
+    // Autoplay policy fallback
+    if (window.speechSynthesis) {
+      const utterance = new SpeechSynthesisUtterance(decoded);
+      utterance.lang = getLanguageCodeForAccent(currentAccentKey);
+      utterance.pitch = 1.15;
+      utterance.rate = 1.0;
+      utterance.onstart = () => {
+        isBotSpeaking = true;
+        waves.forEach(w => w.classList.add("speaking"));
+      };
+      utterance.onend = () => {
+        waves.forEach(w => w.classList.remove("speaking"));
+        setTimeout(() => { isBotSpeaking = false; }, 400);
+      };
+      utterance.onerror = () => {
+        waves.forEach(w => w.classList.remove("speaking"));
+        isBotSpeaking = false;
+      };
+      window.speechSynthesis.speak(utterance);
+    } else {
+      waves.forEach(w => w.classList.remove("speaking"));
+      isBotSpeaking = false;
+    }
+  });
 }
 
 // --- Appointments & Google Calendar / Excel Live Table ---
@@ -825,7 +1008,7 @@ function setupEventListeners() {
   const sVal = document.getElementById("silenceVal");
   slider?.addEventListener("input", (e) => {
     endpointSilenceMs = parseInt(e.target.value);
-    if (sVal) sVal.textContent = `${endpointSilenceMs} ms`;
+    if (sVal) sVal.textContent = `${endpointSilenceMs} ms (Fast Response)`;
   });
 
   setupOnboardModal();

@@ -15,3 +15,6 @@ google-api-python-client>=2.100.0
 google-auth>=2.20.0
 
 
+twilio>=9.0.0
+openai>=1.20.0
+cartesia>=1.0.0
