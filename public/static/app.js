@@ -1351,14 +1351,29 @@ function getClerkBundleUrl(pubKey) {
   return "https://saved-marlin-473.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 }
 
+function getClerkUiBundleUrl(pubKey) {
+  try {
+    const raw = (pubKey || "").split("_")[2] || "";
+    if (raw) {
+      const decoded = atob(raw).replace(/\$$/, "");
+      if (decoded) {
+        return `https://${decoded}/npm/@clerk/ui@1/dist/ui.browser.js`;
+      }
+    }
+  } catch (e) {}
+  return "https://saved-marlin-473.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js";
+}
+
 async function ensureClerkReady(pubKey) {
   const key = pubKey || window.__clerk_publishable_key || CLERK_FALLBACK_PK;
   window.__clerk_publishable_key = key;
   const scriptUrl = getClerkBundleUrl(key);
+  const uiScriptUrl = getClerkUiBundleUrl(key);
 
+  // 1. Load Clerk core bundle if not present
   if (!window.Clerk) {
     await new Promise((resolve) => {
-      const existing = document.querySelector(`script[src*="clerk-js@5"]`);
+      const existing = document.querySelector(`script[src*="clerk-js"]`);
       if (existing) {
         if (window.Clerk) return resolve();
         existing.addEventListener("load", resolve);
@@ -1375,9 +1390,33 @@ async function ensureClerkReady(pubKey) {
     });
   }
 
+  // 2. Load Clerk UI components bundle if not present
+  if (!window.__internal_ClerkUICtor) {
+    await new Promise((resolve) => {
+      const existing = document.querySelector(`script[src*="@clerk/ui"]`);
+      if (existing) {
+        if (window.__internal_ClerkUICtor) return resolve();
+        existing.addEventListener("load", resolve);
+        existing.addEventListener("error", resolve);
+        return;
+      }
+      const s = document.createElement("script");
+      s.src = uiScriptUrl;
+      s.crossOrigin = "anonymous";
+      s.onload = resolve;
+      s.onerror = resolve;
+      document.head.appendChild(s);
+    });
+  }
+
+  // 3. Initialize Clerk with UI constructor enabled
   if (window.Clerk && !window.Clerk.loaded) {
     try {
-      await window.Clerk.load({ publishableKey: key });
+      const loadOpts = { publishableKey: key };
+      if (window.__internal_ClerkUICtor) {
+        loadOpts.ui = { ClerkUI: window.__internal_ClerkUICtor };
+      }
+      await window.Clerk.load(loadOpts);
     } catch (e) {
       console.warn("Clerk.load note:", e);
     }
