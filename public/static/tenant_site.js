@@ -262,7 +262,107 @@ function setupSiteVoice() {
   };
 }
 
-function toggleSiteVoice() {
+let siteVapiClient = null;
+let isSiteVapiCalling = false;
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+}
+
+async function toggleSiteVoice() {
+  const btn = document.getElementById("siteMicBtn");
+  const callBtn = document.getElementById("btnSiteLiveCall");
+  const callLabel = document.getElementById("siteCallBtnLabel");
+  const icon = document.getElementById("siteMicIcon");
+  const status = document.getElementById("siteVoiceStatus");
+  const transcriptEl = document.getElementById("siteLiveTranscript");
+  const waves = document.querySelectorAll("#siteWaveform .wave-bar");
+
+  // If already in a Vapi call, hang up
+  if (isSiteVapiCalling) {
+    if (siteVapiClient) siteVapiClient.stop();
+    return;
+  }
+
+  // Attempt Vapi WebRTC Call
+  if (window.Vapi) {
+    try {
+      if (status) status.textContent = "Connecting to Sofia via WebRTC audio...";
+      if (callBtn) callBtn.disabled = true;
+
+      const res = await fetch("/api/voice/vapi-config");
+      const cfg = await res.json();
+      if (!cfg.publicKey || !cfg.assistantId) {
+        throw new Error("Missing Vapi credentials in backend.");
+      }
+
+      if (!siteVapiClient) {
+        siteVapiClient = new window.Vapi(cfg.publicKey);
+
+        siteVapiClient.on("call-start", () => {
+          isSiteVapiCalling = true;
+          if (callBtn) {
+            callBtn.disabled = false;
+            callBtn.style.background = "#ef4444";
+          }
+          if (callLabel) callLabel.textContent = "End Voice Call";
+          if (btn) btn.classList.add("active");
+          if (icon) icon.textContent = "🛑";
+          if (status) status.textContent = "🟢 Connected live! Speak with Sofia naturally.";
+          if (transcriptEl) {
+            transcriptEl.style.display = "block";
+            transcriptEl.innerHTML = "<em>Call connected. Sofia is listening...</em>";
+          }
+          waves.forEach(w => w.classList.add("speaking"));
+        });
+
+        siteVapiClient.on("call-end", () => {
+          isSiteVapiCalling = false;
+          if (callBtn) {
+            callBtn.disabled = false;
+            callBtn.style.background = "";
+          }
+          if (callLabel) callLabel.textContent = "Call Sofia Live (WebRTC)";
+          if (btn) btn.classList.remove("active");
+          if (icon) icon.textContent = "🎙️";
+          if (status) status.textContent = "Call ended. Appointments saved to calendar.";
+          waves.forEach(w => w.classList.remove("speaking"));
+        });
+
+        siteVapiClient.on("speech-start", () => {
+          waves.forEach(w => w.classList.add("speaking"));
+        });
+
+        siteVapiClient.on("speech-end", () => {
+          waves.forEach(w => w.classList.remove("speaking"));
+        });
+
+        siteVapiClient.on("message", (msg) => {
+          if (msg.type === "transcript") {
+            const role = msg.role === "user" ? "You" : "Sofia";
+            if (transcriptEl) {
+              transcriptEl.innerHTML = `<strong>${role}:</strong> "${escapeHtml(msg.transcript)}"`;
+            }
+          }
+        });
+
+        siteVapiClient.on("error", (err) => {
+          console.error("Site Vapi Error:", err);
+          if (status) status.textContent = `Call error: ${err.message || 'Error'}`;
+          if (callBtn) callBtn.disabled = false;
+        });
+      }
+
+      await siteVapiClient.start(cfg.assistantId);
+      return;
+    } catch (err) {
+      console.warn("Vapi start fallback to browser recognition:", err);
+      if (callBtn) callBtn.disabled = false;
+    }
+  }
+
+  // Fallback to browser recognition
   if (isBotSpeaking) {
     if (activeSiteAudio) {
       activeSiteAudio.pause();

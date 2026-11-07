@@ -8,6 +8,22 @@
   },
   "routes": [
     {
+      "src": "/widget.js",
+      "dest": "/public/widget.js"
+    },
+    {
+      "src": "/vapi-call",
+      "dest": "/public/vapi_web_sdk_test.html"
+    },
+    {
+      "src": "/call",
+      "dest": "/public/vapi_web_sdk_test.html"
+    },
+    {
+      "src": "/vapi-test",
+      "dest": "/public/vapi_web_sdk_test.html"
+    },
+    {
       "src": "/static/(.*)",
       "dest": "/public/static/$1"
     },
