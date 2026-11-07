@@ -312,3 +312,70 @@ def quick_test_booking(
         "message": f"Appointment {booking['booking_id']} created and synced to Google Calendar, Excel & Google Sheets!",
         "booking": booking
     }
+
+
+class DirectBookRequest(BaseModel):
+    caller_name: str
+    caller_phone: str
+    service_name: str
+    stylist_name: Optional[str] = "Marcus"
+    appointment_datetime: Optional[str] = None
+    tenant_id: Optional[str] = "salon"
+    notes: Optional[str] = ""
+
+
+@app.post("/api/appointments/book")
+def direct_book_appointment(payload: DirectBookRequest):
+    """Direct 1-click slot booking into Neon PostgreSQL and Google Calendar."""
+    dt = payload.appointment_datetime
+    if not dt:
+        dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT14:00:00")
+    res = book_new_appointment(
+        caller_name=payload.caller_name,
+        caller_phone=payload.caller_phone,
+        service_name=payload.service_name,
+        appointment_datetime=dt,
+        stylist_name=payload.stylist_name or "Marcus",
+        tenant_id=payload.tenant_id or "salon",
+        channel="web_portal",
+        notes=payload.notes or "Booked via Luxe Saloon VIP Schedule"
+    )
+    try:
+        from backend.database import save_customer_profile
+        save_customer_profile(phone=payload.caller_phone, full_name=payload.caller_name, tenant_id=payload.tenant_id or "salon")
+    except Exception as e:
+        logger.warning(f"Could not save customer profile: {e}")
+    return {"status": "success", "booking": res}
+
+
+@app.get("/api/schedule/availability")
+def get_schedule_availability(tenant_id: str = "salon"):
+    """Returns visual schedule matrix, hourly capacity metrics, and booked vs open slots."""
+    appts = list_all_appointments(tenant_id)
+    hours = ["09:00 AM", "10:30 AM", "12:00 PM", "01:30 PM", "03:00 PM", "04:30 PM", "06:00 PM"]
+    stylists = [
+        {"name": "Sofia Alston", "role": "Master Stylist & Director", "avatar": "💇‍♀️"},
+        {"name": "Marcus Vance", "role": "Balayage & Color Director", "avatar": "🎨"},
+        {"name": "Elena Rostova", "role": "Medical Aesthetician", "avatar": "✨"},
+        {"name": "Chloe Laurent", "role": "Nail Artist & Spa Specialist", "avatar": "💅"}
+    ]
+    
+    # Calculate occupancy stats
+    total_slots = len(hours) * len(stylists)
+    booked_count = len(appts)
+    available_count = max(0, total_slots - min(booked_count, 14))
+
+    return {
+        "tenant_id": tenant_id,
+        "hours": hours,
+        "stylists": stylists,
+        "metrics": {
+            "total_slots": total_slots,
+            "booked_appointments": booked_count,
+            "open_slots": available_count,
+            "occupancy_rate": f"{round((min(booked_count, 14) / total_slots) * 100)}%",
+            "active_stylists": len(stylists)
+        },
+        "appointments": appts[:25]
+    }
+

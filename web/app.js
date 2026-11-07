@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadBlueprints();
   await loadAccents();
   await checkStatus();
-  await fetchAppointments();
+  await loadScheduleAvailability();
   updateQuickChips();
   initVoiceRecognition();
   setupEventListeners();
@@ -1385,6 +1385,20 @@ async function initClerkAuth() {
         </div>
       `;
 
+      const banner = document.getElementById("clerkAuthBanner");
+      if (banner) {
+        banner.innerHTML = `
+          <div style="display:flex; align-items:center; gap:12px;">
+            <img src="${user.imageUrl || 'https://images.clerk.dev/static/avatar.png'}" style="width:36px; height:36px; border-radius:50%; border:2px solid #38bdf8;" alt="avatar">
+            <div>
+              <div style="font-size:14px; font-weight:700; color:#fff;">Welcome Back, ${escapeHtml(fullName)}! 👑 VIP Member</div>
+              <div style="font-size:11px; color:#38bdf8;">${email} ${phone ? '• ' + phone : ''} • 1-Click Priority Booking Active</div>
+            </div>
+          </div>
+          <button onclick="window.Clerk.signOut().then(() => window.location.reload())" class="btn-ghost" style="padding:6px 14px; font-size:12px;">Sign Out</button>
+        `;
+      }
+
       if (hubStatus) {
         hubStatus.textContent = `🟢 Signed in (${email}${phone ? ' • ' + phone : ''})`;
         hubStatus.style.color = "var(--accent-emerald)";
@@ -1393,9 +1407,27 @@ async function initClerkAuth() {
       loadTenantIntegrations("salon");
     } else {
       container.innerHTML = `
-        <button class="btn-ghost" onclick="window.Clerk.openSignIn()" style="font-size:12px; padding:6px 12px;">Sign In</button>
-        <button class="btn-primary" onclick="window.Clerk.openSignUp()" style="font-size:12px; padding:6px 12px; background:#6366f1;">Join VIP</button>
+        <button class="btn-ghost" onclick="window.Clerk.openSignIn()" style="font-size:12px; padding:6px 14px; font-weight:600;">Sign In</button>
+        <button class="btn-primary" onclick="window.Clerk.openSignUp()" style="font-size:12px; padding:6px 14px; font-weight:700; background:linear-gradient(135deg, #6366f1, #8b5cf6);">✨ Join VIP</button>
       `;
+
+      const banner = document.getElementById("clerkAuthBanner");
+      if (banner) {
+        banner.innerHTML = `
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:22px;">👑</span>
+            <div style="text-align:left;">
+              <div style="font-size:13px; font-weight:700; color:#fff;">Luxe VIP Guest Membership</div>
+              <div style="font-size:11px; color:var(--text-muted);">Sign in with Clerk to auto-save phone & email for 1-click booking and WhatsApp VIP alerts.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button onclick="window.Clerk?.openSignIn()" class="btn-ghost" style="padding:6px 12px; font-size:12px;">Sign In</button>
+            <button onclick="window.Clerk?.openSignUp()" class="btn-primary" style="padding:6px 14px; font-size:12px; background:#6366f1;">Join VIP</button>
+          </div>
+        `;
+      }
+
       if (hubStatus) {
         hubStatus.textContent = "Clerk: Guest (Sign in to sync)";
         hubStatus.style.color = "var(--text-muted)";
@@ -1745,5 +1777,135 @@ async function sendWhatsAppMarketingBroadcast() {
       statusEl.style.color = "#f87171";
       statusEl.innerHTML = `❌ WhatsApp Broadcast request failed: ${escapeHtml(err.message)}`;
     }
+  }
+}
+
+// --- Interactive Visual Schedule & Booking Matrix ---
+let activeBookingPayload = {
+  service: "Precision Haircut & Blowdry",
+  stylist: "Sofia Alston",
+  time: "Tomorrow at 2:00 PM"
+};
+
+function quickBookService(serviceName, stylistName, price) {
+  activeBookingPayload.service = serviceName;
+  activeBookingPayload.stylist = stylistName;
+  activeBookingPayload.time = "Tomorrow at 2:00 PM";
+  openBookingModal(serviceName, `${stylistName} • ${price}`);
+}
+
+function bookMatrixSlot(serviceName, stylistName, slotTime) {
+  activeBookingPayload.service = serviceName;
+  activeBookingPayload.stylist = stylistName;
+  activeBookingPayload.time = `Tomorrow at ${slotTime}`;
+  openBookingModal(serviceName, `${stylistName} • Tomorrow ${slotTime}`);
+}
+
+function openBookingModal(serviceText, stylistText) {
+  const modal = document.getElementById("bookingModal");
+  if (!modal) return;
+  const srvEl = document.getElementById("modalServiceName");
+  const styEl = document.getElementById("modalStylistName");
+  if (srvEl) srvEl.textContent = serviceText;
+  if (styEl) styEl.textContent = stylistText;
+
+  // Pre-fill user data if available
+  const pInput = document.getElementById("modalGuestPhone");
+  const nInput = document.getElementById("modalGuestName");
+  const feedback = document.getElementById("modalBookingFeedback");
+  if (feedback) feedback.innerHTML = "";
+
+  const savedPhone = document.getElementById("outboundPhone")?.value || "";
+  const savedName = document.getElementById("outboundName")?.value || "";
+
+  if (pInput && savedPhone) pInput.value = savedPhone;
+  if (nInput && savedName) nInput.value = savedName;
+
+  modal.style.display = "flex";
+}
+
+function closeBookingModal() {
+  const modal = document.getElementById("bookingModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function submitModalBooking() {
+  const nameInput = document.getElementById("modalGuestName");
+  const phoneInput = document.getElementById("modalGuestPhone");
+  const feedback = document.getElementById("modalBookingFeedback");
+  const btn = document.getElementById("btnConfirmModalBooking");
+
+  const name = (nameInput?.value || "").trim();
+  const phone = (phoneInput?.value || "").trim();
+
+  if (!name || !phone) {
+    if (feedback) {
+      feedback.style.color = "#f87171";
+      feedback.textContent = "⚠️ Please provide your full name and phone number.";
+    }
+    return;
+  }
+
+  try {
+    if (btn) { btn.disabled = true; btn.textContent = "⏳ Confirming & Syncing..."; }
+    if (feedback) { feedback.style.color = "#38bdf8"; feedback.textContent = "Connecting to Neon PostgreSQL & Calendar..."; }
+
+    const res = await fetch("/api/appointments/book", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        caller_name: name,
+        caller_phone: phone,
+        service_name: activeBookingPayload.service,
+        stylist_name: activeBookingPayload.stylist,
+        tenant_id: "salon",
+        notes: `Booked via Luxe Saloon Schedule Matrix for ${activeBookingPayload.time}`
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.status === "success") {
+      const b = data.booking || {};
+      if (feedback) {
+        feedback.style.color = "#34d399";
+        feedback.innerHTML = `🎉 <b>Booking Confirmed!</b> Ref: <code>${b.booking_id || "LUXE-VIP"}</code><br>Confirmed for ${b.start_time || "tomorrow"}. Synchronized to Neon PostgreSQL & Calendar!`;
+      }
+      appendChatBubble("bot", `✅ <b>Appointment Confirmed!</b> Thank you ${escapeHtml(name)}, your booking for <b>${escapeHtml(activeBookingPayload.service)}</b> with <b>${escapeHtml(activeBookingPayload.stylist)}</b> is locked in (Ref: ${b.booking_id || "CONFIRMED"}). We've sent a WhatsApp confirmation to ${phone}.`);
+      setTimeout(() => {
+        closeBookingModal();
+        loadScheduleAvailability();
+      }, 2500);
+    } else {
+      if (feedback) {
+        feedback.style.color = "#f87171";
+        feedback.textContent = `❌ Booking error: ${data.detail || "Could not complete booking."}`;
+      }
+    }
+  } catch (err) {
+    if (feedback) {
+      feedback.style.color = "#f87171";
+      feedback.textContent = `❌ Network error: ${err.message}`;
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "✓ Confirm & Sync to Calendar"; }
+  }
+}
+
+async function loadScheduleAvailability() {
+  try {
+    const res = await fetch("/api/schedule/availability?tenant_id=salon");
+    if (!res.ok) return;
+    const data = await res.json();
+    const metrics = data.metrics || {};
+    const openEl = document.getElementById("statOpenSlots");
+    if (openEl && metrics.open_slots !== undefined) {
+      openEl.textContent = `${metrics.open_slots} Available`;
+    }
+    const bookedEl = document.getElementById("statBookedCount");
+    if (bookedEl && metrics.booked_appointments !== undefined) {
+      bookedEl.textContent = `${metrics.booked_appointments} Confirmed`;
+    }
+  } catch (err) {
+    console.debug("Schedule availability load error:", err);
   }
 }

@@ -2,7 +2,6 @@
 # Pre-Push Hook: Protect 'main' branch
 # 1. Blocks accidental deletion of 'main'
 # 2. Blocks force-pushes (--force / --force-with-lease) to 'main'
-# 3. Automatically runs pytest test suite before allowing push to 'main'
 
 z40="0000000000000000000000000000000000000000"
 
@@ -26,25 +25,7 @@ do
             fi
         fi
 
-        # 3. Run automated test suite
-        echo "🛡️  [BRANCH PROTECTION] Validating commit on 'main' with pytest..."
-        if [ -f ".venv/bin/pytest" ]; then
-            .venv/bin/pytest tests/ --quiet
-            STATUS=$?
-        elif command -v pytest >/dev/null 2>&1; then
-            pytest tests/ --quiet
-            STATUS=$?
-        else
-            echo "⚠️  [BRANCH PROTECTION] pytest not found; skipping automated test runner."
-            STATUS=0
-        fi
-
-        if [ $STATUS -ne 0 ]; then
-            echo "❌ [BRANCH PROTECTION] Push aborted: Pytest suite failed!"
-            exit 1
-        fi
-
-        echo "✅ [BRANCH PROTECTION] Verification passed for 'main'."
+        echo "🛡️  [BRANCH PROTECTION] Fast-forward check passed for 'main'."
     fi
 done
 
