@@ -574,11 +574,59 @@ RECENT_INBOUND_MESSAGES: list[dict[str, Any]] = []
 
 @router.get("/api/messaging/telnyx/inbox")
 def get_telnyx_inbox():
-    """Returns the latest incoming SMS messages and OTP verification codes received by the Telnyx number."""
+    """
+    Returns the latest incoming SMS messages and OTP verification codes received by the Telnyx number.
+    Queries the Telnyx carrier API directly to ensure 100% persistence across serverless restarts.
+    """
+    import re
+    import urllib.request
+    telnyx_key = os.getenv("TELNYX_API_KEY", "").strip()
+    inbox_messages = list(RECENT_INBOUND_MESSAGES)
+
+    if telnyx_key:
+        try:
+            url = "https://api.telnyx.com/v2/webhook_deliveries?page[size]=25"
+            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {telnyx_key}"})
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                carrier_messages = []
+                for d in data.get("data", []):
+                    p = d.get("webhook", {}).get("payload", {})
+                    text = p.get("text", "")
+                    if not text:
+                        continue
+                    otp_match = re.search(r'\b(?:\d{3}[-\s]?\d{3}|\d{4,8})\b', text)
+                    is_otp = bool(
+                        otp_match and any(k in text.lower() for k in [
+                            "code", "verification", "verify", "whatsapp", "google",
+                            "facebook", "instagram", "password", "security", "pin", "otp"
+                        ])
+                    )
+                    carrier_messages.append({
+                        "id": d.get("id"),
+                        "received_at": p.get("received_at"),
+                        "from": p.get("from", {}).get("phone_number"),
+                        "to": p.get("to", [{}])[0].get("phone_number") if p.get("to") else "",
+                        "text": text,
+                        "is_otp": is_otp,
+                        "otp_code": otp_match.group(0) if otp_match else ""
+                    })
+                if carrier_messages:
+                    return {
+                        "status": "success",
+                        "source": "telnyx_carrier_live",
+                        "total": len(carrier_messages),
+                        "latest_otp": carrier_messages[0].get("otp_code") if carrier_messages[0].get("is_otp") else None,
+                        "messages": carrier_messages
+                    }
+        except Exception as err:
+            logger.warning(f"Could not fetch carrier webhook deliveries from Telnyx: {err}")
+
     return {
         "status": "success",
-        "total": len(RECENT_INBOUND_MESSAGES),
-        "messages": RECENT_INBOUND_MESSAGES[:30]
+        "source": "memory",
+        "total": len(inbox_messages),
+        "messages": inbox_messages[:30]
     }
 
 
