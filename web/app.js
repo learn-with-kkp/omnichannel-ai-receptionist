@@ -1399,7 +1399,7 @@ const ASSISTANT_IDS = {
 };
 
 let currentActiveClerkModal = null;
-const CLERK_FALLBACK_PK = "pk_test_c2F2ZWQtbWFybGluLTQ3My5jbGVyay5hY2NvdW50cy5kZXYk";
+const CLERK_FALLBACK_PK = "pk_live_Y2xlcmsua2lzaG9yLnRlY2gk";
 
 function getClerkBundleUrl(pubKey) {
   try {
