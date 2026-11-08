@@ -569,16 +569,61 @@ def broadcast_whatsapp_marketing(payload: WhatsAppBroadcastRequest):
     }
 
 
+RECENT_INBOUND_MESSAGES: list[dict[str, Any]] = []
+
+
+@router.get("/api/messaging/telnyx/inbox")
+def get_telnyx_inbox():
+    """Returns the latest incoming SMS messages and OTP verification codes received by the Telnyx number."""
+    return {
+        "status": "success",
+        "total": len(RECENT_INBOUND_MESSAGES),
+        "messages": RECENT_INBOUND_MESSAGES[:30]
+    }
+
+
 @router.post("/webhook/telnyx")
 async def handle_telnyx_inbound(request: Request):
-    """Receives inbound messages from Telnyx webhook and replies with AI receptionist orchestration."""
+    """
+    Receives inbound SMS messages from Telnyx webhook.
+    Captures OTP verification codes without echoing, and routes human customer texts to AI receptionist.
+    """
+    import re
+    from datetime import datetime
     try:
         body = await request.json()
         data = body.get("data", {})
         payload = data.get("payload", {})
         from_phone = payload.get("from", {}).get("phone_number", "")
         text = payload.get("text", "")
+        
         if from_phone and text:
+            # Check if message is a verification OTP (e.g. WhatsApp, Google, Facebook code)
+            otp_match = re.search(r'\b(?:\d{3}[-\s]?\d{3}|\d{4,8})\b', text)
+            is_otp = bool(
+                otp_match and any(k in text.lower() for k in [
+                    "code", "verification", "verify", "whatsapp", "google",
+                    "facebook", "instagram", "password", "security", "pin", "otp"
+                ])
+            )
+            extracted_code = otp_match.group(0) if otp_match else ""
+            
+            entry = {
+                "received_at": datetime.utcnow().isoformat() + "Z",
+                "from": from_phone,
+                "text": text,
+                "is_otp": is_otp,
+                "otp_code": extracted_code
+            }
+            RECENT_INBOUND_MESSAGES.insert(0, entry)
+            if len(RECENT_INBOUND_MESSAGES) > 50:
+                RECENT_INBOUND_MESSAGES.pop()
+
+            if is_otp:
+                logger.info(f"🔑 [TELNYX OTP RECEIVED] Extracted Code: {extracted_code} | Full Text: {text}")
+                return {"status": "otp_captured", "code": extracted_code}
+
+            # Normal conversational customer SMS: reply with universal orchestrator
             orchestration = universal_orchestrator.process_conversation_turn(
                 user_message=text,
                 session_id=from_phone,
@@ -591,6 +636,7 @@ async def handle_telnyx_inbound(request: Request):
     except Exception as e:
         logger.error(f"Error handling Telnyx inbound: {e}")
     return {"status": "received"}
+
 
 
 
