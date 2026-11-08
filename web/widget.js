@@ -57,6 +57,7 @@
       line-height: 1.5;
       color: #f8fafc;
       box-sizing: border-box;
+      display: none; /* Hidden by default — only unlocked for signed-in VIP users */
     }
     #luxe-widget-root * {
       box-sizing: border-box;
@@ -635,6 +636,34 @@
 
   launcher.addEventListener('click', () => toggleWidget());
   closeBtn.addEventListener('click', () => toggleWidget(false));
+
+  // --- VIP Authentication Gating (Only show Sofia Luxe Receptionist for signed in users) ---
+  function checkIsSignedIn() {
+    try {
+      if (localStorage.getItem("luxe_vip_user")) return true;
+    } catch (e) {}
+    if (window.Clerk && window.Clerk.user) return true;
+    if (document.body && document.body.classList.contains("vip-signed-in")) return true;
+    return false;
+  }
+
+  function setWidgetAuthVisibility(isSignedIn) {
+    const shouldShow = typeof isSignedIn === 'boolean' ? isSignedIn : checkIsSignedIn();
+    rootEl.style.setProperty('display', shouldShow ? 'block' : 'none', 'important');
+    if (!shouldShow && isOpen) {
+      toggleWidget(false);
+    }
+  }
+
+  // Initial check
+  setWidgetAuthVisibility();
+
+  // Listen for login/logout auth updates
+  window.addEventListener('luxe:auth-change', (e) => {
+    const isAuth = e && e.detail && typeof e.detail.isSignedIn === 'boolean' ? e.detail.isSignedIn : checkIsSignedIn();
+    setWidgetAuthVisibility(isAuth);
+  });
+  window.setLuxeWidgetVisible = setWidgetAuthVisibility;
 
   // Switch tabs
   function switchTab(tab) {

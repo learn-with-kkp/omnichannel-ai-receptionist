@@ -1622,6 +1622,24 @@ function setVipGatedState(isSignedIn) {
   const overlay = document.getElementById("vipGateOverlay");
   const bannerBtn = document.getElementById("btnHighlightTestVoice");
   const heroBtn = document.getElementById("btnHeroTestVoice");
+  const widgetRoot = document.getElementById("luxe-widget-root");
+  
+  if (isSignedIn) {
+    document.body.classList.add("vip-signed-in");
+    if (widgetRoot) {
+      widgetRoot.style.setProperty("display", "block", "important");
+    }
+  } else {
+    document.body.classList.remove("vip-signed-in");
+    if (widgetRoot) {
+      widgetRoot.style.setProperty("display", "none", "important");
+    }
+  }
+
+  if (typeof window.setLuxeWidgetVisible === "function") {
+    window.setLuxeWidgetVisible(isSignedIn);
+  }
+  window.dispatchEvent(new CustomEvent("luxe:auth-change", { detail: { isSignedIn } }));
   
   if (overlay) {
     if (isSignedIn) {

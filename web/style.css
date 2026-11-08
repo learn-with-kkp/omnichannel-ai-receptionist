@@ -1467,4 +1467,14 @@ tr:hover td {
   pointer-events: none;
 }
 
+/* Hide floating Sofia Luxe Receptionist widget unless signed in */
+#luxe-widget-root {
+  display: none !important;
+}
+
+body.vip-signed-in #luxe-widget-root {
+  display: block !important;
+}
+
+
 
