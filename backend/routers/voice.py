@@ -173,10 +173,10 @@ def get_vapi_web_sdk_config():
     Returns public Vapi Web SDK configuration parameters for browser WebRTC voice calls.
     Exposes only the Public Key, Assistant IDs (Sophia & Marcus), and Squad ID safe for browser runtime.
     """
-    public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
-    assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or "47b92dd7-6751-4c12-b531-23adf3614d35").strip()
-    marcus_id = (os.getenv("VAPI_MARCUS_ASSISTANT_ID") or "b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9").strip()
-    squad_id = (os.getenv("VAPI_SQUAD_ID") or "767bf6bc-c1fb-4de8-bc32-d33d2522d07b").strip()
+    public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC_KEY") or os.getenv("VAPI_PUBLIC") or "958cb725-4600-4d13-88ff-d555e1f294f5").strip()
+    assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or "b9242970-fbef-4991-8e94-4e59ebd4ab47").strip()
+    marcus_id = (os.getenv("VAPI_MARCUS_ASSISTANT_ID") or "f8b6b7fc-ce8e-452c-bb8b-90b27bedb8cb").strip()
+    squad_id = (os.getenv("VAPI_SQUAD_ID") or "816b5fbf-8eb1-4e26-805b-3cc6caade9ce").strip()
     return {
         "status": "success",
         "publicKey": public_key,

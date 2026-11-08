@@ -27,22 +27,22 @@ BASE_DIR = Path(__file__).resolve().parent
 VAPI_DIR = BASE_DIR / "vapi"
 
 VAPI_API_KEY = os.getenv("VAPI_PRIVATE_API_KEY") or os.getenv("VAPI_API_KEY")
-SOPHIA_ID = os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or os.getenv("VAPI_ASSISTANT_ID", "47b92dd7-6751-4c12-b531-23adf3614d35")
-MARCUS_ID = os.getenv("VAPI_MARCUS_ASSISTANT_ID", "b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9")
-SQUAD_ID = os.getenv("VAPI_SQUAD_ID", "767bf6bc-c1fb-4de8-bc32-d33d2522d07b")
+SOPHIA_ID = os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or os.getenv("VAPI_ASSISTANT_ID", "b9242970-fbef-4991-8e94-4e59ebd4ab47")
+MARCUS_ID = os.getenv("VAPI_MARCUS_ASSISTANT_ID", "f8b6b7fc-ce8e-452c-bb8b-90b27bedb8cb")
+SQUAD_ID = os.getenv("VAPI_SQUAD_ID", "816b5fbf-8eb1-4e26-805b-3cc6caade9ce")
 
-TRANSFER_TO_MARCUS_TOOL = "8bc4057a-a651-44f8-8a17-8686ee11c63c"
-TRANSFER_TO_SOPHIA_TOOL = "3b3b73c0-2c2e-4dc5-ba31-62746a8063d7"
+TRANSFER_TO_MARCUS_TOOL = os.getenv("VAPI_TOOL_TRANSFER_MARCUS", "01bd1df8-f0c2-4640-bc65-4371a2e4e353")
+TRANSFER_TO_SOPHIA_TOOL = os.getenv("VAPI_TOOL_TRANSFER_SOPHIA", "c402a27a-cae3-48ce-817c-c4f0070def32")
 
 VALID_TOOLS = [
-    "bd3985e3-b96d-4a18-bc7f-c3f320fe80d3",  # check_availability
-    "6c678d32-d55e-4aef-90da-e6e5d1e4a5c4",  # book_appointment
-    "6b46e87e-a59d-451b-9076-db3f334bd676",  # lookup_appointment
-    "8ecb870d-ee27-424b-8213-5ee6e64e9bec",  # reschedule_appointment
-    "92898ace-6e80-4c1a-8c6a-00d6a33b2bb4",  # cancel_appointment
-    "6f53781e-a34a-4350-965e-4908e3145bfe",  # send_text
-    "08f2844b-b585-45cb-a8e5-d141f3e2d35a",  # query_knowledge_base
-    "e3ef24b4-f338-465c-8e77-67879bc26295",  # end_call
+    os.getenv("VAPI_TOOL_CHECK_AVAILABILITY", "6c0d28b5-1258-45b7-97a5-a7fe981deff5"),  # check_availability
+    os.getenv("VAPI_TOOL_BOOK_APPOINTMENT", "5477f565-44fd-4041-a39d-4a63ab165f40"),    # book_appointment
+    os.getenv("VAPI_TOOL_LOOKUP_APPOINTMENT", "9df322c5-64af-44a7-b82f-105fb11e17ac"),  # lookup_appointment
+    os.getenv("VAPI_TOOL_RESCHEDULE_APPOINTMENT", "c330c825-a0f6-40cb-9225-eb72ca655025"),  # reschedule_appointment
+    os.getenv("VAPI_TOOL_CANCEL_APPOINTMENT", "fca2e93e-b963-469c-beaf-c4d4f9ee1f61"),  # cancel_appointment
+    os.getenv("VAPI_TOOL_SEND_TEXT", "d4a55cbb-2c60-44e2-b916-15931d07f091"),            # send_text
+    os.getenv("VAPI_TOOL_KNOWLEDGE", "cf4d3198-b52a-44b8-ab16-1ccde345e2f9"),            # query_knowledge_base
+    os.getenv("VAPI_TOOL_END_CALL", "d72cf825-1222-42cf-b3f7-843c3a06deb4"),             # end_call
 ]
 
 STOP_SPEAKING_PLAN = {

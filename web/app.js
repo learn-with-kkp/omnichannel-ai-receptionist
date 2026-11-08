@@ -587,6 +587,9 @@ async function toggleVapiWebRTCCall() {
     if (!cfg.publicKey || !cfg.assistantId) {
       throw new Error("Missing VAPI_PUBLIC_API_KEY or VAPI_ASSISTANT_ID in backend.");
     }
+    if (cfg.assistantId) ASSISTANT_IDS.sophia = cfg.assistantId;
+    if (cfg.marcusId) ASSISTANT_IDS.marcus = cfg.marcusId;
+    if (cfg.squadId) ASSISTANT_IDS.squad = cfg.squadId;
 
     const VapiClass = await ensureVapiWebSdk();
 
@@ -686,9 +689,9 @@ async function toggleVapiWebRTCCall() {
     }
 
     // Determine target assistant or squad from selection
-    const squadId = cfg.squadId || cfg.assistants?.squad || ASSISTANT_IDS.squad || "767bf6bc-c1fb-4de8-bc32-d33d2522d07b";
+    const squadId = cfg.squadId || cfg.assistants?.squad || ASSISTANT_IDS.squad || "816b5fbf-8eb1-4e26-805b-3cc6caade9ce";
     if (selectedAssistantKey === "marcus") {
-      let targetId = cfg.marcusId || cfg.assistants?.marcus || ASSISTANT_IDS.marcus || "b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9";
+      let targetId = cfg.marcusId || cfg.assistants?.marcus || ASSISTANT_IDS.marcus || "f8b6b7fc-ce8e-452c-bb8b-90b27bedb8cb";
       console.log(`Starting Vapi call with Marcus:`, targetId);
       await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
     } else {
@@ -1390,9 +1393,9 @@ async function runProvisionTelephony() {
 
 let selectedAssistantKey = "sophia";
 const ASSISTANT_IDS = {
-  sophia: "47b92dd7-6751-4c12-b531-23adf3614d35",
-  marcus: "b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9",
-  squad: "767bf6bc-c1fb-4de8-bc32-d33d2522d07b"
+  sophia: "b9242970-fbef-4991-8e94-4e59ebd4ab47",
+  marcus: "f8b6b7fc-ce8e-452c-bb8b-90b27bedb8cb",
+  squad: "816b5fbf-8eb1-4e26-805b-3cc6caade9ce"
 };
 
 let currentActiveClerkModal = null;
