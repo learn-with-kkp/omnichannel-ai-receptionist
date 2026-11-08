@@ -2121,7 +2121,7 @@ async function sendTelnyxDirectMessage() {
     if (statusEl) {
       statusEl.style.display = "block";
       statusEl.style.color = "#38bdf8";
-      statusEl.innerHTML = "⏳ Sending SMS via Telnyx (+1-912-499-9633)...";
+      statusEl.innerHTML = "⏳ Sending SMS via Telnyx (+1-617-271-8180)...";
     }
 
     const res = await fetch("/api/messaging/telnyx/send", {
@@ -2138,7 +2138,7 @@ async function sendTelnyxDirectMessage() {
     if (res.ok && data.status === "success") {
       if (statusEl) {
         statusEl.style.color = "#34d399";
-        statusEl.innerHTML = `✅ <b>Telnyx SMS Delivered!</b> Sent from <code>${escapeHtml(data.from || "+19124999633")}</code> to <code>${escapeHtml(toPhone)}</code> (Msg ID: ${escapeHtml(data.message_id || "sent")}).`;
+        statusEl.innerHTML = `✅ <b>Telnyx SMS Delivered!</b> Sent from <code>${escapeHtml(data.from || "+16172718180")}</code> to <code>${escapeHtml(toPhone)}</code> (Msg ID: ${escapeHtml(data.message_id || "sent")}).`;
       }
       if (msgInput) msgInput.value = "";
     } else {

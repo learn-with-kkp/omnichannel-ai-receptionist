@@ -532,7 +532,7 @@ def send_telnyx_message(payload: TelnyxSendRequest):
         "status": "success" if res.get("status") in ("sent", "simulated") else "failed",
         "provider": "telnyx",
         "to_number": payload.to_phone,
-        "from": os.getenv("TELNYX_PHONE_NUMBER", "+19124999633"),
+        "from": os.getenv("TELNYX_PHONE_NUMBER", "+16172718180"),
         "message_id": msg_id,
         "detail": res
     }

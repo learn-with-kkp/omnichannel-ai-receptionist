@@ -93,7 +93,7 @@ class NotificationDispatcher:
     def send_telnyx_sms(self, to_phone: str, text: str) -> Dict[str, Any]:
         """Dispatches an SMS/MMS message using Telnyx API."""
         telnyx_key = os.getenv("TELNYX_API_KEY", "")
-        telnyx_from = os.getenv("TELNYX_PHONE_NUMBER", "+19124999633")
+        telnyx_from = os.getenv("TELNYX_PHONE_NUMBER", "+16172718180")
         if telnyx_key and not telnyx_key.startswith("your_"):
             try:
                 import httpx
