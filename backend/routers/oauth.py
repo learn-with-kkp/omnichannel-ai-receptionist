@@ -21,7 +21,7 @@ from backend.database import save_tenant_integrations, get_tenant_integrations
 logger = logging.getLogger("MetaOAuth")
 router = APIRouter(prefix="/api/oauth", tags=["Meta OAuth & Social Connect"])
 
-META_APP_ID = os.getenv("META_APP_ID", os.getenv("FACEBOOK_APP_ID", "1451747113780324"))
+META_APP_ID = os.getenv("META_APP_ID", os.getenv("FACEBOOK_APP_ID", "2026204064725563"))
 META_APP_SECRET = os.getenv("META_APP_SECRET", os.getenv("FACEBOOK_APP_SECRET", ""))
 REDIRECT_URI = os.getenv("META_OAUTH_REDIRECT_URI", "https://ai-voice-receptionist.kishor.tech/api/oauth/facebook/callback")
 
