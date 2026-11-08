@@ -91,10 +91,11 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
     vapi_key = (os.getenv("VAPI_PRIVATE_API_KEY") or os.getenv("VAPI_API_KEY") or "").strip()
     asst_id = os.getenv("VAPI_ASSISTANT_ID", "").strip()
     phone_id = os.getenv("VAPI_PHONE_NUMBER_ID", "").strip()
+    squad_id = (os.getenv("VAPI_SQUAD_ID") or "767bf6bc-c1fb-4de8-bc32-d33d2522d07b").strip()
 
     tenant = tenant_registry.get_tenant(payload.tenant_id)
 
-    if not vapi_key or not asst_id or not phone_id:
+    if not vapi_key or not (squad_id or asst_id) or not phone_id:
         return {
             "status": "success",
             "message": f"Vapi outbound call queued for {phone} ({tenant.name}). Live telephony requires VAPI keys.",
@@ -117,7 +118,6 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
         pass
 
     vapi_payload = {
-        "assistantId": asst_id,
         "phoneNumberId": phone_id,
         "customer": {
             "number": phone,
@@ -133,6 +133,10 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
             "firstMessage": f"Hello {cust_name}! This is Sofia from Luxe Saloon & Spa on Newbury Street. I'm calling you back right away as requested—how can I pamper you today?"
         }
     }
+    if squad_id:
+        vapi_payload["squadId"] = squad_id
+    else:
+        vapi_payload["assistantId"] = asst_id
 
     try:
         r = requests.post(

@@ -686,18 +686,15 @@ async function toggleVapiWebRTCCall() {
     }
 
     // Determine target assistant or squad from selection
-    if (selectedAssistantKey === "squad") {
-      const squadId = cfg.squadId || cfg.assistants?.squad || ASSISTANT_IDS.squad;
-      console.log("Starting Vapi Squad call with squadId:", squadId);
-      // In Vapi SDK, Squad is passed as 3rd parameter: start(undefined, overrides, squadId)
-      await vapiStudioClient.start(undefined, Object.keys(assistantOverrides).length ? assistantOverrides : undefined, squadId);
-    } else {
-      let targetId = cfg.assistantId || cfg.assistants?.sophia || ASSISTANT_IDS.sophia;
-      if (selectedAssistantKey === "marcus") {
-        targetId = cfg.marcusId || cfg.assistants?.marcus || ASSISTANT_IDS.marcus;
-      }
-      console.log(`Starting Vapi call with assistant [${selectedAssistantKey}]:`, targetId);
+    const squadId = cfg.squadId || cfg.assistants?.squad || ASSISTANT_IDS.squad || "767bf6bc-c1fb-4de8-bc32-d33d2522d07b";
+    if (selectedAssistantKey === "marcus") {
+      let targetId = cfg.marcusId || cfg.assistants?.marcus || ASSISTANT_IDS.marcus || "b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9";
+      console.log(`Starting Vapi call with Marcus:`, targetId);
       await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
+    } else {
+      // Default to Squad mode so Sophia answers and can seamlessly transfer to Marcus mid-call!
+      console.log("Starting Vapi call in Squad mode (Sophia with Marcus transfer):", squadId);
+      await vapiStudioClient.start(undefined, Object.keys(assistantOverrides).length ? assistantOverrides : undefined, squadId);
     }
   } catch (err) {
     console.error("Failed to start Vapi call:", err);
@@ -869,9 +866,9 @@ function sendQuickMsg(text) {
 }
 
 async function processMessageTurn(messageText) {
-  const phone = document.getElementById("outboundPhone")?.value.trim() || "+16673070119";
-  const name = document.getElementById("outboundName")?.value.trim() || "Web Guest";
   const user = getCachedVipUser();
+  const phone = (user && user.phone) ? user.phone : (document.getElementById("outboundPhone")?.value.trim() || "+16673070119");
+  const name = (user && user.name && user.name !== "VIP Guest") ? user.name : (document.getElementById("outboundName")?.value.trim() || "Valued Guest");
   const email = (user && user.email) || document.getElementById("modalGuestEmail")?.value.trim() || "";
 
   try {
