@@ -144,7 +144,7 @@ class DualKnowledgeEngine:
                     "retrieval_ms": q_res["latency_ms"],
                     "chunks_used": len(q_res["results"]),
                     "confidence_score": 0.95,
-                    "source": q_res.get("source", "qdrant")
+                    "source": q_res.get("source", "neural_memory")
                 }
         except Exception:
             pass

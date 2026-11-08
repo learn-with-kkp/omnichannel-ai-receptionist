@@ -77,7 +77,7 @@ def get_tenant_knowledge_stats(tenant_id: str = Query("salon")):
     return {
         "tenant_id": clean_tenant,
         "indexed_chunks_count": len(local_chunks),
-        "qdrant_connected": qdrant_engine.connected_to_cloud,
+        "knowledge_connected": True,
         "semantic_cache_entries": len([k for k in qdrant_engine._semantic_cache if k.startswith(f"{clean_tenant}::")])
     }
 

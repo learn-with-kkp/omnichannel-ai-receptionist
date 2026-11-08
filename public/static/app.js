@@ -948,15 +948,17 @@ function appendChatBubble(role, text, metadata = null) {
   bubble.className = `chat-bubble ${role}`;
 
   if (role === "bot") {
+    const speaker = selectedAssistantKey === "marcus" ? "Marcus (Salon Director)" : "Sofia (Luxe Concierge)";
+    const formatted = String(text || "").replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
     bubble.innerHTML = `
-      ${text}
+      <div class="bubble-content">${formatted}</div>
       <div class="bubble-meta">
-        <span>Sofia (${metadata?.accent?.name || "AI Concierge"})</span>
-        <button class="listen-btn" onclick="playSpeech('${encodeURIComponent(text)}')">🔊 Listen</button>
+        <span>${speaker}</span>
+        <button class="listen-btn" onclick="playSpeech('${encodeURIComponent(String(text || "").replace(/['"]/g, ""))}')">🔊 Listen</button>
       </div>
     `;
   } else {
-    bubble.innerHTML = `${text}`;
+    bubble.innerHTML = `<div class="bubble-content">${escapeHtml(text)}</div>`;
   }
 
   container.appendChild(bubble);
@@ -2088,88 +2090,6 @@ async function triggerInstant500msCall() {
   }
 }
 const triggerInstantCall = triggerInstant500msCall;
-
-// --- Chatbox Document / PDF Uploader (Ingests into Vector Memory for Sofia) ---
-async function uploadDocFromChat() {
-  const fileInput = document.getElementById("chatDocUpload");
-  if (!fileInput || !fileInput.files || !fileInput.files.length) return;
-  const file = fileInput.files[0];
-
-  appendChatBubble("user", `📎 Uploaded Document: <b>${escapeHtml(file.name)}</b> (${(file.size / 1024).toFixed(1)} KB)`);
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("tenant_id", "salon");
-  formData.append("category", "salon_menu_and_policies");
-
-  appendChatBubble("bot", `⏳ <i>Ingesting and indexing <b>${escapeHtml(file.name)}</b> into vector memory for Sofia's voice & chat intelligence...</i>`);
-
-  try {
-    const res = await fetch("/api/knowledge/upload-pdf", {
-      method: "POST",
-      body: formData
-    });
-    const data = await res.json();
-    if (res.ok && data.status === "success") {
-      const confirmationMsg = `✨ <b>Document Indexed!</b> I've thoroughly digested and memorized <b>${escapeHtml(file.name)}</b>. Both here in chat and during our live voice calls, I can now answer questions about your custom services, pricing, and salon policies.`;
-      appendChatBubble("bot", confirmationMsg);
-      showToastNotification("success", "Document Indexed", `${file.name} is now accessible to Voice AI & Chat Concierge.`);
-    } else {
-      appendChatBubble("bot", `⚠️ I encountered an issue reading that document: ${escapeHtml(data.detail || "Upload error")}. Please ensure it is a valid PDF.`);
-    }
-  } catch (err) {
-    appendChatBubble("bot", `⚠️ Upload failed: ${escapeHtml(err.message)}`);
-  } finally {
-    fileInput.value = "";
-  }
-}
-
-// --- Salon Menu PDF Knowledge Upload (Vector RAG) ---
-async function uploadSalonMenuPdf() {
-  const fileInput = document.getElementById("salonPdfInput");
-  const statusEl = document.getElementById("pdfUploadStatus");
-
-  if (!fileInput || !fileInput.files || !fileInput.files.length) return;
-  const file = fileInput.files[0];
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("tenant_id", "salon");
-
-  try {
-    if (statusEl) {
-      statusEl.style.display = "block";
-      statusEl.style.color = "#38bdf8";
-      statusEl.innerHTML = `⏳ Parsing <b>${escapeHtml(file.name)}</b> and indexing into vector memory...`;
-    }
-
-    const res = await fetch("/api/knowledge/upload-pdf", {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await res.json();
-    if (res.ok && data.status === "success") {
-      if (statusEl) {
-        statusEl.style.color = "#34d399";
-        statusEl.innerHTML = `✅ <b>Knowledge Indexed!</b> Added <b>${escapeHtml(file.name)}</b> (${data.total_pages} pages, ${data.indexed_chunks} semantic chunks). Sofia and Marcus can now answer pricing & policy questions from this document.`;
-      }
-      appendChatBubble("bot", `📚 I've digested the new salon menu document <b>${file.name}</b> (${data.indexed_chunks} chunks indexed). Feel free to ask me about any services, prices, or policies!`);
-    } else {
-      if (statusEl) {
-        statusEl.style.color = "#f87171";
-        statusEl.innerHTML = `❌ Failed to index PDF: ${escapeHtml(data.detail || data.message || "Unknown error")}`;
-      }
-    }
-  } catch (err) {
-    if (statusEl) {
-      statusEl.style.color = "#f87171";
-      statusEl.innerHTML = `❌ PDF upload error: ${escapeHtml(err.message)}`;
-    }
-  } finally {
-    fileInput.value = "";
-  }
-}
 
 // --- Telnyx Direct SMS/WhatsApp Hub ---
 async function sendTelnyxDirectMessage() {

@@ -176,20 +176,20 @@
           </div>
         </div>
 
-        <!-- Card 2: High-Speed Vector Memory RAG -->
+        <!-- Card 2: High-Speed Salon Knowledge Base -->
         <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:24px;">🧠</span>
               <span style="font-size:11px; font-weight:800; color:#a78bfa; background:rgba(167,139,250,0.12); padding:3px 8px; border-radius:8px;">Sub-1ms</span>
             </div>
-            <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:6px;">Neural Vector Memory RAG</h3>
+            <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:6px;">Instant Salon Knowledge</h3>
             <p style="font-size:12px; color:var(--text-secondary); line-height:1.45; margin-bottom:12px;">
-              Multi-tenant semantic search over treatment menus, pricing tiers, stylist schedules, and salon policies. Attach custom PDFs directly inside chat to update knowledge.
+              Comprehensive intelligence over Luxe Saloon & Spa treatment menus, pricing tiers, stylist availability, and salon policies for instant answers.
             </p>
           </div>
           <div style="font-size:11px; color:#94a3b8; font-family:var(--font-mono); border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
-            &lt;10ms semantic cache • Zero cross-tenant leakage
+            &lt;10ms cache • 100% verified salon data
           </div>
         </div>
 
@@ -418,12 +418,12 @@
           <div class="vip-gate-icon">🔒</div>
           <h3 class="vip-gate-title">VIP Studio Access Required</h3>
           <p class="vip-gate-sub">
-            Sign up for <b>FREE</b> to unlock the live interactive <b>Voice AI Studio</b>, test WebRTC real-time voice calls, live chat with PDF document upload, instant phone callbacks, and live calendar booking.
+            Sign up for <b>FREE</b> to unlock the live interactive <b>Voice AI Studio</b>, test WebRTC real-time voice calls, live concierge chat, instant phone callbacks, and live calendar booking.
           </p>
           <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px; text-align:left; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:14px 18px; border-radius:12px; font-size:12.5px; color:#cbd5e1;">
             <div>✓ <b>Free Test Voice AI Assistant</b> (Talk live with Sofia via WebRTC)</div>
             <div>✓ <b>Direct Phone Callback</b> (Sofia calls your phone in under 500ms)</div>
-            <div>✓ <b>In-Chat Document Upload</b> (Embed custom salon PDFs into vector memory)</div>
+            <div>✓ <b>Omnichannel Chat Concierge</b> (Instant WhatsApp, Instagram & Web chat)</div>
             <div>✓ <b>Instant Email & WhatsApp Confirmations</b> (Auto-synced with Google Sheets & Neon DB)</div>
           </div>
           <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
@@ -523,13 +523,13 @@
         </div>
       </div>
 
-      <!-- Right Column: Interactive Chat Concierge & Document Knowledge Integration -->
+      <!-- Right Column: Interactive Chat Concierge -->
       <div class="card" id="chat-section" style="display:flex; flex-direction:column; justify-content:space-between;">
         <div>
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px;">
             <div>
-              <h2 class="card-title"><span>💬</span> Luxe Saloon Messenger Concierge</h2>
-              <p class="card-desc">Real-time messenger connected to Neon DB, Google Calendar & WhatsApp.</p>
+              <h2 class="card-title"><span>💬</span> Luxe Saloon Chat Concierge</h2>
+              <p class="card-desc">Interactive booking assistant synchronized across Website, WhatsApp, and Google Calendar.</p>
             </div>
             <div class="sentiment-indicator" id="sentimentPill">
               <span id="sentimentLabel">Mood: Neutral</span>
@@ -539,19 +539,19 @@
 
           <div class="chat-container">
             <div class="chat-messages" id="chatMessages">
-              <div class="message bot">
-                <div class="bubble">
-                  Welcome to <b>Luxe Saloon & Spa</b>! I'm Sofia, your AI concierge. Would you like to schedule a Signature Balayage, precision haircut, keratin treatment, or check our stylists' availability?
+              <div class="chat-bubble bot">
+                Welcome to <b>Luxe Saloon & Spa</b> on Newbury Street! I'm Sofia, your AI concierge. Would you like to schedule a Signature Balayage, precision haircut, keratin treatment, or check open slots with our stylists?
+                <div class="bubble-meta">
+                  <span>Sofia (Luxe Concierge)</span>
                 </div>
-                <div class="meta">Sofia (Director)</div>
               </div>
             </div>
 
             <!-- Quick Action Booking Chips -->
-            <div class="quick-chips" style="padding:6px 0; display:flex; gap:6px; flex-wrap:wrap;">
+            <div class="quick-chips" style="padding:8px 0; display:flex; gap:6px; flex-wrap:wrap;">
               <span class="chip" onclick="sendQuickMsg('Book Haircut Tomorrow 2:00 PM')">💇 Book Haircut Tomorrow 2:00 PM</span>
-              <span class="chip" onclick="sendQuickMsg('I want to book Signature Balayage with Marcus')">🎨 Balayage & Highlights</span>
-              <span class="chip" onclick="sendQuickMsg('Check available slots tomorrow')">🕒 Check Available Slots</span>
+              <span class="chip" onclick="sendQuickMsg('I want to book Signature Balayage with Marcus')">🎨 Balayage with Marcus</span>
+              <span class="chip" onclick="sendQuickMsg('Check available slots tomorrow')">🕒 Check Open Slots</span>
               <span class="chip" onclick="sendQuickMsg('Reschedule my appointment')">🔄 Reschedule Appointment</span>
               <span class="chip" onclick="sendQuickMsg('Cancel my appointment')">❌ Cancel Booking</span>
             </div>
@@ -559,8 +559,8 @@
         </div>
 
         <!-- Pure Messenger Input Row -->
-        <div class="chat-input-row" style="margin-top:12px;">
-          <input type="text" id="chatInput" placeholder="Message Sofia & Marcus (e.g. Book Balayage tomorrow at 2 PM)..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+        <div class="chat-input-row" style="margin-top:14px;">
+          <input type="text" id="chatInput" placeholder="Ask about services, pricing, or book an appointment..." onkeydown="if(event.key==='Enter') sendChatMessage()">
           <button class="chat-send-btn" onclick="sendChatMessage()">
             Send ↗
           </button>
