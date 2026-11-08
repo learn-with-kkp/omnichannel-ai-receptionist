@@ -656,7 +656,7 @@
   tabCall.addEventListener('click', () => switchTab('call'));
   tabChat.addEventListener('click', () => switchTab('chat'));
 
-  // 6. Dynamically load Vapi Web SDK script with local + CDN fallback
+  // 6. Dynamically load Vapi Web SDK script with multi-tier resilient fallback
   function ensureVapiSdkLoaded() {
     return new Promise((resolve, reject) => {
       if (window.Vapi) return resolve(window.Vapi);
@@ -665,30 +665,35 @@
         return resolve(window.Vapi);
       }
 
-      const localUrl = `${config.apiBase || ''}/vapi-sdk.js`;
-      const fallbackUrl = 'https://cdn.jsdelivr.net/gh/VapiAI/html-script-tag@latest/dist/assets/index.js';
+      const candidateUrls = [
+        `${config.apiBase || ''}/vapi-sdk.js`,
+        `${config.apiBase || ''}/static/vapi-sdk.js`,
+        'https://ai-voice-receptionist.kishor.tech/vapi-sdk.js',
+        'https://ai-voice-receptionist.kishor.tech/static/vapi-sdk.js'
+      ].filter(Boolean);
 
-      function loadScript(url, onFail) {
+      let curIdx = 0;
+      function attemptLoad() {
+        if (curIdx >= candidateUrls.length) {
+          return reject(new Error('Failed to load Vapi Web SDK from all self-hosted and CDN endpoints.'));
+        }
         const script = document.createElement('script');
-        script.src = url;
+        script.src = candidateUrls[curIdx++];
         script.async = true;
         script.onload = () => {
-          if (window.Vapi) return resolve(window.Vapi);
-          if (window.vapiSDK && window.vapiSDK.Vapi) {
-            window.Vapi = window.vapiSDK.Vapi;
-            return resolve(window.Vapi);
+          const cls = window.Vapi || (window.vapiSDK && window.vapiSDK.Vapi);
+          if (cls) {
+            window.Vapi = cls;
+            resolve(cls);
+          } else {
+            attemptLoad();
           }
-          if (onFail) onFail();
-          else reject(new Error('Vapi SDK loaded but window.Vapi undefined'));
         };
-        script.onerror = () => {
-          if (onFail) onFail();
-          else reject(new Error('Failed to load Vapi Web SDK'));
-        };
+        script.onerror = () => attemptLoad();
         document.head.appendChild(script);
       }
 
-      loadScript(localUrl, () => loadScript(fallbackUrl, null));
+      attemptLoad();
     });
   }
 

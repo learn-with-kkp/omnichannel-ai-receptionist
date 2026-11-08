@@ -538,20 +538,28 @@ async function ensureVapiWebSdk() {
     return window.Vapi;
   }
   return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "/vapi-sdk.js";
-    script.async = true;
-    script.onload = () => {
-      const cls = window.Vapi || (window.vapiSDK && window.vapiSDK.Vapi);
-      if (cls) {
-        window.Vapi = cls;
-        resolve(cls);
-      } else {
-        reject(new Error("Vapi Web SDK loaded but window.Vapi is undefined."));
+    const urls = ["/vapi-sdk.js", "/static/vapi-sdk.js", "https://ai-voice-receptionist.kishor.tech/vapi-sdk.js"];
+    let idx = 0;
+    function tryNext() {
+      if (idx >= urls.length) {
+        return reject(new Error("Vapi Web SDK could not be loaded from self-hosted endpoints."));
       }
-    };
-    script.onerror = () => reject(new Error("Failed to load /vapi-sdk.js"));
-    document.head.appendChild(script);
+      const script = document.createElement("script");
+      script.src = urls[idx++];
+      script.async = true;
+      script.onload = () => {
+        const cls = window.Vapi || (window.vapiSDK && window.vapiSDK.Vapi);
+        if (cls) {
+          window.Vapi = cls;
+          resolve(cls);
+        } else {
+          tryNext();
+        }
+      };
+      script.onerror = () => tryNext();
+      document.head.appendChild(script);
+    }
+    tryNext();
   });
 }
 
