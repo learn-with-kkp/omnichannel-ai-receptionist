@@ -204,13 +204,20 @@ if web_dir.exists():
 def get_vapi_web_sdk_config():
     """Returns public Vapi Web SDK configuration for browser calling."""
     public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
-    assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or "").strip()
+    assistant_id = (os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or os.getenv("VAPI_ASSISTANT_ID") or "").strip()
+    marcus_id = (os.getenv("VAPI_MARCUS_ASSISTANT_ID") or "").strip()
     squad_id = (os.getenv("VAPI_SQUAD_ID") or "").strip()
     return {
         "status": "success",
         "publicKey": public_key,
         "assistantId": assistant_id,
+        "marcusId": marcus_id,
         "squadId": squad_id,
+        "assistants": {
+            "sophia": assistant_id,
+            "marcus": marcus_id,
+            "squad": squad_id
+        },
         "sdkLoaded": bool(public_key and (assistant_id or squad_id))
     }
 
