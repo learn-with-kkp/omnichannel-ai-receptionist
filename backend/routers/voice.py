@@ -154,10 +154,13 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
                 "vapi_response": call_data
             }
         else:
+            err_text = r.text
+            if "Wallet Balance" in err_text or "Credits" in err_text:
+                err_text = "Vapi wallet credits are depleted ($0.00). Please add credits at dashboard.vapi.ai to place live phone calls."
             return {
                 "status": "error",
                 "message": f"Vapi API returned HTTP {r.status_code}",
-                "detail": r.text
+                "detail": err_text
             }
     except Exception as e:
         logger.error(f"Failed to place Vapi call: {e}")

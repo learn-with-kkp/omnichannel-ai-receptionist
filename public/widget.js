@@ -810,11 +810,13 @@
         targetAssistant = cfg.marcusId;
       } else if (targetAssistant === 'sophia' && cfg.assistantId) {
         targetAssistant = cfg.assistantId;
-      } else if (targetAssistant === 'squad' && cfg.squadId) {
-        targetAssistant = cfg.squadId;
       }
 
-      await vapi.start(targetAssistant);
+      if (targetAssistant === 'squad' || (!config.assistantId && cfg.squadId)) {
+        await vapi.start(undefined, undefined, cfg.squadId);
+      } else {
+        await vapi.start(targetAssistant);
+      }
     } catch (err) {
       console.error('[Sofia Widget Start Error]', err);
       callStatus.textContent = `Could not connect: ${err.message}`;

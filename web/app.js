@@ -698,7 +698,12 @@ async function toggleVapiWebRTCCall() {
     }
   } catch (err) {
     console.error("Failed to start Vapi call:", err);
-    if (statusEl) statusEl.textContent = `Connection failed: ${err.message}`;
+    let errMsg = err.message || "Failed to connect";
+    if (errMsg.includes("Wallet Balance") || errMsg.includes("Credits") || errMsg.includes("Plan")) {
+      errMsg = "⚠️ Vapi Wallet Balance is depleted ($0.00). Please add credits at dashboard.vapi.ai to enable live voice calling.";
+      alert(errMsg);
+    }
+    if (statusEl) statusEl.textContent = `Connection error: ${errMsg}`;
     if (callBtn) callBtn.disabled = false;
   }
 }

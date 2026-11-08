@@ -31,6 +31,9 @@ SOPHIA_ID = os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or os.getenv("VAPI_ASSISTANT_I
 MARCUS_ID = os.getenv("VAPI_MARCUS_ASSISTANT_ID", "b23fc3d1-5b92-44fb-97f0-4f66d2af2cc9")
 SQUAD_ID = os.getenv("VAPI_SQUAD_ID", "767bf6bc-c1fb-4de8-bc32-d33d2522d07b")
 
+TRANSFER_TO_MARCUS_TOOL = "8bc4057a-a651-44f8-8a17-8686ee11c63c"
+TRANSFER_TO_SOPHIA_TOOL = "3b3b73c0-2c2e-4dc5-ba31-62746a8063d7"
+
 VALID_TOOLS = [
     "bd3985e3-b96d-4a18-bc7f-c3f320fe80d3",  # check_availability
     "6c678d32-d55e-4aef-90da-e6e5d1e4a5c4",  # book_appointment
@@ -60,7 +63,7 @@ def load_prompt_with_date(prompt_path: Path) -> str:
     return anchor + content
 
 
-def sync_assistant(name: str, config_file: Path, prompt_file: Path, assistant_id: str, client: httpx.Client, headers: dict):
+def sync_assistant(name: str, config_file: Path, prompt_file: Path, assistant_id: str, client: httpx.Client, headers: dict, extra_tools: list = None):
     if not config_file.exists():
         print(f"⚠️ Config file not found for {name}: {config_file}")
         return
@@ -69,6 +72,10 @@ def sync_assistant(name: str, config_file: Path, prompt_file: Path, assistant_id
         payload = json.load(f)
 
     prompt_content = load_prompt_with_date(prompt_file)
+
+    tool_ids = list(VALID_TOOLS)
+    if extra_tools:
+        tool_ids.extend(extra_tools)
 
     # Clean payload for update
     update_payload = {
@@ -83,7 +90,7 @@ def sync_assistant(name: str, config_file: Path, prompt_file: Path, assistant_id
                     "content": prompt_content
                 }
             ],
-            "toolIds": VALID_TOOLS
+            "toolIds": tool_ids
         },
         "voice": payload.get("voice"),
         "transcriber": payload.get("transcriber"),
@@ -184,12 +191,12 @@ def main():
     if sync_all or args.sophia:
         sophia_config = VAPI_DIR / "assistant_config.json"
         sophia_prompt = VAPI_DIR / "system_prompt.md"
-        sync_assistant("Sophia (Front Desk Receptionist)", sophia_config, sophia_prompt, SOPHIA_ID, client, headers)
+        sync_assistant("Sophia (Front Desk Receptionist)", sophia_config, sophia_prompt, SOPHIA_ID, client, headers, extra_tools=[TRANSFER_TO_MARCUS_TOOL])
 
     if sync_all or args.marcus:
         marcus_config = VAPI_DIR / "marcus_assistant_config.json"
         marcus_prompt = VAPI_DIR / "marcus_prompt.md"
-        sync_assistant("Marcus (Salon Director & VIP Stylist)", marcus_config, marcus_prompt, MARCUS_ID, client, headers)
+        sync_assistant("Marcus (Salon Director & VIP Stylist)", marcus_config, marcus_prompt, MARCUS_ID, client, headers, extra_tools=[TRANSFER_TO_SOPHIA_TOOL])
 
     if sync_all:
         sync_squad(SQUAD_ID, client, headers)
