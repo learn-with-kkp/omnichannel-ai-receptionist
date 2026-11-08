@@ -52,17 +52,8 @@ async def trigger_outbound_phone_call(payload: OutboundCallRequest):
     tenant = tenant_registry.get_tenant(payload.tenant_id)
     accent = tenant_registry.get_accent(payload.accent)
 
-    # Greeting based on accent
-    if accent.key == "indian_english":
-        greeting = f"Namaste {payload.caller_name}! This is Sofia, the AI receptionist from {tenant.name}. How may I assist you with your booking today?"
-    elif accent.key == "african_english":
-        greeting = f"Warm greetings {payload.caller_name}! Sofia here from {tenant.name}. We are delighted to call you regarding your appointment."
-    elif accent.key == "red_american":
-        greeting = f"Howdy {payload.caller_name}! This is Sofia from {tenant.name}. How can we help you out today?"
-    elif accent.key == "european_british":
-        greeting = f"Good day {payload.caller_name}. Sofia speaking on behalf of {tenant.name}. How may I be of assistance with your appointment today?"
-    else:
-        greeting = f"Hello {payload.caller_name}! This is Sofia, AI receptionist from {tenant.name}. How can I assist you with your booking today?"
+    # Universal, warm, elegant New England luxury greeting
+    greeting = f"Hello {payload.caller_name}! A very warm welcome to {tenant.name} on Newbury Street. My name is Sofia—how can I pamper you today?"
 
     result = notification_dispatcher.trigger_outbound_call(
         to_phone=phone,
@@ -84,6 +75,7 @@ class VapiCallRequest(BaseModel):
     phone_number: str
     tenant_id: Optional[str] = "salon"
     caller_name: Optional[str] = "Valued Client"
+    caller_email: Optional[str] = ""
 
 
 @router.post("/api/voice/vapi-call")
@@ -110,12 +102,35 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
             "vapi_response": {"status": "queued_mock", "phone": phone}
         }
     import requests
+    from backend.database import get_customer_by_phone_or_email
+
+    cust_name = payload.caller_name or "Valued Guest"
+    cust_email = payload.caller_email or ""
+    try:
+        cust = get_customer_by_phone_or_email(phone=phone, email=cust_email)
+        if cust:
+            if not payload.caller_name or payload.caller_name in ("Valued Client", "VIP Salon Guest", "VIP Guest"):
+                cust_name = cust.get("full_name") or cust_name
+            if not cust_email:
+                cust_email = cust.get("email", "")
+    except Exception:
+        pass
+
     vapi_payload = {
         "assistantId": asst_id,
         "phoneNumberId": phone_id,
         "customer": {
             "number": phone,
-            "name": payload.caller_name
+            "name": cust_name
+        },
+        "assistantOverrides": {
+            "variableValues": {
+                "customer_name": cust_name,
+                "customer_email": cust_email,
+                "customer_phone": phone,
+                "whatsapp_number": phone
+            },
+            "firstMessage": f"Hello {cust_name}! This is Sofia from Luxe Saloon & Spa on Newbury Street. I'm calling you back right away as requested—how can I pamper you today?"
         }
     }
 
@@ -357,7 +372,7 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
             service_name = args.get("service_name") or "Womens Haircut"
             target_date = args.get("target_date")
             if not target_date or target_date.strip() == "":
-                target_date = "2026-11-06"
+                target_date = datetime.now().strftime("%Y-%m-%d")
             stylist = args.get("preferred_stylist") or "any"
             srv = universal_orchestrator.fuzzy_match_service(resolved_tenant, service_name)
             st = universal_orchestrator.fuzzy_match_staff(resolved_tenant, stylist, srv)
@@ -386,7 +401,7 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
                 except Exception:
                     pass
             service_name = args.get("service_name") or "Womens Haircut"
-            dt = args.get("appointment_datetime") or "2026-11-06T14:00:00"
+            dt = args.get("appointment_datetime") or (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT14:00:00")
             stylist_name = args.get("stylist_name") or "Elena"
             if stylist_name.lower() == "any":
                 stylist_name = "Elena"
@@ -442,7 +457,7 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
         elif fn_name == "reschedule_appointment":
             phone = args.get("caller_phone", "")
             booking_id = args.get("booking_id")
-            new_dt = args.get("new_datetime") or "2026-11-06T15:00:00"
+            new_dt = args.get("new_datetime") or (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT15:00:00")
             new_stylist = args.get("new_stylist_name")
             updated = reschedule_existing_appointment(
                 caller_phone=phone,

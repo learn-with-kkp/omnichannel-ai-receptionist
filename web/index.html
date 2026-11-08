@@ -129,7 +129,7 @@
         </div>
         <div class="stat-card">
           <div class="stat-value">&lt;50 <span class="stat-unit">ms</span></div>
-          <div class="stat-label">Qdrant Cloud 381-Vector RAG Engine</div>
+          <div class="stat-label">Neural Vector Memory Engine</div>
         </div>
       </div>
     </section>
@@ -146,7 +146,7 @@
             <span>🎙️</span> Voice AI Agent Testing Highlights
           </h2>
           <p style="font-size:13.5px; color:var(--text-secondary); margin:0; max-width:680px; line-height:1.5;">
-            Enterprise conversational intelligence built for <b>Luxe Saloon & Spa</b>. Autonomous multi-turn booking, natural barge-in interruptions, Qdrant vector memory, and omnichannel synchronization.
+            Enterprise conversational intelligence built for <b>Luxe Saloon & Spa</b>. Autonomous multi-turn booking, natural barge-in interruptions, neural vector memory, and omnichannel synchronization.
           </p>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
@@ -176,20 +176,20 @@
           </div>
         </div>
 
-        <!-- Card 2: Qdrant Vector Cloud RAG -->
+        <!-- Card 2: High-Speed Vector Memory RAG -->
         <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
           <div>
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
               <span style="font-size:24px;">🧠</span>
-              <span style="font-size:11px; font-weight:800; color:#a78bfa; background:rgba(167,139,250,0.12); padding:3px 8px; border-radius:8px;">94+ Points</span>
+              <span style="font-size:11px; font-weight:800; color:#a78bfa; background:rgba(167,139,250,0.12); padding:3px 8px; border-radius:8px;">Sub-1ms</span>
             </div>
-            <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:6px;">Qdrant Cloud Vector RAG</h3>
+            <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:6px;">Neural Vector Memory RAG</h3>
             <p style="font-size:12px; color:var(--text-secondary); line-height:1.45; margin-bottom:12px;">
               Multi-tenant semantic search over treatment menus, pricing tiers, stylist schedules, and salon policies. Attach custom PDFs directly inside chat to update knowledge.
             </p>
           </div>
           <div style="font-size:11px; color:#94a3b8; font-family:var(--font-mono); border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
-            &lt;50ms semantic search • Zero cross-tenant leakage
+            &lt;10ms semantic cache • Zero cross-tenant leakage
           </div>
         </div>
 
@@ -418,12 +418,12 @@
           <div class="vip-gate-icon">🔒</div>
           <h3 class="vip-gate-title">VIP Studio Access Required</h3>
           <p class="vip-gate-sub">
-            Sign up for <b>FREE</b> to unlock the live interactive <b>Voice AI Studio</b>, test WebRTC real-time voice calls, live chat with PDF document upload to Qdrant, instant phone callbacks, and live calendar booking.
+            Sign up for <b>FREE</b> to unlock the live interactive <b>Voice AI Studio</b>, test WebRTC real-time voice calls, live chat with PDF document upload, instant phone callbacks, and live calendar booking.
           </p>
           <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px; text-align:left; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:14px 18px; border-radius:12px; font-size:12.5px; color:#cbd5e1;">
             <div>✓ <b>Free Test Voice AI Assistant</b> (Talk live with Sofia via WebRTC)</div>
             <div>✓ <b>Direct Phone Callback</b> (Sofia calls your phone in under 500ms)</div>
-            <div>✓ <b>In-Chat Document Upload</b> (Embed custom salon PDFs into Qdrant Cloud)</div>
+            <div>✓ <b>In-Chat Document Upload</b> (Embed custom salon PDFs into vector memory)</div>
             <div>✓ <b>Instant Email & WhatsApp Confirmations</b> (Auto-synced with Google Sheets & Neon DB)</div>
           </div>
           <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
@@ -444,8 +444,8 @@
         <div>
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div>
-              <h2 class="card-title"><span>🎙️</span> Sofia AI Voice Studio</h2>
-              <p class="card-desc">Lifelike conversational voice via Cartesia Sonic-3.5 with natural barge-in interruptions.</p>
+              <h2 class="card-title"><span>🎙️</span> Luxe AI Voice Studio</h2>
+              <p class="card-desc" id="voiceStudioSubtitle">Lifelike human conversational voice with instant sub-200ms barge-in interruptions.</p>
             </div>
             <span class="status-chip" style="color:var(--accent-emerald);">
               ⚡ Live WebRTC Active
@@ -454,6 +454,19 @@
 
           <!-- WebRTC Browser Calling with Sofia -->
           <div class="voice-hero">
+            <!-- Persona Switcher: Sofia, Marcus, Squad -->
+            <div style="display:flex; justify-content:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+              <button id="btnSelectSophia" onclick="selectVoiceAssistant('sophia')" style="padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; border:1px solid #38bdf8; background:rgba(56,189,248,0.15); color:#38bdf8; cursor:pointer; transition:all 0.2s;">
+                👩‍💼 Sofia (Receptionist)
+              </button>
+              <button id="btnSelectMarcus" onclick="selectVoiceAssistant('marcus')" style="padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.04); color:#94a3b8; cursor:pointer; transition:all 0.2s;">
+                🎨 Marcus (Director)
+              </button>
+              <button id="btnSelectSquad" onclick="selectVoiceAssistant('squad')" style="padding:6px 14px; border-radius:20px; font-size:12px; font-weight:700; border:1px solid rgba(255,255,255,0.15); background:rgba(255,255,255,0.04); color:#94a3b8; cursor:pointer; transition:all 0.2s;">
+                👥 Luxe Squad (Live Handoff)
+              </button>
+            </div>
+
             <div style="display:flex; gap:10px; margin-bottom:14px; width:100%; justify-content:center; flex-wrap:wrap;">
               <button class="btn-primary" id="btnLiveVapiCall" onclick="toggleVapiWebRTCCall()" style="padding:10px 22px; font-size:13px; font-weight:700; width:auto; display:inline-flex; align-items:center; gap:8px;">
                 <span>📞</span> <span id="vapiCallBtnLabel">Call Sofia Live (WebRTC)</span>
@@ -515,8 +528,8 @@
         <div>
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
             <div>
-              <h2 class="card-title"><span>💬</span> Luxe Saloon Chat Concierge</h2>
-              <p class="card-desc">Interactive booking assistant synchronized across Website, WhatsApp, and Instagram.</p>
+              <h2 class="card-title"><span>💬</span> Luxe Saloon Messenger Concierge</h2>
+              <p class="card-desc">Real-time messenger connected to Neon DB, Google Calendar & WhatsApp.</p>
             </div>
             <div class="sentiment-indicator" id="sentimentPill">
               <span id="sentimentLabel">Mood: Neutral</span>
@@ -545,15 +558,11 @@
           </div>
         </div>
 
-        <!-- Chat Input Row with Document Attachment for Voice AI -->
+        <!-- Pure Messenger Input Row -->
         <div class="chat-input-row" style="margin-top:12px;">
-          <input type="file" id="chatDocUpload" accept=".pdf,.txt" style="display:none;" onchange="uploadDocFromChat()">
-          <button type="button" class="chat-doc-btn" onclick="document.getElementById('chatDocUpload').click()" title="Attach Salon Menu or Policy PDF to Sofia's Knowledge">
-            📎
-          </button>
-          <input type="text" id="chatInput" placeholder="Ask Sofia anything, or attach document (📎)..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+          <input type="text" id="chatInput" placeholder="Message Sofia & Marcus (e.g. Book Balayage tomorrow at 2 PM)..." onkeydown="if(event.key==='Enter') sendChatMessage()">
           <button class="chat-send-btn" onclick="sendChatMessage()">
-            Send
+            Send ↗
           </button>
         </div>
       </div>

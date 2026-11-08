@@ -1,3 +1,4 @@
+import urllib.parse
 """
 Live Google Calendar Integration Engine.
 Provides real-time two-way synchronization:
@@ -91,6 +92,52 @@ class GoogleCalendarService:
                 })
         return busy_list
 
+    def generate_add_to_gcal_link(self, summary: str, start_dt: datetime, duration_minutes: int, details: str, location: str) -> str:
+        """Generates a universal 1-click Google Calendar Add Event URL."""
+        end_dt = start_dt + timedelta(minutes=duration_minutes)
+        fmt = "%Y%m%dT%H%M%SZ"
+        dates_str = f"{start_dt.strftime(fmt)}/{end_dt.strftime(fmt)}"
+        params = {
+            "action": "TEMPLATE",
+            "text": summary,
+            "dates": dates_str,
+            "details": details,
+            "location": location,
+            "trp": "true"
+        }
+        return f"https://calendar.google.com/calendar/render?{urllib.parse.urlencode(params)}"
+
+    def generate_ics(self, summary: str, start_dt: datetime, duration_minutes: int, details: str, location: str, ref_id: str = "") -> str:
+        """Generates standard RFC 5545 iCalendar (.ics) content for email invites."""
+        end_dt = start_dt + timedelta(minutes=duration_minutes)
+        uid = f"{ref_id or int(start_dt.timestamp())}@luxesaloon.com"
+        now_str = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+        s_str = start_dt.strftime("%Y%m%dT%H%M%SZ")
+        e_str = end_dt.strftime("%Y%m%dT%H%M%SZ")
+        return (
+            "BEGIN:VCALENDAR\r\n"
+            "VERSION:2.0\r\n"
+            "PRODID:-//Luxe Saloon & Spa//AI Concierge//EN\r\n"
+            "CALSCALE:GREGORIAN\r\n"
+            "METHOD:REQUEST\r\n"
+            "BEGIN:VEVENT\r\n"
+            f"UID:{uid}\r\n"
+            f"DTSTAMP:{now_str}\r\n"
+            f"DTSTART:{s_str}\r\n"
+            f"DTEND:{e_str}\r\n"
+            f"SUMMARY:{summary}\r\n"
+            f"DESCRIPTION:{details}\r\n"
+            f"LOCATION:{location}\r\n"
+            "STATUS:CONFIRMED\r\n"
+            "BEGIN:VALARM\r\n"
+            "TRIGGER:-PT1H\r\n"
+            "ACTION:DISPLAY\r\n"
+            "DESCRIPTION:Reminder: Appointment at Luxe Saloon & Spa\r\n"
+            "END:VALARM\r\n"
+            "END:VEVENT\r\n"
+            "END:VCALENDAR\r\n"
+        )
+
     def create_event(
         self,
         summary: str,
@@ -104,16 +151,20 @@ class GoogleCalendarService:
     ) -> Dict[str, Any]:
         """
         Inserts a confirmed booking event onto Google Calendar.
-        Automatically dispatches Google Calendar invitation email if attendee_email is provided.
+        Generates 1-click Google Calendar Add links and RFC 5545 .ics attachments.
         """
         cal_id = calendar_id or self.calendar_id
         start_dt = datetime.fromisoformat(start_time_iso)
         end_dt = start_dt + timedelta(minutes=duration_minutes)
 
+        details_full = f"{description}\nCustomer Phone: {attendee_phone}" + (f"\nCustomer Email: {attendee_email}" if attendee_email else "")
+        gcal_add_link = self.generate_add_to_gcal_link(summary, start_dt, duration_minutes, details_full, location)
+        ics_content = self.generate_ics(summary, start_dt, duration_minutes, details_full, location)
+
         event_body = {
             "summary": summary,
             "location": location,
-            "description": f"{description}\nCustomer Phone: {attendee_phone}" + (f"\nCustomer Email: {attendee_email}" if attendee_email else ""),
+            "description": details_full,
             "start": {
                 "dateTime": start_dt.isoformat(),
                 "timeZone": "America/New_York",
@@ -131,31 +182,46 @@ class GoogleCalendarService:
             },
         }
 
-        if attendee_email and "@" in attendee_email:
-            event_body["attendees"] = [{"email": attendee_email, "displayName": summary.split(" - ")[-1] if " - " in summary else "Guest"}]
-
+        created = None
         if self.service and not os.getenv("PYTEST_CURRENT_TEST"):
-            try:
-                created = self.service.events().insert(
-                    calendarId=cal_id,
-                    body=event_body,
-                    sendUpdates="all" if attendee_email else "none"
-                ).execute()
-                logger.info(f"✅ Created Google Calendar event ID: {created.get('id')} (Email notification sent to: {attendee_email})")
-                return created
-            except Exception as e:
-                logger.error(f"Failed to create Google Calendar event: {e}")
-                return created
-            except Exception as e:
-                logger.error(f"Failed to create Google Calendar event: {e}")
+            # Attempt 1: Try with attendees if attendee email provided
+            if attendee_email and "@" in attendee_email:
+                try:
+                    event_with_att = dict(event_body)
+                    event_with_att["attendees"] = [{"email": attendee_email, "displayName": summary.split(" - ")[-1] if " - " in summary else "Guest"}]
+                    created = self.service.events().insert(
+                        calendarId=cal_id,
+                        body=event_with_att,
+                        sendUpdates="all"
+                    ).execute()
+                    logger.info(f"✅ Created Google Calendar event ID: {created.get('id')} with attendee email: {attendee_email}")
+                except Exception as e_att:
+                    logger.warning(f"Attendee invite skipped by Google ({e_att}); inserting event directly.")
+                    created = None
 
-        # Mock fallback
-        mock_id = f"gcal_{int(datetime.now().timestamp())}_{abs(hash(summary)) % 10000}"
-        event_body["id"] = mock_id
-        event_body["htmlLink"] = f"https://calendar.google.com/event?eid={mock_id}"
-        MOCK_CALENDAR_EVENTS[mock_id] = event_body
-        logger.info(f"⚡ [MOCK GCAL] Stored event ID: {mock_id} for {summary}")
-        return event_body
+            # Attempt 2: Insert event directly without sendUpdates restrictions
+            if not created:
+                try:
+                    created = self.service.events().insert(
+                        calendarId=cal_id,
+                        body=event_body,
+                        sendUpdates="none"
+                    ).execute()
+                    logger.info(f"✅ Created Google Calendar event ID: {created.get('id')} (Direct Sync)")
+                except Exception as e:
+                    logger.error(f"Failed to create Google Calendar event: {e}")
+
+        if not created:
+            mock_id = f"gcal_{int(datetime.now().timestamp())}_{abs(hash(summary)) % 10000}"
+            created = dict(event_body)
+            created["id"] = mock_id
+            created["htmlLink"] = f"https://calendar.google.com/event?eid={mock_id}"
+            MOCK_CALENDAR_EVENTS[mock_id] = created
+            logger.info(f"⚡ [MOCK GCAL] Stored event ID: {mock_id} for {summary}")
+
+        created["gcal_add_link"] = gcal_add_link
+        created["ics_content"] = ics_content
+        return created
 
     def update_event(
         self,

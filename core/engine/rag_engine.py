@@ -90,7 +90,7 @@ class DualKnowledgeEngine:
                 "metadata": {"faq_id": faq.id, "tags": faq.tags}
             })
 
-        # Precompute embeddings & push to Qdrant multi-tenant partition
+        # Precompute embeddings & index into multi-tenant partition
         try:
             from core.engine.qdrant_rag import qdrant_engine
             for c in chunks:
@@ -106,7 +106,7 @@ class DualKnowledgeEngine:
                 c["vector"] = _simple_embedding(c["text"])
 
         self._vector_indices[tenant_id] = chunks
-        logger.info(f"Indexed {len(chunks)} chunks for tenant '{tenant_id}' (Qdrant synchronized).")
+        logger.info(f"Indexed {len(chunks)} chunks for tenant '{tenant_id}'.")
 
     def query_context(self, tenant_manifest: Any, user_query: str = "", top_k: int = 3) -> Dict[str, Any]:
         """

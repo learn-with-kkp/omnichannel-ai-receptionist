@@ -1,3 +1,37 @@
+
+function selectVoiceAssistant(key) {
+  selectedAssistantKey = key;
+  ['sophia', 'marcus', 'squad'].forEach(k => {
+    const btn = document.getElementById(`btnSelect${k.charAt(0).toUpperCase() + k.slice(1)}`);
+    if (btn) {
+      if (k === key) {
+        btn.style.borderColor = "#38bdf8";
+        btn.style.background = "rgba(56,189,248,0.15)";
+        btn.style.color = "#38bdf8";
+      } else {
+        btn.style.borderColor = "rgba(255,255,255,0.15)";
+        btn.style.background = "rgba(255,255,255,0.04)";
+        btn.style.color = "#94a3b8";
+      }
+    }
+  });
+
+  const label = document.getElementById("vapiCallBtnLabel");
+  const desc = document.getElementById("voiceStudioSubtitle");
+  if (label) {
+    if (key === "marcus") {
+      label.textContent = "Call Marcus Live (WebRTC)";
+      if (desc) desc.textContent = "Creative Hair Director & Master Colorist (British RP). Empathetic, charming balayage consultation.";
+    } else if (key === "squad") {
+      label.textContent = "Call Luxe Squad (Sofia + Marcus)";
+      if (desc) desc.textContent = "Autonomous Reception Squad: speak with Sofia or ask to transfer to Marcus at any moment.";
+    } else {
+      label.textContent = "Call Sofia Live (WebRTC)";
+      if (desc) desc.textContent = "24/7 Front-Desk AI Receptionist (General American). Warm, human-like voice with natural barge-in.";
+    }
+  }
+}
+
 /**
  * Universal AI Voice & Chat Receptionist Client Studio
  * Enterprise Multi-Tenant Engine for Real Estate, Legal, Salon, Dental, Auto & Healthcare.
@@ -634,18 +668,29 @@ async function toggleVapiWebRTCCall() {
       }
     }
 
-    // Determine target assistant or squad from selection
-    let targetId = cfg.assistantId;
-    if (selectedAssistantKey === "marcus") {
-      targetId = cfg.marcusId || cfg.assistants?.marcus || ASSISTANT_IDS.marcus;
-    } else if (selectedAssistantKey === "squad") {
-      targetId = cfg.squadId || cfg.assistants?.squad || ASSISTANT_IDS.squad;
-    } else {
-      targetId = cfg.assistantId || cfg.assistants?.sophia || ASSISTANT_IDS.sophia;
+    // Personalized first message based on selected persona
+    if (cachedVip && cachedVip.name && cachedVip.name !== "VIP Guest") {
+      if (selectedAssistantKey === "marcus") {
+        assistantOverrides.firstMessage = `Hello ${cachedVip.name}! Marcus Vance here, Creative Director at Luxe Saloon. How can I take care of your hair today?`;
+      } else {
+        assistantOverrides.firstMessage = `Hello ${cachedVip.name}! Welcome to Luxe Saloon & Spa on Newbury Street. My name is Sofia—how can I pamper you today?`;
+      }
     }
 
-    console.log(`Starting Vapi call with target [${selectedAssistantKey}]:`, targetId);
-    await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
+    // Determine target assistant or squad from selection
+    if (selectedAssistantKey === "squad") {
+      const squadId = cfg.squadId || cfg.assistants?.squad || ASSISTANT_IDS.squad;
+      console.log("Starting Vapi Squad call with squadId:", squadId);
+      // In Vapi SDK, Squad is passed as 3rd parameter: start(undefined, overrides, squadId)
+      await vapiStudioClient.start(undefined, Object.keys(assistantOverrides).length ? assistantOverrides : undefined, squadId);
+    } else {
+      let targetId = cfg.assistantId || cfg.assistants?.sophia || ASSISTANT_IDS.sophia;
+      if (selectedAssistantKey === "marcus") {
+        targetId = cfg.marcusId || cfg.assistants?.marcus || ASSISTANT_IDS.marcus;
+      }
+      console.log(`Starting Vapi call with assistant [${selectedAssistantKey}]:`, targetId);
+      await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
+    }
   } catch (err) {
     console.error("Failed to start Vapi call:", err);
     if (statusEl) statusEl.textContent = `Connection failed: ${err.message}`;
@@ -1984,12 +2029,15 @@ async function triggerInstant500msCall() {
       resultEl.innerHTML = `📞 Connecting to Sofia... Dialing <b>${escapeHtml(phone)}</b> now.`;
     }
 
+    const cachedVip = getCachedVipUser();
     const res = await fetch("/api/voice/vapi-call", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         phone_number: phone,
-        customer_name: name,
+        caller_name: name || (cachedVip?.name || "VIP Guest"),
+        customer_name: name || (cachedVip?.name || "VIP Guest"),
+        caller_email: (cachedVip?.email || ""),
         tenant_id: "salon"
       })
     });
@@ -2018,7 +2066,7 @@ async function triggerInstant500msCall() {
 }
 const triggerInstantCall = triggerInstant500msCall;
 
-// --- Chatbox Document / PDF Uploader (Ingests into Qdrant Cloud for Sofia) ---
+// --- Chatbox Document / PDF Uploader (Ingests into Vector Memory for Sofia) ---
 async function uploadDocFromChat() {
   const fileInput = document.getElementById("chatDocUpload");
   if (!fileInput || !fileInput.files || !fileInput.files.length) return;
@@ -2031,7 +2079,7 @@ async function uploadDocFromChat() {
   formData.append("tenant_id", "salon");
   formData.append("category", "salon_menu_and_policies");
 
-  appendChatBubble("bot", `⏳ <i>Ingesting and indexing <b>${escapeHtml(file.name)}</b> into Qdrant Cloud vector memory for Sofia's voice & chat intelligence...</i>`);
+  appendChatBubble("bot", `⏳ <i>Ingesting and indexing <b>${escapeHtml(file.name)}</b> into vector memory for Sofia's voice & chat intelligence...</i>`);
 
   try {
     const res = await fetch("/api/knowledge/upload-pdf", {
@@ -2053,7 +2101,7 @@ async function uploadDocFromChat() {
   }
 }
 
-// --- Salon Menu PDF Knowledge Upload (Qdrant RAG) ---
+// --- Salon Menu PDF Knowledge Upload (Vector RAG) ---
 async function uploadSalonMenuPdf() {
   const fileInput = document.getElementById("salonPdfInput");
   const statusEl = document.getElementById("pdfUploadStatus");
@@ -2069,7 +2117,7 @@ async function uploadSalonMenuPdf() {
     if (statusEl) {
       statusEl.style.display = "block";
       statusEl.style.color = "#38bdf8";
-      statusEl.innerHTML = `⏳ Parsing <b>${escapeHtml(file.name)}</b> and indexing into Qdrant Cloud vector memory...`;
+      statusEl.innerHTML = `⏳ Parsing <b>${escapeHtml(file.name)}</b> and indexing into vector memory...`;
     }
 
     const res = await fetch("/api/knowledge/upload-pdf", {
@@ -2083,7 +2131,7 @@ async function uploadSalonMenuPdf() {
         statusEl.style.color = "#34d399";
         statusEl.innerHTML = `✅ <b>Knowledge Indexed!</b> Added <b>${escapeHtml(file.name)}</b> (${data.total_pages} pages, ${data.indexed_chunks} semantic chunks). Sofia and Marcus can now answer pricing & policy questions from this document.`;
       }
-      appendChatBubble("bot", `📚 I've digested the new salon menu document <b>${file.name}</b> (${data.indexed_chunks} chunks indexed in Qdrant). Feel free to ask me about any services, prices, or policies!`);
+      appendChatBubble("bot", `📚 I've digested the new salon menu document <b>${file.name}</b> (${data.indexed_chunks} chunks indexed). Feel free to ask me about any services, prices, or policies!`);
     } else {
       if (statusEl) {
         statusEl.style.color = "#f87171";

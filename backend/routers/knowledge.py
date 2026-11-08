@@ -1,5 +1,5 @@
 """
-FastAPI Router for Tenant Knowledge Ingestion & Qdrant Semantic Search.
+FastAPI Router for Tenant Knowledge Ingestion & Semantic Search.
 Allows any business tenant to upload FAQs, documents, policies, and service menus.
 """
 
@@ -90,7 +90,7 @@ async def upload_salon_pdf_document(
 ):
     """
     Extracts text content from uploaded Salon Menu, Services Catalog, or Policy PDF
-    and indexes it into Qdrant vector memory.
+    and indexes it into vector knowledge memory.
     """
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are supported.")

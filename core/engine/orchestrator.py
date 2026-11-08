@@ -294,7 +294,7 @@ class UniversalReceptionistOrchestrator:
     ) -> str:
         """
         Synthesizes an intelligent, accurate response using OpenAI gpt-4o-mini grounded in
-        tenant knowledge and any uploaded PDF / salon documents retrieved from Qdrant.
+        tenant knowledge and any uploaded PDF / salon documents retrieved from vector memory.
         """
         api_key = os.getenv("OPENAI_API_KEY", "")
         if not api_key or api_key.startswith("your_"):
@@ -314,7 +314,7 @@ class UniversalReceptionistOrchestrator:
                 f"located at {tenant.address}. Phone: {tenant.phone}.\n\n"
                 f"=== SALON SERVICES & KNOWLEDGE BASE ===\n"
                 f"{tenant.to_system_prompt_context()}\n\n"
-                f"=== UPLOADED DOCUMENTS & POLICIES (FROM QDRANT VECTOR RAG) ===\n"
+                f"=== UPLOADED DOCUMENTS & POLICIES (FROM KNOWLEDGE VECTOR MEMORY) ===\n"
                 f"{retrieved_context or 'No external document uploaded yet.'}\n\n"
                 f"Directives:\n"
                 f"1. Answer the guest's question warmly, concisely (2-3 spoken sentences), and accurately based on the salon knowledge and uploaded PDF documents.\n"
@@ -557,7 +557,7 @@ class UniversalReceptionistOrchestrator:
                     if q_res and q_res.get("context_text"):
                         doc_context = q_res["context_text"]
                 except Exception as q_err:
-                    logger.debug(f"Qdrant query exception: {q_err}")
+                    logger.debug(f"Knowledge query exception: {q_err}")
 
                 combined_context = f"{retrieval.get('context_text', '')}\n\n{doc_context}".strip()
                 response_text = self.generate_rag_answer(
