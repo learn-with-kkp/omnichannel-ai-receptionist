@@ -402,9 +402,9 @@ class NotificationDispatcher:
     </div>
 
     <div class="footer">
-      Luxe Saloon & Spa • 120 Newbury Street, Back Bay, Boston, MA 02116<br>
-      Concierge Desk: (617) 555-LUXE • WhatsApp: +1 (912) 499-9633<br>
-      © 2026 Luxe Saloon & Spa. All rights reserved.
+      Luxe Salon & Spa • 120 Newbury Street, Back Bay, Boston, MA 02116<br>
+      Concierge Desk & WhatsApp: +1 (617) 271-8180<br>
+      © 2026 Luxe Salon & Spa. All rights reserved.
     </div>
   </div>
 </body>
@@ -415,18 +415,21 @@ class NotificationDispatcher:
         if resend_api_key:
             try:
                 import requests
+                import base64
+                b64_ics = base64.b64encode(ics_content.encode("utf-8")).decode("utf-8")
+                from_email = os.getenv("SMTP_FROM", "Luxe Salon & Spa <onboarding@resend.dev>")
                 res = requests.post(
                     "https://api.resend.com/emails",
                     headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
                     json={
-                        "from": os.getenv("SMTP_FROM", "Luxe Saloon & Spa <concierge@luxesaloon.com>"),
+                        "from": from_email,
                         "to": [to_email],
                         "subject": subject,
                         "html": html_content or default_html,
                         "attachments": [
                             {
                                 "filename": "invite.ics",
-                                "content": list(ics_content.encode("utf-8"))
+                                "content": b64_ics
                             }
                         ]
                     },
@@ -434,7 +437,7 @@ class NotificationDispatcher:
                 )
                 if res.status_code in (200, 201):
                     logger.info(f"✅ Resend API email dispatched successfully to {to_email}")
-                    return {"status": "sent", "channel": "resend", "recipient": to_email}
+                    return {"status": "sent", "channel": "resend", "recipient": to_email, "gcal_add_link": gcal_add_link}
                 else:
                     logger.warning(f"Resend API error ({res.status_code}): {res.text}")
             except Exception as e:
