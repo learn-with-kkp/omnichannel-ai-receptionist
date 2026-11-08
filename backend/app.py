@@ -2,6 +2,7 @@ from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
 import logging
@@ -111,6 +112,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # Mount Omnichannel Routers
 app.include_router(voice_router)
@@ -132,7 +134,10 @@ if web_dir.exists():
     def serve_index():
         index_path = web_dir / "index.html"
         if index_path.exists():
-            return FileResponse(str(index_path))
+            return FileResponse(
+                str(index_path),
+                headers={"Cache-Control": "no-cache, must-revalidate"}
+            )
         return {"service": "Universal AI Voice Receptionist", "status": "online"}
 
     @app.get("/site/{tenant_id}")
@@ -144,7 +149,10 @@ if web_dir.exists():
         """
         tenant_site_path = web_dir / "tenant_site.html"
         if tenant_site_path.exists():
-            return FileResponse(str(tenant_site_path))
+            return FileResponse(
+                str(tenant_site_path),
+                headers={"Cache-Control": "no-cache, must-revalidate"}
+            )
         return {"error": f"Tenant site template not found for {tenant_id}"}
 
     @app.get("/vapi-call")
@@ -158,7 +166,10 @@ if web_dir.exists():
         """
         test_path = web_dir / "vapi_web_sdk_test.html"
         if test_path.exists():
-            return FileResponse(str(test_path))
+            return FileResponse(
+                str(test_path),
+                headers={"Cache-Control": "no-cache, must-revalidate"}
+            )
         return {"error": "Vapi Web SDK test page template not found"}
 
     @app.get("/widget.js")
@@ -168,7 +179,11 @@ if web_dir.exists():
         """
         widget_path = web_dir / "widget.js"
         if widget_path.exists():
-            return FileResponse(str(widget_path), media_type="application/javascript")
+            return FileResponse(
+                str(widget_path),
+                media_type="application/javascript",
+                headers={"Cache-Control": "public, max-age=86400"}
+            )
         return Response(content="console.warn('Widget script not found');", media_type="application/javascript")
 
     @app.get("/vapi-sdk.js")
@@ -178,7 +193,11 @@ if web_dir.exists():
         """
         sdk_path = web_dir / "vapi-sdk.js"
         if sdk_path.exists():
-            return FileResponse(str(sdk_path), media_type="application/javascript")
+            return FileResponse(
+                str(sdk_path),
+                media_type="application/javascript",
+                headers={"Cache-Control": "public, max-age=86400"}
+            )
         return Response(content="console.warn('Vapi SDK script not found');", media_type="application/javascript")
 
 @app.get("/api/voice/vapi-config")
