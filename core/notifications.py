@@ -385,9 +385,12 @@ class NotificationDispatcher:
     </div>
 
     <!-- 1-Click Action Buttons -->
+    <div style="background: rgba(16,185,129,0.12); border: 1px solid rgba(16,185,129,0.3); border-radius: 12px; padding: 12px 16px; margin: 20px 0; font-size: 13px; color: #34d399; text-align: center;">
+      🔔 Pre-configured alarms: 24h and 1h reminders will alert your device before your appointment
+    </div>
     <div class="btn-container">
       <a href="{gcal_add_link}" target="_blank" class="btn-gcal">📅 Add to Google Calendar</a>
-      <a href="https://ai-voice-receptionist.kishor.tech" target="_blank" class="btn-portal">✨ Sign In / VIP Portal</a>
+      <a href="https://ai-voice-receptionist.kishor.tech/api/calendar/add/{ref_id}" target="_blank" class="btn-portal">🍏 Apple / Outlook / All Calendars</a>
     </div>
 
     <!-- What Our AI Voice Agents Are Doing -->
@@ -504,10 +507,12 @@ class NotificationDispatcher:
         ref_id = booking_record.get("booking_id", "")
         email = recipient_email or booking_record.get("caller_email", "")
 
+        cal_add_url = f"https://ai-voice-receptionist.kishor.tech/api/calendar/add/{ref_id}"
         msg = (
             f"✨ Booking Confirmed!\n"
             f"Hello {caller_name}, your appointment for {service} with {stylist} is confirmed for {start_time}.\n"
-            f"Reference: #{ref_id}\n"
+            f"Reference: #{ref_id}\n\n"
+            f"📅 Add to Calendar & Set Reminders:\n{cal_add_url}\n\n"
             f"To modify or cancel, reply RESCHEDULE or CANCEL."
         )
 

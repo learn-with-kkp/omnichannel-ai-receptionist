@@ -46,6 +46,7 @@ from backend.routers.auth import router as auth_router
 from backend.routers.testing_suite import router as testing_suite_router
 from backend.routers.knowledge import router as knowledge_router
 from backend.routers.oauth import router as oauth_router
+from backend.routers.calendar_routes import router as calendar_router
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("SalonVoiceReceptionist")
@@ -124,6 +125,7 @@ app.include_router(auth_router)
 app.include_router(testing_suite_router)
 app.include_router(knowledge_router)
 app.include_router(oauth_router)
+app.include_router(calendar_router)
 
 # Mount Static Web Studio Dashboard
 web_dir = Path(__file__).resolve().parent.parent / "web"

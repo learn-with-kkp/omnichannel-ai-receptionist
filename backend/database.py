@@ -873,6 +873,34 @@ def lookup_by_phone(caller_phone: str, tenant_id: str = DEFAULT_TENANT_ID) -> Op
     return None
 
 
+def lookup_by_booking_id(booking_id: str) -> Optional[Dict[str, Any]]:
+    """Look up appointment details by unique booking reference (e.g. LUXE-1110-113)."""
+    init_db()
+    clean_id = booking_id.strip()
+    with DBConnectionContext() as db:
+        db.execute("""
+            SELECT * FROM appointments 
+            WHERE id = ? OR id = ?
+            LIMIT 1
+        """, (clean_id, clean_id.upper()))
+        row = db.fetchone()
+        if row:
+            start_dt = datetime.fromisoformat(row["start_time"].replace("Z", ""))
+            return {
+                "booking_id": row["id"],
+                "tenant_id": row.get("tenant_id", "salon"),
+                "caller_name": row["caller_name"],
+                "caller_phone": row["caller_phone"],
+                "service_name": row["service_name"],
+                "stylist_name": row["stylist_name"],
+                "start_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
+                "start_time_iso": row["start_time"],
+                "google_calendar_event_id": row.get("google_calendar_event_id", "")
+            }
+    return None
+
+
+
 def reschedule_existing_appointment(
     caller_phone: str,
     new_datetime: str,
