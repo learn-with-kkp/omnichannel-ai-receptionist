@@ -92,28 +92,30 @@ class GoogleCalendarService:
                 })
         return busy_list
 
-    def generate_add_to_gcal_link(self, summary: str, start_dt: datetime, duration_minutes: int, details: str, location: str) -> str:
-        """Generates a universal 1-click Google Calendar Add Event URL."""
+    def generate_add_to_gcal_link(self, summary: str, start_dt: datetime, duration_minutes: int, details: str, location: str, timezone: str = "America/New_York") -> str:
+        """Generates a universal 1-click Google Calendar Add Event URL with explicit timezone support."""
         end_dt = start_dt + timedelta(minutes=duration_minutes)
-        fmt = "%Y%m%dT%H%M%SZ"
+        fmt = "%Y%m%dT%H%M%S"
         dates_str = f"{start_dt.strftime(fmt)}/{end_dt.strftime(fmt)}"
         params = {
             "action": "TEMPLATE",
             "text": summary,
             "dates": dates_str,
+            "ctz": timezone,
             "details": details,
             "location": location,
             "trp": "true"
         }
         return f"https://calendar.google.com/calendar/render?{urllib.parse.urlencode(params)}"
 
-    def generate_ics(self, summary: str, start_dt: datetime, duration_minutes: int, details: str, location: str, ref_id: str = "") -> str:
-        """Generates standard RFC 5545 iCalendar (.ics) content for email invites."""
+    def generate_ics(self, summary: str, start_dt: datetime, duration_minutes: int, details: str, location: str, ref_id: str = "", timezone: str = "America/New_York") -> str:
+        """Generates standard RFC 5545 iCalendar (.ics) content with proper timezone and alarms."""
         end_dt = start_dt + timedelta(minutes=duration_minutes)
         uid = f"{ref_id or int(start_dt.timestamp())}@luxesaloon.com"
         now_str = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-        s_str = start_dt.strftime("%Y%m%dT%H%M%SZ")
-        e_str = end_dt.strftime("%Y%m%dT%H%M%SZ")
+        s_str = start_dt.strftime("%Y%m%dT%H%M%S")
+        e_str = end_dt.strftime("%Y%m%dT%H%M%S")
+        clean_desc = details.replace("\r", "").replace("\n", "\\n")
         return (
             "BEGIN:VCALENDAR\r\n"
             "VERSION:2.0\r\n"
@@ -123,10 +125,10 @@ class GoogleCalendarService:
             "BEGIN:VEVENT\r\n"
             f"UID:{uid}\r\n"
             f"DTSTAMP:{now_str}\r\n"
-            f"DTSTART:{s_str}\r\n"
-            f"DTEND:{e_str}\r\n"
+            f"DTSTART;TZID={timezone}:{s_str}\r\n"
+            f"DTEND;TZID={timezone}:{e_str}\r\n"
             f"SUMMARY:{summary}\r\n"
-            f"DESCRIPTION:{details}\r\n"
+            f"DESCRIPTION:{clean_desc}\r\n"
             f"LOCATION:{location}\r\n"
             "STATUS:CONFIRMED\r\n"
             "BEGIN:VALARM\r\n"
