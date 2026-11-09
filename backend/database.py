@@ -822,36 +822,17 @@ def book_new_appointment(
     except Exception as e:
         logger.error(f"❌ Google sheets sync failed: {e}", exc_info=True)
 
-    # 3. Automatic Email Confirmation to Customer (Signup Email or Stated Email)
-    if caller_email and "@" in caller_email:
-        try:
-            from core.notifications import notification_dispatcher
-            notification_dispatcher.send_email(
-                to_email=caller_email,
-                subject=f"✨ Luxe Saloon & Spa Booking Confirmation (#{booking_id})",
-                booking_data=booking_record
-            )
-            logger.info(f"✅ Dispatched automated confirmation email to {caller_email}")
-        except Exception as mail_err:
-            logger.warning(f"Email dispatch warning: {mail_err}")
-
-    # 4. Automatic WhatsApp Confirmation Message to Customer
-    if caller_phone:
-        try:
-            from core.notifications import notification_dispatcher
-            wa_text = (
-                f"✨ *Luxe Saloon & Spa Booking Confirmed* ✨\n\n"
-                f"Dear *{caller_name}*,\n"
-                f"Your appointment for *{service_name}* with *{stylist_name}* is confirmed for *{start_dt.strftime('%A, %b %d at %I:%M %p')}*.\n\n"
-                f"📋 Ref: *#{booking_id}*\n"
-                f"📍 Location: 120 Newbury Street, Back Bay, Boston\n"
-                f"📅 Add to Calendar: https://ai-voice-receptionist.kishor.tech/api/calendar/add/{booking_id}\n\n"
-                f"Reply RESCHEDULE or CANCEL anytime to manage your visit."
-            )
-            notification_dispatcher.send_whatsapp(caller_phone, wa_text)
-            logger.info(f"✅ Dispatched automated WhatsApp booking confirmation to {caller_phone}")
-        except Exception as wa_err:
-            logger.warning(f"WhatsApp booking dispatch warning: {wa_err}")
+    # 3. Centralized Omnichannel Confirmation Dispatch (WhatsApp, Luxury Email with .ics & Google Calendar, SMS)
+    try:
+        from core.notifications import notification_dispatcher
+        notification_dispatcher.dispatch_booking_confirmation(
+            booking_record=booking_record,
+            channel=channel,
+            recipient_email=caller_email
+        )
+        logger.info(f"✅ Dispatched automated WhatsApp & Email confirmations for #{booking_id}")
+    except Exception as dispatch_err:
+        logger.warning(f"Booking confirmation dispatch warning: {dispatch_err}")
 
     return {
         "booking_id": booking_id,
@@ -966,13 +947,10 @@ def reschedule_existing_appointment(
     # Sync with Google Calendar if event exists
     if calendar_service and gcal_event_id:
         try:
-            tenant_info = get_tenant(tenant_id)
             calendar_service.update_event(
                 event_id=gcal_event_id,
-                summary=f"{tenant_info.get('name', 'Salon')}: {service_name} - {row['caller_name']}",
-                start_time_iso=new_start_dt.isoformat(),
-                duration_minutes=duration,
-                description=f"Rescheduled. Staff: {stylist}"
+                new_start_time_iso=new_start_dt.isoformat(),
+                duration_minutes=duration
             )
         except Exception as e:
             logger.warning(f"Google Calendar update bypassed: {e}")
@@ -982,6 +960,42 @@ def reschedule_existing_appointment(
         update_excel_reminders(actual_booking_id, status="CONFIRMED (RESCHEDULED)", filepath=excel_path)
     except Exception as e:
         logger.debug(f"Excel update bypassed: {e}")
+
+    # Automated WhatsApp & Email notification on reschedule
+    try:
+        from core.notifications import notification_dispatcher
+        cal_base = os.getenv("APP_BASE_URL", "https://ai-voice-receptionist-chi.vercel.app")
+        cal_add_url = f"{cal_base}/api/calendar/add/{actual_booking_id}"
+        wa_resched = (
+            f"🔄 *Luxe Saloon & Spa: Appointment Rescheduled* 🔄\n\n"
+            f"Dear *{row['caller_name']}*,\n"
+            f"Your appointment for *{service_name}* with *{stylist}* has been updated to *{new_start_dt.strftime('%A, %b %d at %I:%M %p')}*.\n\n"
+            f"📋 Ref: *#{actual_booking_id}*\n"
+            f"📍 Location: 120 Newbury Street, Back Bay, Boston\n"
+            f"📅 Updated Calendar: {cal_add_url}\n\n"
+            f"Reply *RESCHEDULE* or *CANCEL* anytime."
+        )
+        notification_dispatcher.send_whatsapp(row["caller_phone"], wa_resched)
+
+        cust = get_customer_by_phone_or_email(phone=row["caller_phone"])
+        cust_email = cust.get("email") if cust else None
+        if cust_email and "@" in cust_email:
+            notification_dispatcher.send_email(
+                to_email=cust_email,
+                subject=f"🔄 Appointment Rescheduled: {service_name} at Luxe Salon (#{actual_booking_id})",
+                booking_data={
+                    "booking_id": actual_booking_id,
+                    "caller_name": row["caller_name"],
+                    "caller_phone": row["caller_phone"],
+                    "service_name": service_name,
+                    "stylist_name": stylist,
+                    "start_time": new_start_dt.strftime("%Y-%m-%d %H:%M"),
+                    "duration_minutes": duration
+                }
+            )
+        logger.info(f"✅ Dispatched reschedule confirmations for #{actual_booking_id}")
+    except Exception as re_err:
+        logger.warning(f"Reschedule notification warning: {re_err}")
 
     return {
         "booking_id": actual_booking_id,

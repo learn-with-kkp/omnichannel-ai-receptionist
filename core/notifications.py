@@ -192,15 +192,23 @@ class NotificationDispatcher:
 
     def send_whatsapp(self, to_phone: str, text: str, quick_replies: Optional[List[str]] = None) -> Dict[str, Any]:
         """Dispatches WhatsApp push message via Meta Cloud API or Twilio WhatsApp."""
+        if not to_phone:
+            return {"status": "skipped", "reason": "No recipient phone"}
+
+        # Normalize digits: if 10-digit US number, prefix with country code 1
+        digits = "".join(filter(str.isdigit, to_phone))
+        if len(digits) == 10:
+            digits = "1" + digits
+        e164_phone = f"+{digits}"
+
         if self.whatsapp_phone_number_id and self.meta_access_token:
             try:
-                clean_phone = "".join(filter(str.isdigit, to_phone))
                 url = f"https://graph.facebook.com/v21.0/{self.whatsapp_phone_number_id}/messages"
                 payload = {
                     "messaging_product": "whatsapp",
-                    "to": clean_phone,
+                    "to": digits,
                     "type": "text",
-                    "text": {"preview_url": False, "body": text}
+                    "text": {"preview_url": True, "body": text}
                 }
                 data = json.dumps(payload).encode("utf-8")
                 req = urllib.request.Request(
@@ -210,10 +218,10 @@ class NotificationDispatcher:
                         "Content-Type": "application/json"
                     }
                 )
-                with urllib.request.urlopen(req, timeout=5) as resp:
+                with urllib.request.urlopen(req, timeout=8) as resp:
                     resp_data = json.loads(resp.read().decode())
-                    logger.info(f"✅ Meta WhatsApp dispatched to {to_phone}: {resp_data}")
-                    return {"status": "sent", "channel": "whatsapp", "response": resp_data}
+                    logger.info(f"✅ Meta WhatsApp dispatched to {digits}: {resp_data}")
+                    return {"status": "sent", "channel": "whatsapp", "response": resp_data, "recipient": e164_phone}
             except Exception as e:
                 logger.error(f"Meta WhatsApp Cloud API failed: {e}")
 
@@ -222,18 +230,22 @@ class NotificationDispatcher:
             try:
                 from twilio.rest import Client
                 client = Client(self.twilio_account_sid, self.twilio_auth_token)
+                from_num = self.twilio_whatsapp_from
+                if not from_num.startswith("whatsapp:"):
+                    from_num = f"whatsapp:{from_num}"
+                to_num = f"whatsapp:{e164_phone}"
                 msg = client.messages.create(
                     body=text,
-                    from_=f"whatsapp:{self.twilio_whatsapp_from}",
-                    to=f"whatsapp:{to_phone}"
+                    from_=from_num,
+                    to=to_num
                 )
                 logger.info(f"✅ Twilio WhatsApp message sent: {msg.sid}")
-                return {"status": "sent", "channel": "whatsapp_twilio", "sid": msg.sid}
+                return {"status": "sent", "channel": "whatsapp_twilio", "sid": msg.sid, "recipient": e164_phone}
             except Exception as e:
                 logger.error(f"Twilio WhatsApp failed: {e}")
 
-        logger.info(f"🟢 [SIMULATION WHATSAPP] To: {to_phone} | Body: {text}")
-        return {"status": "simulated", "channel": "whatsapp", "to": to_phone, "content": text}
+        logger.info(f"🟢 [SIMULATION WHATSAPP] To: {e164_phone} | Body: {text}")
+        return {"status": "simulated", "channel": "whatsapp", "to": e164_phone, "content": text}
 
     def send_messenger(self, recipient_psid: str, text: str, quick_replies: Optional[List[str]] = None) -> Dict[str, Any]:
         """Dispatches Facebook Messenger message via Graph API."""
@@ -348,6 +360,8 @@ class NotificationDispatcher:
         details_text = f"Booking Ref: {ref_id}\nMaster Stylist: {stylist}\nService: {service}\nAddress: {address}\nPhone: (617) 555-LUXE"
         gcal_add_link = calendar_service.generate_add_to_gcal_link(f"Luxe Saloon: {service} with {stylist}", start_dt, duration, details_text, address)
         ics_content = calendar_service.generate_ics(f"Luxe Saloon: {service} with {stylist}", start_dt, duration, details_text, address, ref_id=ref_id)
+        cal_base = os.getenv("APP_BASE_URL", "https://ai-voice-receptionist-chi.vercel.app")
+        cal_add_url = f"{cal_base}/api/calendar/add/{ref_id}"
 
         default_html = f"""<!DOCTYPE html>
 <html>
@@ -395,7 +409,7 @@ class NotificationDispatcher:
     </div>
     <div class="btn-container">
       <a href="{gcal_add_link}" target="_blank" class="btn-gcal">📅 Add to Google Calendar</a>
-      <a href="https://ai-voice-receptionist.kishor.tech/api/calendar/add/{ref_id}" target="_blank" class="btn-portal">🍏 Apple / Outlook / All Calendars</a>
+      <a href="{cal_add_url}" target="_blank" class="btn-portal">🍏 Apple / Outlook / All Calendars</a>
     </div>
 
     <!-- What Our AI Voice Agents Are Doing -->
@@ -513,22 +527,54 @@ class NotificationDispatcher:
         ref_id = booking_record.get("booking_id", "")
         email = recipient_email or booking_record.get("caller_email", "")
 
-        cal_add_url = f"https://ai-voice-receptionist.kishor.tech/api/calendar/add/{ref_id}"
-        msg = (
-            f"✨ Booking Confirmed!\n"
-            f"Hello {caller_name}, your appointment for {service} with {stylist} is confirmed for {start_time}.\n"
-            f"Reference: #{ref_id}\n\n"
-            f"📅 Add to Calendar & Set Reminders:\n{cal_add_url}\n\n"
-            f"To modify or cancel, reply RESCHEDULE or CANCEL."
+        # Auto-lookup email from database customer profile if not explicitly passed
+        if not email and caller_phone:
+            try:
+                from backend.database import get_customer_by_phone_or_email
+                cust = get_customer_by_phone_or_email(phone=caller_phone)
+                if cust and cust.get("email"):
+                    email = cust["email"]
+            except Exception:
+                pass
+
+        # Idempotency guard: prevent duplicate dispatch within 30s for the same booking_id on the same channel
+        if not hasattr(self, "_recent_dispatches"):
+            self._recent_dispatches = {}
+        now_ts = datetime.now().timestamp()
+        dispatch_key = f"{ref_id}:{channel}"
+        if ref_id and dispatch_key in self._recent_dispatches:
+            if now_ts - self._recent_dispatches[dispatch_key] < 30:
+                logger.info(f"⚡ [IDEMPOTENCY] Confirmation already dispatched recently for #{ref_id} on {channel}")
+                return {"status": "already_dispatched", "booking_id": ref_id, "channel": channel}
+        if ref_id:
+            self._recent_dispatches[dispatch_key] = now_ts
+
+        cal_base = os.getenv("APP_BASE_URL", "https://ai-voice-receptionist-chi.vercel.app")
+        cal_add_url = f"{cal_base}/api/calendar/add/{ref_id}"
+        
+        # WhatsApp Luxury Template
+        wa_text = (
+            f"✨ *Luxe Saloon & Spa Booking Confirmed* ✨\n\n"
+            f"Dear *{caller_name}*,\n"
+            f"Your appointment for *{service}* with Master Stylist *{stylist}* is confirmed for *{start_time}*.\n\n"
+            f"📋 Booking Ref: *#{ref_id}*\n"
+            f"📍 Location: 120 Newbury Street, Back Bay, Boston, MA\n"
+            f"📅 Add to Calendar & Reminders:\n{cal_add_url}\n\n"
+            f"Reply *RESCHEDULE* or *CANCEL* anytime to manage your reservation."
+        )
+
+        sms_text = (
+            f"✨ Luxe Saloon: Booking #{ref_id} confirmed for {service} with {stylist} on {start_time}. "
+            f"Add to calendar: {cal_add_url}. Reply CANCEL to cancel."
         )
 
         results = {}
-        # 1. Phone based channels
+        # 1. Automatic WhatsApp Confirmation
         if caller_phone:
-            results["sms"] = self.send_sms(caller_phone, msg)
-            results["whatsapp"] = self.send_whatsapp(caller_phone, msg, quick_replies=["Confirm", "Reschedule", "Cancel"])
+            results["whatsapp"] = self.send_whatsapp(caller_phone, wa_text, quick_replies=["Confirm", "Reschedule", "Cancel"])
+            results["sms"] = self.send_sms(caller_phone, sms_text)
 
-        # 2. Email confirmation
+        # 2. Automatic Email Confirmation (HTML with .ics calendar invite and 1-click Google Calendar add button)
         if email and "@" in email:
             results["email"] = self.send_email(
                 to_email=email,
@@ -536,19 +582,19 @@ class NotificationDispatcher:
                 booking_data=booking_record
             )
 
-        # 2. Social messaging direct replies if specific channel was used
+        # 3. Social messaging direct replies if specific channel was used
         if channel == "telegram" and recipient_id:
-            results["telegram"] = self.send_telegram(recipient_id, msg, quick_replies=["Confirm", "Reschedule", "Cancel"])
+            results["telegram"] = self.send_telegram(recipient_id, wa_text, quick_replies=["Confirm", "Reschedule", "Cancel"])
         elif channel == "twitter" and recipient_id:
-            results["twitter"] = self.send_twitter_dm(recipient_id, msg, quick_replies=["Confirm", "Reschedule", "Cancel"])
+            results["twitter"] = self.send_twitter_dm(recipient_id, sms_text, quick_replies=["Confirm", "Reschedule", "Cancel"])
         elif channel == "linkedin" and recipient_id:
-            results["linkedin"] = self.send_linkedin_message(recipient_id, msg)
+            results["linkedin"] = self.send_linkedin_message(recipient_id, sms_text)
         elif channel == "tiktok" and recipient_id:
-            results["tiktok"] = self.send_tiktok_dm(recipient_id, msg)
+            results["tiktok"] = self.send_tiktok_dm(recipient_id, sms_text)
         elif channel == "threads" and recipient_id:
-            results["threads"] = self.send_threads_reply(recipient_id, msg)
+            results["threads"] = self.send_threads_reply(recipient_id, sms_text)
         elif channel == "reddit" and recipient_id:
-            results["reddit"] = self.send_reddit_message(recipient_id, msg)
+            results["reddit"] = self.send_reddit_message(recipient_id, sms_text)
 
         return results
 

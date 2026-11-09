@@ -2052,32 +2052,37 @@ function showToastNotification(type, title, message) {
   }, 6500);
 }
 
-// --- Instant Outbound Callback ---
+// --- Instant Outbound Callback (<500ms SLA) ---
 async function triggerInstant500msCall() {
-  const phoneInput = document.getElementById("outboundPhone");
-  const nameInput = document.getElementById("outboundName");
-  const resultEl = document.getElementById("fastCallResult");
-  const btn = document.getElementById("btnFastCall");
+  const phoneInput = document.getElementById("instantPhoneInput") || document.getElementById("outboundPhone");
+  const nameInput = document.getElementById("instantNameInput") || document.getElementById("outboundName");
+  const resultEl = document.getElementById("instantCallFeedback") || document.getElementById("fastCallResult");
+  const btn = document.getElementById("btnInstant500ms") || document.getElementById("btnFastCall");
 
   const phone = (phoneInput?.value || "").trim();
-  const name = (nameInput?.value || "VIP Salon Guest").trim();
+  const name = (nameInput?.value || "").trim();
 
   if (!phone) {
     if (resultEl) {
       resultEl.style.display = "block";
+      resultEl.style.background = "rgba(239,68,68,0.12)";
+      resultEl.style.border = "1px solid rgba(239,68,68,0.3)";
       resultEl.style.color = "#f87171";
-      resultEl.innerHTML = "⚠️ Please enter a valid phone number (e.g. +16175550199) to receive Sofia's call.";
+      resultEl.innerHTML = "⚠️ Please enter your phone number (e.g. +16175550199 or mobile number) to receive Sophia's call.";
     }
     phoneInput?.focus();
     return;
   }
 
+  const t0 = performance.now();
   try {
-    if (btn) { btn.disabled = true; btn.textContent = "📞 Calling Your Phone..."; }
+    if (btn) { btn.disabled = true; btn.innerHTML = "⚡ Dialing in &lt;500ms..."; }
     if (resultEl) {
       resultEl.style.display = "block";
+      resultEl.style.background = "rgba(56,189,248,0.12)";
+      resultEl.style.border = "1px solid rgba(56,189,248,0.3)";
       resultEl.style.color = "#38bdf8";
-      resultEl.innerHTML = `📞 Connecting to Sofia... Dialing <b>${escapeHtml(phone)}</b> now.`;
+      resultEl.innerHTML = `⚡ Connecting to Sophia... Dialing <b>${escapeHtml(phone)}</b> now!`;
     }
 
     const cachedVip = getCachedVipUser();
@@ -2093,26 +2098,34 @@ async function triggerInstant500msCall() {
       })
     });
 
+    const elapsed = Math.round(performance.now() - t0);
     const data = await res.json();
     if (res.ok && data.status !== "error") {
-      showToastNotification("success", "Outbound Call Ringing!", `Sofia is calling ${phone} now. Answer your phone to speak live.`);
+      const latencyDisplay = data.latency_ms || elapsed;
+      showToastNotification("success", "Outbound Call Ringing!", `Sophia is calling ${phone} (connected in ${latencyDisplay}ms). Answer to speak live.`);
       if (resultEl) {
+        resultEl.style.background = "rgba(16,185,129,0.12)";
+        resultEl.style.border = "1px solid rgba(16,185,129,0.3)";
         resultEl.style.color = "#34d399";
-        resultEl.innerHTML = `✅ <b>Call initiated!</b> Sofia is ringing <b>${escapeHtml(phone)}</b> right now. Answer your phone to speak with your Luxe receptionist. (Call ID: ${escapeHtml(data.call_id || data.id || "live")})`;
+        resultEl.innerHTML = `⚡ <b>Call initiated in ${latencyDisplay}ms!</b> Sophia is ringing <b>${escapeHtml(phone)}</b> right now. Answer your phone to speak live with your Luxe receptionist. (Ref: ${escapeHtml(data.call_id || "live")})`;
       }
     } else {
       if (resultEl) {
+        resultEl.style.background = "rgba(239,68,68,0.12)";
+        resultEl.style.border = "1px solid rgba(239,68,68,0.3)";
         resultEl.style.color = "#f87171";
         resultEl.innerHTML = `❌ Outbound dial failed: ${escapeHtml(data.detail || data.message || "Unknown error")}`;
       }
     }
   } catch (err) {
     if (resultEl) {
+      resultEl.style.background = "rgba(239,68,68,0.12)";
+      resultEl.style.border = "1px solid rgba(239,68,68,0.3)";
       resultEl.style.color = "#f87171";
       resultEl.innerHTML = `❌ Network error triggering outbound call: ${escapeHtml(err.message)}`;
     }
   } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "📞 Call My Phone"; }
+    if (btn) { btn.disabled = false; btn.innerHTML = "⚡ Call Me Now (&lt;500ms)"; }
   }
 }
 const triggerInstantCall = triggerInstant500msCall;

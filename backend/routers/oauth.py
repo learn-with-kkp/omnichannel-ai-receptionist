@@ -38,13 +38,14 @@ class ManualConnectPayload(BaseModel):
 
 @router.get("/facebook/login")
 def get_facebook_login_url(
+    request: Request,
     tenant_id: str = Query("salon", description="Tenant ID of the business owner"),
     format: Optional[str] = Query(None)
 ):
     """
     Generates Meta OAuth 2.0 authorization dialog URL.
     Encodes tenant_id into state parameter for callback reconciliation.
-    Redirects directly to Facebook Login dialog or returns JSON if format=json.
+    Redirects directly to Facebook Login dialog or returns JSON if requested.
     """
     scopes = [
         "pages_show_list",
@@ -66,8 +67,10 @@ def get_facebook_login_url(
     }
 
     oauth_url = f"https://www.facebook.com/v21.0/dialog/oauth?{urllib.parse.urlencode(params)}"
-    if format == "json":
+    accept_header = request.headers.get("accept", "")
+    if format == "json" or "text/html" not in accept_header or format != "redirect":
         return {
+            "status": "success",
             "tenant_id": tenant_id,
             "oauth_url": oauth_url,
             "provider": "meta_business"

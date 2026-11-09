@@ -32,11 +32,11 @@ TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 # Telnyx Configuration (Cost-effective Twilio Alternative: $1/mo number, ~$0.004/SMS)
 TELNYX_API_KEY = os.getenv("TELNYX_API_KEY")
-TELNYX_PHONE_NUMBER = os.getenv("TELNYX_PHONE_NUMBER")
-TELNYX_CONNECTION_ID = os.getenv("TELNYX_CONNECTION_ID")
+TELNYX_PHONE_NUMBER = os.getenv("TELNYX_PHONE_NUMBER", "+16172718180")
+TELNYX_CONNECTION_ID = os.getenv("TELNYX_CONNECTION_ID", "3088592697158534683")
 
-VAPI_API_KEY = os.getenv("VAPI_API_KEY")
-VAPI_PHONE_NUMBER_ID = os.getenv("VAPI_PHONE_NUMBER_ID")
+VAPI_API_KEY = os.getenv("VAPI_PRIVATE_API_KEY") or os.getenv("VAPI_API_KEY")
+VAPI_PHONE_NUMBER_ID = os.getenv("VAPI_PHONE_NUMBER_ID", "c3cc95f8-6517-4870-8f82-bc3ea758b205")
 
 
 def send_telnyx_sms(to_number: str, message_body: str) -> bool:
@@ -188,10 +188,11 @@ def trigger_vapi_outbound_reminder_call(client_phone: str, client_name: str, ser
                         ]
                     },
                     "voice": {
-                        "provider": "cartesia",
-                        "voiceId": "248be419-c632-4f23-add1-07c49b043202"
+                        "provider": "vapi",
+                        "voiceId": "Clara",
+                        "speed": 1.15
                     },
-                    "firstMessage": f"Hi {client_name}! This is Sophia from Luxe Salon. Just giving you a quick courtesy call to remind you that your {service} appointment with {stylist} is in one hour! Are you all set and on your way?"
+                    "firstMessage": f"Hi {client_name}! This is Sophia from Luxe Saloon & Spa on Newbury Street. Just giving you a quick courtesy call to remind you that your {service} appointment with {stylist} is in one hour! Are you all set and on your way?"
                 }
             }
             with httpx.Client(timeout=15.0) as client:
@@ -213,12 +214,14 @@ def trigger_vapi_outbound_reminder_call(client_phone: str, client_name: str, ser
 
 def run_reminder_cycle():
     """
-    Executes one scanning cycle for both 24-hour WhatsApp reminders and 1-hour automated calls.
+    Executes one scanning cycle for both 24-hour WhatsApp/SMS/Email reminders and 1-hour automated calls.
     """
-    # 1. Process 24-Hour WhatsApp Reminders
+    stats = {"processed_24h": 0, "processed_1h": 0}
+
+    # 1. Process 24-Hour WhatsApp & Email Reminders
     pending_24h = get_pending_24h_reminders()
     if pending_24h:
-        logger.info(f"Found {len(pending_24h)} pending 24-hour WhatsApp reminders.")
+        logger.info(f"Found {len(pending_24h)} pending 24-hour reminders.")
         for appt in pending_24h:
             b_id = appt["id"]
             name = appt["caller_name"]
@@ -228,24 +231,48 @@ def run_reminder_cycle():
             st_dt = datetime.fromisoformat(appt["start_time"]).strftime("%A at %I:%M %p")
 
             msg = (
-                f"✨ *Luxe Salon Appointment Reminder* ✨\n\n"
+                f"✨ *Luxe Saloon & Spa Reminder* ✨\n\n"
                 f"Hi {name}, you have a *{service}* appointment scheduled tomorrow, *{st_dt}*, with {stylist}.\n\n"
-                f"📍 Location: 450 Newbury Street, Boston\n"
-                f"Booking ID: `{b_id}`\n\n"
+                f"📍 Location: 120 Newbury Street, Back Bay, Boston, MA\n"
+                f"Booking ID: `#{b_id}`\n\n"
                 f"Please reply *CONFIRM* to let us know you'll be there, or reply to this message if you need to reschedule!"
             )
             
             # Send via Telnyx/Twilio SMS
             sms_text = (
                 f"Luxe Salon Reminder: Hi {name}, your {service} appointment is scheduled for tomorrow, {st_dt}, with {stylist}. "
-                f"Reply CONFIRM to confirm or call us to reschedule."
+                f"Reply CONFIRM to confirm or call +1(617)271-8180 to reschedule."
             )
             send_sms_message(phone, sms_text)
 
             # Send via WhatsApp
             success = send_whatsapp_message(phone, msg)
+
+            # Send 24-Hour Reminder Email
+            cust_email = appt.get("caller_email", "")
+            if not cust_email:
+                try:
+                    from backend.database import get_customer_by_phone_or_email
+                    cust = get_customer_by_phone_or_email(phone=phone)
+                    if cust and cust.get("email"):
+                        cust_email = cust["email"]
+                except Exception:
+                    pass
+
+            if cust_email:
+                try:
+                    from core.notifications import notification_dispatcher
+                    notification_dispatcher.send_email(
+                        to_email=cust_email,
+                        subject=f"🔔 24-Hour Reminder: Your {service} Appointment Tomorrow at Luxe Salon (#{b_id})",
+                        booking_data=appt
+                    )
+                except Exception as e:
+                    logger.debug(f"24h email reminder dispatch bypassed: {e}")
+
             if success:
                 mark_24h_reminder_sent(b_id)
+                stats["processed_24h"] += 1
                 logger.info(f"Marked 24h WhatsApp sent for {b_id}")
 
     # 2. Process 1-Hour Automated Voice Calls & WhatsApp Alerts
@@ -264,14 +291,14 @@ def run_reminder_cycle():
             wa_msg = (
                 f"⏰ *Starting in 1 Hour!*\n\n"
                 f"Hi {name}, {stylist} is preparing your station for your *{service}* today at *{st_time}*.\n"
-                f"Valet and garage parking are available directly across from the salon. See you soon!"
+                f"Valet and garage parking are available at 120 Newbury Street, Boston. See you soon!"
             )
             send_whatsapp_message(phone, wa_msg)
 
             # 1-Hour SMS Alert (Telnyx / Twilio)
             sms_1h = (
                 f"Luxe Salon Alert: Hi {name}, your {service} with {stylist} starts in 1 hour ({st_time})! "
-                f"See you at 450 Newbury Street, Boston."
+                f"See you at 120 Newbury Street, Boston."
             )
             send_sms_message(phone, sms_1h)
 
@@ -279,7 +306,10 @@ def run_reminder_cycle():
             call_success = trigger_vapi_outbound_reminder_call(phone, name, service, stylist, st_time)
             if call_success:
                 mark_1h_call_sent(b_id)
+                stats["processed_1h"] += 1
                 logger.info(f"Marked 1h call sent for {b_id}")
+
+    return stats
 
 def start_reminder_daemon(interval_seconds: int = 60):
     logger.info(f"Starting Salon Reminder Daemon (Polling interval: {interval_seconds}s)...")

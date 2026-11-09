@@ -265,11 +265,17 @@ def download_excel_sheet():
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+@app.get("/api/cron/reminders")
+@app.post("/api/reminders/trigger")
 @app.post("/admin/trigger-reminders")
 def manual_trigger_reminders():
-    """Manually triggers the scanning cycle for 24h WhatsApp messages and 1h reminder calls."""
-    run_reminder_cycle()
-    return {"status": "success", "message": "Reminder cycle executed successfully"}
+    """Manually or cron-triggered scanning cycle for 24h WhatsApp/SMS/Email reminders and 1h automated calls."""
+    stats = run_reminder_cycle()
+    return {
+        "status": "success",
+        "message": "Reminder cycle executed successfully",
+        "stats": stats
+    }
 
 @app.post("/admin/sync-google-sheet")
 def manual_sync_google_sheet():

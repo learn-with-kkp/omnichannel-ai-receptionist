@@ -6,6 +6,12 @@
       "includeFiles": "backend/**,core/**,integrations/**,web/**,public/**"
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/reminders",
+      "schedule": "*/10 * * * *"
+    }
+  ],
   "routes": [
     {
       "src": "/widget.js",
