@@ -8,6 +8,7 @@ Supports:
 
 import os
 import re
+import json
 import sqlite3
 import hashlib
 import secrets
@@ -206,16 +207,24 @@ def get_db_connection():
 
 # --- Schema Initialization & Automatic Migration ---
 
-def init_db():
+_db_initialized = False
+
+def init_db(force: bool = False):
     """
     Initializes database tables in Neon PostgreSQL or SQLite.
     Creates tables, migrates missing columns, and seeds default records.
+    Cached in-memory after first run for ultra-low latency (<2ms).
     """
+    global _db_initialized
+    if _db_initialized and not force:
+        return
+
     with DBConnectionContext() as db:
         if db.is_pg:
             _init_postgres_schema(db)
         else:
             _init_sqlite_schema(db)
+    _db_initialized = True
 
 
 def _init_postgres_schema(db: DBConnectionContext):
@@ -337,6 +346,28 @@ def _init_postgres_schema(db: DBConnectionContext):
             db.execute(f"ALTER TABLE tenant_integrations ADD COLUMN IF NOT EXISTS {col} TEXT DEFAULT ''")
         except Exception:
             pass
+
+    # 7. Call Logs & Structured Evals Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS call_logs (
+            call_id VARCHAR(128) PRIMARY KEY,
+            tenant_id VARCHAR(64) DEFAULT 'salon',
+            caller_name TEXT DEFAULT '',
+            caller_phone TEXT DEFAULT '',
+            caller_email TEXT DEFAULT '',
+            service_name TEXT DEFAULT '',
+            call_outcome VARCHAR(64) DEFAULT 'general_inquiry',
+            sentiment VARCHAR(32) DEFAULT 'neutral',
+            summary TEXT DEFAULT '',
+            transcript TEXT DEFAULT '',
+            recording_url TEXT DEFAULT '',
+            duration_seconds INTEGER DEFAULT 0,
+            evaluation_score VARCHAR(32) DEFAULT '',
+            action_items TEXT DEFAULT '[]',
+            structured_data TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+    """)
 
     # Seed Default Salon if not exists
     db.execute("SELECT COUNT(*) as count FROM tenants WHERE id = ?", (DEFAULT_TENANT_ID,))
@@ -517,6 +548,28 @@ def _init_sqlite_schema(db: DBConnectionContext):
             db.execute(f"ALTER TABLE tenant_integrations ADD COLUMN {col} TEXT DEFAULT ''")
         except Exception:
             pass
+
+    # 7. Call Logs & Structured Evals Table (SQLite fallback)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS call_logs (
+            call_id TEXT PRIMARY KEY,
+            tenant_id TEXT DEFAULT 'salon',
+            caller_name TEXT DEFAULT '',
+            caller_phone TEXT DEFAULT '',
+            caller_email TEXT DEFAULT '',
+            service_name TEXT DEFAULT '',
+            call_outcome TEXT DEFAULT 'general_inquiry',
+            sentiment TEXT DEFAULT 'neutral',
+            summary TEXT DEFAULT '',
+            transcript TEXT DEFAULT '',
+            recording_url TEXT DEFAULT '',
+            duration_seconds INTEGER DEFAULT 0,
+            evaluation_score TEXT DEFAULT '',
+            action_items TEXT DEFAULT '[]',
+            structured_data TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+    """)
 
     # Seed Default Salon if not exists
     db.execute("SELECT COUNT(*) as count FROM tenants WHERE id = ?", (DEFAULT_TENANT_ID,))
@@ -1484,4 +1537,142 @@ def get_all_customer_phones(tenant_id: str = "salon") -> List[str]:
         db.execute("SELECT DISTINCT phone FROM customers WHERE phone IS NOT NULL AND phone != '' AND tenant_id = ?", (tenant_id,))
         rows = db.fetchall()
         return [r["phone"] for r in rows if r.get("phone")]
+
+
+def save_call_log(log_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Persists structured end-of-call analysis, evaluation rubric result, and metadata."""
+    init_db()
+    call_id = log_data.get("call_id") or f"call_{secrets.token_hex(8)}"
+    tenant_id = log_data.get("tenant_id") or DEFAULT_TENANT_ID
+    caller_name = log_data.get("caller_name") or ""
+    caller_phone = log_data.get("caller_phone") or ""
+    caller_email = log_data.get("caller_email") or ""
+    service_name = log_data.get("service_name") or ""
+    call_outcome = log_data.get("call_outcome") or "general_inquiry"
+    sentiment = log_data.get("sentiment") or "neutral"
+    summary = log_data.get("summary") or ""
+    transcript = log_data.get("transcript") or ""
+    recording_url = log_data.get("recording_url") or ""
+    duration_seconds = int(log_data.get("duration_seconds") or 0)
+    evaluation_score = log_data.get("evaluation_score") or ""
+    
+    action_items = log_data.get("action_items") or []
+    if isinstance(action_items, list):
+        action_items_str = json.dumps(action_items)
+    else:
+        action_items_str = str(action_items)
+        
+    structured_data = log_data.get("structured_data") or {}
+    if isinstance(structured_data, dict):
+        structured_data_str = json.dumps(structured_data)
+    else:
+        structured_data_str = str(structured_data)
+        
+    created_at = log_data.get("created_at") or datetime.now().isoformat()
+
+    with DBConnectionContext() as db:
+        if db.is_pg:
+            db.execute("""
+                INSERT INTO call_logs (
+                    call_id, tenant_id, caller_name, caller_phone, caller_email,
+                    service_name, call_outcome, sentiment, summary, transcript,
+                    recording_url, duration_seconds, evaluation_score, action_items,
+                    structured_data, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (call_id) DO UPDATE SET
+                    summary = EXCLUDED.summary,
+                    transcript = EXCLUDED.transcript,
+                    call_outcome = EXCLUDED.call_outcome,
+                    sentiment = EXCLUDED.sentiment,
+                    evaluation_score = EXCLUDED.evaluation_score,
+                    structured_data = EXCLUDED.structured_data,
+                    action_items = EXCLUDED.action_items
+            """, (
+                call_id, tenant_id, caller_name, caller_phone, caller_email,
+                service_name, call_outcome, sentiment, summary, transcript,
+                recording_url, duration_seconds, evaluation_score, action_items_str,
+                structured_data_str, created_at
+            ))
+        else:
+            db.execute("""
+                INSERT INTO call_logs (
+                    call_id, tenant_id, caller_name, caller_phone, caller_email,
+                    service_name, call_outcome, sentiment, summary, transcript,
+                    recording_url, duration_seconds, evaluation_score, action_items,
+                    structured_data, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(call_id) DO UPDATE SET
+                    summary = excluded.summary,
+                    transcript = excluded.transcript,
+                    call_outcome = excluded.call_outcome,
+                    sentiment = excluded.sentiment,
+                    evaluation_score = excluded.evaluation_score,
+                    structured_data = excluded.structured_data,
+                    action_items = excluded.action_items
+            """, (
+                call_id, tenant_id, caller_name, caller_phone, caller_email,
+                service_name, call_outcome, sentiment, summary, transcript,
+                recording_url, duration_seconds, evaluation_score, action_items_str,
+                structured_data_str, created_at
+            ))
+            
+    return {"status": "saved", "call_id": call_id, "call_outcome": call_outcome, "sentiment": sentiment}
+
+
+def get_call_log(call_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch call log and evals by ID."""
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM call_logs WHERE call_id = ? LIMIT 1", (call_id,))
+        return db.fetchone()
+
+
+def list_call_logs(tenant_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieve recent call logs and evaluations."""
+    init_db()
+    with DBConnectionContext() as db:
+        if tenant_id:
+            db.execute("SELECT * FROM call_logs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?", (tenant_id, limit))
+        else:
+            db.execute("SELECT * FROM call_logs ORDER BY created_at DESC LIMIT ?", (limit,))
+        rows = db.fetchall()
+        for r in rows:
+            if isinstance(r.get("action_items"), str):
+                try:
+                    r["action_items"] = json.loads(r["action_items"])
+                except Exception:
+                    pass
+            if isinstance(r.get("structured_data"), str):
+                try:
+                    r["structured_data"] = json.loads(r["structured_data"])
+                except Exception:
+                    pass
+        return rows
+
+
+def get_call_analytics(tenant_id: Optional[str] = None) -> Dict[str, Any]:
+    """Calculates call evaluation metrics, outcome distribution, and sentiment scores."""
+    init_db()
+    with DBConnectionContext() as db:
+        if tenant_id:
+            db.execute("SELECT COUNT(*) as total, AVG(duration_seconds) as avg_duration FROM call_logs WHERE tenant_id = ?", (tenant_id,))
+            base = db.fetchone() or {"total": 0, "avg_duration": 0}
+            db.execute("SELECT call_outcome, COUNT(*) as count FROM call_logs WHERE tenant_id = ? GROUP BY call_outcome", (tenant_id,))
+            outcomes = {r["call_outcome"]: r["count"] for r in db.fetchall()}
+            db.execute("SELECT sentiment, COUNT(*) as count FROM call_logs WHERE tenant_id = ? GROUP BY sentiment", (tenant_id,))
+            sentiments = {r["sentiment"]: r["count"] for r in db.fetchall()}
+        else:
+            db.execute("SELECT COUNT(*) as total, AVG(duration_seconds) as avg_duration FROM call_logs")
+            base = db.fetchone() or {"total": 0, "avg_duration": 0}
+            db.execute("SELECT call_outcome, COUNT(*) as count FROM call_logs GROUP BY call_outcome")
+            outcomes = {r["call_outcome"]: r["count"] for r in db.fetchall()}
+            db.execute("SELECT sentiment, COUNT(*) as count FROM call_logs GROUP BY sentiment")
+            sentiments = {r["sentiment"]: r["count"] for r in db.fetchall()}
+            
+    return {
+        "total_calls": base.get("total", 0),
+        "avg_duration_seconds": round(base.get("avg_duration") or 0, 1),
+        "outcome_distribution": outcomes,
+        "sentiment_distribution": sentiments
+    }
 

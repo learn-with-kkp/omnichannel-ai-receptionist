@@ -178,10 +178,34 @@ class UniversalReceptionistOrchestrator:
             return "cancel"
         if any(w in m for w in ["reschedule", "change time", "move appointment", "different day", "push back"]):
             return "reschedule"
+
+        # Dedicated Operating Hours & Location FAQs
+        if any(w in m for w in [
+            "hours today", "operating hours", "business hours", "what are your hours",
+            "hours & location", "what time do you open", "what time do you close",
+            "when do you open", "when do you close", "closing time", "opening time",
+            "are you open today", "are you open now", "store hours", "salon hours"
+        ]) or m.strip() in ["hours", "hours today?", "what are your hours?", "what are your hours today?"]:
+            return "hours_info"
+
+        # Dedicated Location FAQ
+        if any(w in m for w in [
+            "where are you located", "what is your address", "where is the salon",
+            "directions", "location", "where is it", "find you", "address"
+        ]) or m.strip() in ["location", "address"]:
+            return "location_info"
+
+        # Dedicated Pricing FAQ
+        if any(w in m for w in [
+            "price list", "pricing", "prices", "how much is", "how much for",
+            "cost of", "rates", "menu"
+        ]) or m.strip() in ["pricing", "prices", "rates"]:
+            return "pricing_info"
+
         if any(w in m for w in [
             "book", "appointment", "reserve", "schedule", "slot", "visit",
             # Salon & Spa
-            "haircut", "balayage", "keratin", "manicure", "pedicure",
+            "haircut", "balayage", "keratin", "manicure", "pedicure", "blowdry", "cut",
             # Dental
             "cleaning", "whitening", "root canal", "filling", "braces", "orthodontic",
             # Automotive
@@ -194,7 +218,7 @@ class UniversalReceptionistOrchestrator:
             "consultation", "case", "lawyer", "attorney", "injury", "estate", "will", "trust", "contract", "visa", "retainer"
         ]):
             return "book"
-        if any(w in m for w in ["available", "openings", "slots", "free", "hours", "when"]):
+        if any(w in m for w in ["available", "openings", "slots", "free", "when are you free"]):
             return "check_availability"
         if any(w in m for w in ["manager", "human", "representative", "person", "agent", "supervisor"]):
             return "escalate"
@@ -401,15 +425,65 @@ class UniversalReceptionistOrchestrator:
 
         # 2. Dialogue State Machine with Tool & LLM Latency tracking
         with tracker.stage("llm_total"):
-            if intent == "book":
+            if intent == "hours_info":
+                bh = tenant.business_hours
+                open_t = getattr(bh, "open_time", "09:00 AM")
+                close_t = getattr(bh, "close_time", "06:00 PM")
+                response_text = (
+                    f"{tenant.name} is open today from {open_t} to {close_t} (Monday through Sunday). "
+                    f"We are located at {tenant.address}. "
+                    f"Would you like to check available slots or book an appointment with Sofia or one of our stylists?"
+                )
+                with tracker.stage("tool"):
+                    suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+
+            elif intent == "location_info":
+                response_text = (
+                    f"{tenant.name} is located at {tenant.address}. "
+                    f"Complimentary valet and street parking are available for our guests. "
+                    f"Our hours are {getattr(tenant.business_hours, 'open_time', '09:00 AM')} to {getattr(tenant.business_hours, 'close_time', '06:00 PM')}. "
+                    f"Would you like me to reserve a visit for you?"
+                )
+                with tracker.stage("tool"):
+                    suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+
+            elif intent == "pricing_info":
+                if matched_service:
+                    response_text = (
+                        f"Our {matched_service.name} is ${matched_service.price_usd} (duration: ~{matched_service.duration_minutes} mins). "
+                        f"Would you like to book this service or check open times for tomorrow?"
+                    )
+                else:
+                    sample_srv = ", ".join([f"{s.name} (${s.price_usd})" for s in tenant.services[:3]]) if tenant.services else "Haircut & Blowdry ($65), Balayage ($180)"
+                    response_text = (
+                        f"At {tenant.name}, our featured services include {sample_srv}. "
+                        f"Which service would you like to schedule?"
+                    )
+                with tracker.stage("tool"):
+                    suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+
+            elif intent == "book":
                 if "tomorrow" in user_message.lower():
                     target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
                 elif "today" in user_message.lower():
                     target_date = datetime.now().strftime("%Y-%m-%d")
 
                 time_match = re.search(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm))", user_message, re.IGNORECASE)
+
+                # Extract phone from message if explicitly provided by customer
+                clean_digits = re.sub(r"[^\d+]", "", user_message)
+                phone_in_msg = re.search(r"(\+?[0-9]{10,15})", clean_digits)
+                final_phone = phone_in_msg.group(1) if phone_in_msg else (caller_phone or "")
+
+                # Extract email from message if provided
+                email_in_msg = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", user_message)
+                final_email = email_in_msg.group(0) if email_in_msg else (caller_email or "")
+
+                # Extract name if provided (e.g., "for Kishor", "name is Alex")
+                name_in_msg = re.search(r"(?:for|name is|i am|this is)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)", user_message, re.IGNORECASE)
+                final_name = name_in_msg.group(1).strip() if name_in_msg else (caller_name or "Valued Guest")
                 
-                if time_match and caller_name and caller_phone:
+                if time_match and final_phone and (final_name != "Guest" or caller_name):
                     req_time = time_match.group(1).upper()
                     try:
                         parsed_dt = datetime.strptime(f"{target_date} {req_time}", "%Y-%m-%d %I:%M %p")
@@ -418,39 +492,40 @@ class UniversalReceptionistOrchestrator:
                         dt_iso = f"{target_date}T14:00:00"
 
                     st_name = matched_staff.name if matched_staff else (tenant.staff[0].name if tenant.staff else "Specialist")
-                    srv_name = matched_service.name if matched_service else "Consultation"
+                    srv_name = matched_service.name if matched_service else "Womens Haircut & Blowdry"
 
                     with tracker.stage("tool"):
                         booking_res = book_new_appointment(
-                            caller_name=caller_name,
-                            caller_phone=caller_phone,
+                            caller_name=final_name,
+                            caller_phone=final_phone,
                             service_name=srv_name,
                             appointment_datetime=dt_iso,
                             stylist_name=st_name,
                             tenant_id=tenant.id,
                             channel=channel.value,
                             accent=accent.key,
-                            caller_email=caller_email or ""
+                            caller_email=final_email or ""
                         )
-                        notification_dispatcher.dispatch_booking_confirmation(booking_res, channel=channel.value, recipient_email=caller_email)
+                        notification_dispatcher.dispatch_booking_confirmation(booking_res, channel=channel.value, recipient_email=final_email)
 
                     booking_data = booking_res
                     action_performed = "booked"
                     response_text = (
-                        f"You are all booked, {caller_name}! Your appointment for {srv_name} with {st_name} "
+                        f"You are all booked, {final_name}! Your appointment for {srv_name} with {st_name} "
                         f"at {tenant.name} is confirmed for {booking_res['start_time']}. "
                         f"Your booking reference is {booking_res['booking_id']}. "
-                        f"A confirmation has been sent to {caller_phone}."
+                        f"A confirmation has been sent to {final_phone}."
                     )
                 else:
                     with tracker.stage("tool"):
                         suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
-                    srv_title = matched_service.name if matched_service else "your visit"
+                    srv_title = matched_service.name if matched_service else "Womens Haircut & Blowdry"
+                    srv_price = f" (${matched_service.price_usd})" if matched_service and hasattr(matched_service, "price_usd") else ""
                     staff_mention = f" with {matched_staff.name}" if matched_staff else ""
-                    slots_str = ", ".join(suggested_slots) if suggested_slots else "10:00 AM, 02:00 PM, 04:30 PM"
+                    slots_str = ", ".join(suggested_slots) if suggested_slots else "09:00 AM, 11:30 AM, 02:00 PM, 04:30 PM"
                     response_text = (
-                        f"For {srv_title}{staff_mention} on {target_date}, we have open slots at {slots_str}. "
-                        f"Which time suits you best? Kindly reply with your preferred time, full name, and phone number to confirm."
+                        f"For {srv_title}{srv_price}{staff_mention} on {target_date}, we have open slots at: {slots_str}. "
+                        f"Which time suits you best? You can tap a time slot or reply with your preferred time, full name, and phone number to confirm."
                     )
 
             elif intent == "check_availability":
@@ -585,6 +660,8 @@ class UniversalReceptionistOrchestrator:
             "intent": intent,
             "sentiment": sentiment,
             "reply": styled_response,
+            "response": styled_response,
+            "message": styled_response,
             "channel": channel.value,
             "accent": {
                 "key": accent.key,

@@ -882,14 +882,18 @@
       const typingEl = document.getElementById('luxeTyping');
       if (typingEl) typingEl.remove();
 
-      const reply = data.response || data.message || 'Thank you! How else can I assist you?';
+      const reply = data.reply || data.response || data.message || 'Thank you! How else can I assist you?';
       appendChatBubble('assistant', reply);
 
       conversationHistory.push({ role: 'user', content: text });
       conversationHistory.push({ role: 'assistant', content: reply });
 
-      if (data.booking_confirmed || data.appointment) {
-        const appt = data.appointment || {};
+      if (data.suggested_slots && Array.isArray(data.suggested_slots) && data.suggested_slots.length > 0) {
+        appendSlotSuggestions(data.suggested_slots);
+      }
+
+      if (data.booking_confirmed || data.appointment || data.booking) {
+        const appt = data.booking || data.appointment || {};
         appendBookingCard(appt);
       }
     } catch (err) {
@@ -907,15 +911,40 @@
     chatFeed.scrollTop = chatFeed.scrollHeight;
   }
 
+  function appendSlotSuggestions(slots) {
+    const container = document.createElement('div');
+    container.className = 'luxe-slot-suggestions';
+    container.style.cssText = 'display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px 0;';
+    slots.slice(0, 4).forEach(slot => {
+      const btn = document.createElement('button');
+      btn.className = 'luxe-chip';
+      btn.style.cssText = 'background: rgba(99, 102, 241, 0.2); border: 1px solid rgba(99, 102, 241, 0.5); color: #c7d2fe; font-size: 11px; padding: 4px 10px; border-radius: 9999px; cursor: pointer; transition: all 0.2s ease;';
+      btn.textContent = `📅 ${slot}`;
+      btn.onmouseover = () => { btn.style.background = 'rgba(99, 102, 241, 0.4)'; btn.style.color = '#fff'; };
+      btn.onmouseout = () => { btn.style.background = 'rgba(99, 102, 241, 0.2)'; btn.style.color = '#c7d2fe'; };
+      btn.onclick = () => {
+        sendChatMessage(`Book for ${slot} tomorrow`);
+      };
+      container.appendChild(btn);
+    });
+    chatFeed.appendChild(container);
+    chatFeed.scrollTop = chatFeed.scrollHeight;
+  }
+
   function appendBookingCard(appt) {
     const card = document.createElement('div');
     card.className = 'luxe-bubble booking-card';
+    const srv = appt.service_name || appt.service || 'Salon Service';
+    const time = appt.start_time || appt.datetime || 'As scheduled';
+    const stylist = appt.stylist_name || appt.stylist || 'Sofia Premier Stylist';
+    const bookingId = appt.booking_id || appt.id || 'CONFIRMED';
     card.innerHTML = `
-      <strong>✨ Appointment Confirmed!</strong><br>
-      • <strong>Service:</strong> ${appt.service || 'Salon Service'}<br>
-      • <strong>Date:</strong> ${appt.datetime || 'As scheduled'}<br>
-      • <strong>Stylist:</strong> ${appt.stylist || 'Sofia Premier Stylist'}<br>
-      <em>Saved to Neon PostgreSQL & synced to Google Calendar.</em>
+      <strong style="color: #34d399; font-size: 13px;">✨ Appointment Confirmed!</strong><br>
+      • <strong>Service:</strong> ${escapeHtml(srv)}<br>
+      • <strong>Time:</strong> ${escapeHtml(time)}<br>
+      • <strong>Stylist:</strong> ${escapeHtml(stylist)}<br>
+      • <strong>Ref #:</strong> <code>${escapeHtml(bookingId)}</code><br>
+      <small style="color: #94a3b8; display: block; margin-top: 4px;">📅 Synced to Google Calendar & Saved to PostgreSQL</small>
     `;
     chatFeed.appendChild(card);
     chatFeed.scrollTop = chatFeed.scrollHeight;

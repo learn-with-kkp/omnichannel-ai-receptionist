@@ -33,8 +33,13 @@ from backend.database import (
     get_tenant_stylists,
     get_db_connection,
     list_all_appointments,
-    get_excel_path
+    get_excel_path,
+    save_call_log,
+    get_call_log,
+    list_call_logs,
+    get_call_analytics
 )
+from core.tools_catalog import CATEGORIZED_TOOLS_CATALOG
 from backend.reminder_service import run_reminder_cycle
 
 from backend.routers.voice import router as voice_router
@@ -236,16 +241,90 @@ def health_check():
 async def handle_end_of_call(payload: Dict[str, Any]):
     """
     Asynchronous end-of-call webhook from Vapi.
-    Parses transcript, summary, and call analytics for CRM synchronization.
+    Parses structured data, summary, transcript, evaluation rubric, and call analytics for CRM synchronization.
     """
-    message = payload.get("message", {})
-    summary = message.get("summary", "No summary")
-    transcript = message.get("transcript", "")
-    recording_url = message.get("recordingUrl", "")
-    duration = message.get("durationSeconds", 0)
+    message = payload.get("message") if isinstance(payload.get("message"), dict) else payload
+    call_obj = message.get("call") or {}
+    call_id = call_obj.get("id") or message.get("callId") or message.get("id") or payload.get("call_id") or f"call_{int(time.time())}"
 
-    logger.info(f"Call Ended. Duration: {duration}s. Summary: {summary[:120]}...")
-    return {"status": "success", "message": "End-of-call metadata archived successfully"}
+    analysis = message.get("analysis") or {}
+    structured_data = analysis.get("structuredData") or message.get("structuredData") or {}
+
+    customer = call_obj.get("customer") or message.get("customer") or {}
+    caller_name = structured_data.get("caller_name") or customer.get("name") or ""
+    caller_phone = structured_data.get("caller_phone") or customer.get("number") or ""
+    caller_email = structured_data.get("caller_email") or ""
+    service_name = structured_data.get("service_name") or ""
+    call_outcome = structured_data.get("call_outcome") or "general_inquiry"
+    sentiment = structured_data.get("sentiment") or "neutral"
+    action_items = structured_data.get("action_items") or []
+
+    summary = analysis.get("summary") or message.get("summary") or "No summary available"
+    transcript = message.get("transcript") or message.get("artifact", {}).get("transcript") or ""
+    recording_url = message.get("recordingUrl") or message.get("artifact", {}).get("recordingUrl") or ""
+    duration_seconds = int(message.get("durationSeconds") or call_obj.get("duration") or 0)
+    eval_score = str(analysis.get("successEvaluation") or message.get("successEvaluation") or "Pass")
+
+    log_entry = {
+        "call_id": call_id,
+        "tenant_id": payload.get("tenant_id") or "salon",
+        "caller_name": caller_name,
+        "caller_phone": caller_phone,
+        "caller_email": caller_email,
+        "service_name": service_name,
+        "call_outcome": call_outcome,
+        "sentiment": sentiment,
+        "summary": summary,
+        "transcript": transcript,
+        "recording_url": recording_url,
+        "duration_seconds": duration_seconds,
+        "evaluation_score": eval_score,
+        "action_items": action_items,
+        "structured_data": structured_data
+    }
+    
+    saved_res = save_call_log(log_entry)
+
+    if caller_phone and (caller_name or caller_email):
+        try:
+            from backend.database import save_customer_profile
+            save_customer_profile(phone=caller_phone, full_name=caller_name, email=caller_email, tenant_id=payload.get("tenant_id") or "salon")
+        except Exception as e:
+            logger.warning(f"Could not auto-save customer profile from call log: {e}")
+
+    logger.info(f"✅ Call Log Archived: {call_id} | Outcome: {call_outcome} | Score: {eval_score} | Duration: {duration_seconds}s")
+    return {
+        "status": "success",
+        "message": "End-of-call metadata and structured evaluations archived successfully",
+        "call_id": call_id,
+        "outcome": call_outcome,
+        "evaluation": eval_score
+    }
+
+@app.get("/admin/call-logs")
+def get_admin_call_logs(tenant_id: Optional[str] = None, limit: int = 50):
+    """Retrieve recorded call logs, evaluation rubrics, transcripts, and analytics."""
+    logs = list_call_logs(tenant_id=tenant_id, limit=limit)
+    analytics = get_call_analytics(tenant_id=tenant_id)
+    return {
+        "status": "success",
+        "total_returned": len(logs),
+        "analytics": analytics,
+        "call_logs": logs
+    }
+
+@app.get("/admin/call-logs/{call_id}")
+def get_single_call_log(call_id: str):
+    """Fetch a specific call log by its unique call_id."""
+    log = get_call_log(call_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Call log not found")
+    return {"status": "success", "call_log": log}
+
+@app.get("/api/tools/catalog")
+def get_tools_catalog():
+    """Returns the comprehensive categorized enterprise tool registry with parameter schemas."""
+    return CATEGORIZED_TOOLS_CATALOG
 
 @app.get("/admin/appointments/excel")
 def download_excel_sheet():

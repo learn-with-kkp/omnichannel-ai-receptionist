@@ -52,6 +52,14 @@ async def send_chat_message(payload: ChatMessageRequest):
         caller_email=payload.caller_email or ""
     )
 
+    # Harmonize keys across all web widget, mobile, and omnichannel frontends
+    reply_str = result.get("reply", "")
+    result["response"] = reply_str
+    result["message"] = reply_str
+    if result.get("action_performed") == "booked" and result.get("booking"):
+        result["booking_confirmed"] = True
+        result["appointment"] = result["booking"]
+
     return result
 
 
