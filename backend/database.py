@@ -835,6 +835,24 @@ def book_new_appointment(
         except Exception as mail_err:
             logger.warning(f"Email dispatch warning: {mail_err}")
 
+    # 4. Automatic WhatsApp Confirmation Message to Customer
+    if caller_phone:
+        try:
+            from core.notifications import notification_dispatcher
+            wa_text = (
+                f"✨ *Luxe Saloon & Spa Booking Confirmed* ✨\n\n"
+                f"Dear *{caller_name}*,\n"
+                f"Your appointment for *{service_name}* with *{stylist_name}* is confirmed for *{start_dt.strftime('%A, %b %d at %I:%M %p')}*.\n\n"
+                f"📋 Ref: *#{booking_id}*\n"
+                f"📍 Location: 120 Newbury Street, Back Bay, Boston\n"
+                f"📅 Add to Calendar: https://ai-voice-receptionist.kishor.tech/api/calendar/add/{booking_id}\n\n"
+                f"Reply RESCHEDULE or CANCEL anytime to manage your visit."
+            )
+            notification_dispatcher.send_whatsapp(caller_phone, wa_text)
+            logger.info(f"✅ Dispatched automated WhatsApp booking confirmation to {caller_phone}")
+        except Exception as wa_err:
+            logger.warning(f"WhatsApp booking dispatch warning: {wa_err}")
+
     return {
         "booking_id": booking_id,
         "tenant_id": tenant_id,

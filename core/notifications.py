@@ -32,7 +32,12 @@ class NotificationDispatcher:
         self.twilio_whatsapp_from = os.getenv("TWILIO_WHATSAPP_NUMBER", "+14155238886")
 
         # Meta Cloud APIs (WhatsApp, Messenger, Instagram)
-        self.meta_access_token = os.getenv("META_ACCESS_TOKEN", os.getenv("WHATSAPP_TOKEN", ""))
+        self.meta_access_token = (
+            os.getenv("META_PERMANENT_ACCESS_TOKEN")
+            or os.getenv("META_ACCESS_TOKEN")
+            or os.getenv("WHATSAPP_TOKEN")
+            or ""
+        ).strip()
         self.whatsapp_phone_number_id = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
         self.meta_page_id = os.getenv("META_PAGE_ID", "")
 
@@ -190,7 +195,7 @@ class NotificationDispatcher:
         if self.whatsapp_phone_number_id and self.meta_access_token:
             try:
                 clean_phone = "".join(filter(str.isdigit, to_phone))
-                url = f"https://graph.facebook.com/v19.0/{self.whatsapp_phone_number_id}/messages"
+                url = f"https://graph.facebook.com/v21.0/{self.whatsapp_phone_number_id}/messages"
                 payload = {
                     "messaging_product": "whatsapp",
                     "to": clean_phone,
