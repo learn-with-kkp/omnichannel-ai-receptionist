@@ -82,18 +82,29 @@ class NotificationDispatcher:
 
     def send_sms(self, to_phone: str, text: str) -> Dict[str, Any]:
         """Dispatches an SMS message via Twilio or resilient simulator."""
+        if not to_phone:
+            return {"status": "skipped", "reason": "No recipient phone"}
+
+        # Format phone to E.164 (+prefix)
+        digits = "".join(filter(str.isdigit, to_phone))
+        if len(digits) == 10:
+            digits = "1" + digits
+        elif len(digits) == 11 and digits.startswith("01"):
+            digits = "88" + digits
+        e164_phone = f"+{digits}"
+
         if self.is_twilio_configured():
             try:
                 from twilio.rest import Client
                 client = Client(self.twilio_account_sid, self.twilio_auth_token)
-                msg = client.messages.create(body=text, from_=self.twilio_from_phone, to=to_phone)
-                logger.info(f"✅ Twilio SMS dispatched to {to_phone} (SID: {msg.sid})")
-                return {"status": "sent", "channel": "sms", "sid": msg.sid, "recipient": to_phone}
+                msg = client.messages.create(body=text, from_=self.twilio_from_phone, to=e164_phone)
+                logger.info(f"✅ Twilio SMS dispatched to {e164_phone} (SID: {msg.sid})")
+                return {"status": "sent", "channel": "sms", "sid": msg.sid, "recipient": e164_phone}
             except Exception as e:
                 logger.error(f"Twilio SMS delivery failed: {e}")
 
-        logger.info(f"📱 [SIMULATION SMS] To: {to_phone} | Content: {text}")
-        return {"status": "simulated", "channel": "sms", "recipient": to_phone, "content": text}
+        logger.info(f"📱 [SIMULATION SMS] To: {e164_phone} | Content: {text}")
+        return {"status": "simulated", "channel": "sms", "recipient": e164_phone, "content": text}
 
     def send_telnyx_sms(self, to_phone: str, text: str) -> Dict[str, Any]:
         """Dispatches an SMS/MMS message using Telnyx API."""
@@ -200,15 +211,72 @@ class NotificationDispatcher:
         logger.info(f"📞 [SIMULATED VAPI CALL] Calling {clean_phone} for {customer_name} at {tenant_name}")
         return {"status": "simulated", "to": clean_phone, "provider": "vapi_simulation"}
 
+    def send_whatsapp_template(
+        self,
+        to_phone: str,
+        template_name: str = "3p_direct_integration_test_template",
+        language_code: str = "en_US",
+        components: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Dispatches an approved WhatsApp Business template message via Meta Cloud API.
+        Used for outbound appointment booking notifications to uninitiated threads.
+        """
+        if not to_phone:
+            return {"status": "skipped", "reason": "No recipient phone"}
+
+        digits = "".join(filter(str.isdigit, to_phone))
+        if len(digits) == 10:
+            digits = "1" + digits
+        elif len(digits) == 11 and digits.startswith("01"):
+            digits = "88" + digits
+        e164_phone = f"+{digits}"
+
+        if self.whatsapp_phone_number_id and self.meta_access_token:
+            try:
+                url = f"https://graph.facebook.com/v21.0/{self.whatsapp_phone_number_id}/messages"
+                template_obj: Dict[str, Any] = {
+                    "name": template_name,
+                    "language": {"code": language_code}
+                }
+                if components:
+                    template_obj["components"] = components
+
+                payload = {
+                    "messaging_product": "whatsapp",
+                    "to": digits,
+                    "type": "template",
+                    "template": template_obj
+                }
+                data = json.dumps(payload).encode("utf-8")
+                req = urllib.request.Request(
+                    url, data=data,
+                    headers={
+                        "Authorization": f"Bearer {self.meta_access_token}",
+                        "Content-Type": "application/json"
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    resp_data = json.loads(resp.read().decode())
+                    logger.info(f"✅ Meta WhatsApp Template '{template_name}' dispatched to {digits}: {resp_data}")
+                    return {"status": "sent", "channel": "whatsapp_template", "response": resp_data, "recipient": e164_phone, "template": template_name}
+            except Exception as e:
+                logger.error(f"Meta WhatsApp Template dispatch failed: {e}")
+                return {"status": "failed", "error": str(e), "recipient": e164_phone}
+
+        return {"status": "simulated", "channel": "whatsapp_template", "to": e164_phone, "template": template_name}
+
     def send_whatsapp(self, to_phone: str, text: str, quick_replies: Optional[List[str]] = None) -> Dict[str, Any]:
         """Dispatches WhatsApp push message via Meta Cloud API or Twilio WhatsApp."""
         if not to_phone:
             return {"status": "skipped", "reason": "No recipient phone"}
 
-        # Normalize digits: if 10-digit US number, prefix with country code 1
+        # Normalize digits: if 10-digit US number, prefix with 1; if BD 11-digit (01...), prefix with 88
         digits = "".join(filter(str.isdigit, to_phone))
         if len(digits) == 10:
             digits = "1" + digits
+        elif len(digits) == 11 and digits.startswith("01"):
+            digits = "88" + digits
         e164_phone = f"+{digits}"
 
         if self.whatsapp_phone_number_id and self.meta_access_token:
@@ -232,8 +300,18 @@ class NotificationDispatcher:
                     resp_data = json.loads(resp.read().decode())
                     logger.info(f"✅ Meta WhatsApp dispatched to {digits}: {resp_data}")
                     return {"status": "sent", "channel": "whatsapp", "response": resp_data, "recipient": e164_phone}
+            except urllib.error.HTTPError as http_err:
+                err_body = http_err.read().decode()
+                logger.warning(f"Meta direct text WhatsApp failed ({http_err.code}): {err_body} — falling back to template")
+                # Fallback to Meta Template dispatch if direct text is restricted
+                template_res = self.send_whatsapp_template(to_phone=to_phone)
+                if template_res.get("status") == "sent":
+                    return template_res
             except Exception as e:
-                logger.error(f"Meta WhatsApp Cloud API failed: {e}")
+                logger.error(f"Meta WhatsApp Cloud API failed: {e} — falling back to template")
+                template_res = self.send_whatsapp_template(to_phone=to_phone)
+                if template_res.get("status") == "sent":
+                    return template_res
 
         # Fallback to Twilio WhatsApp if configured
         if self.is_twilio_configured():
