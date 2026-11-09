@@ -524,7 +524,7 @@ def _init_sqlite_schema(db: DBConnectionContext):
     if res and res.get("count", 0) == 0:
         now = datetime.now().isoformat()
         db.execute("""
-            INSERT INTO tenants (id, name, phone_number, address, currency, created_at)
+            INSERT OR IGNORE INTO tenants (id, name, phone_number, address, currency, created_at)
             VALUES (?, 'Luxe Hair & Wellness Salon', '+16175550100', '450 Newbury Street, Boston', 'USD', ?)
         """, (DEFAULT_TENANT_ID, now))
 

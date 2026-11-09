@@ -420,13 +420,14 @@ class NotificationDispatcher:
                 import requests
                 import base64
                 b64_ics = base64.b64encode(ics_content.encode("utf-8")).decode("utf-8")
-                from_email = os.getenv("SMTP_FROM", "Luxe Salon & Spa <onboarding@resend.dev>")
+                from_email = (os.getenv("SMTP_FROM") or "Luxe Salon & Spa <onboarding@resend.dev>").strip('"\'')
+                clean_to = to_email.strip().lower()
                 res = requests.post(
                     "https://api.resend.com/emails",
                     headers={"Authorization": f"Bearer {resend_api_key}", "Content-Type": "application/json"},
                     json={
                         "from": from_email,
-                        "to": [to_email],
+                        "to": [clean_to],
                         "subject": subject,
                         "html": html_content or default_html,
                         "attachments": [
