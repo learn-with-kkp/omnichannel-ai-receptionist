@@ -418,6 +418,12 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
     Maintains 100% backward compatibility and routes through the Universal Blueprint.
     """
     message = payload.message
+    if message.type == "end-of-call-report":
+        from backend.app import handle_end_of_call
+        raw_payload = payload.model_dump() if hasattr(payload, "model_dump") else (payload.dict() if hasattr(payload, "dict") else payload)
+        await handle_end_of_call(raw_payload)
+        return VapiToolResponse(results=[])
+
     tool_calls = message.toolCalls or []
 
     if not tool_calls:

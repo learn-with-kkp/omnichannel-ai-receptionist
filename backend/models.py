@@ -39,14 +39,21 @@ class ToolCallItem(BaseModel):
     function: ToolFunctionCall
 
 class VapiMessage(BaseModel):
+    model_config = {"extra": "allow"}
     type: Optional[str] = None
     toolCalls: Optional[List[ToolCallItem]] = None
     call: Optional[Dict[str, Any]] = None
     transcript: Optional[str] = None
     summary: Optional[str] = None
     recordingUrl: Optional[str] = None
+    analysis: Optional[Dict[str, Any]] = None
+    artifact: Optional[Dict[str, Any]] = None
+    structuredData: Optional[Dict[str, Any]] = None
+    successEvaluation: Optional[Union[str, bool]] = None
+    durationSeconds: Optional[Union[int, float]] = None
 
 class VapiWebhookPayload(BaseModel):
+    model_config = {"extra": "allow"}
     message: VapiMessage
 
 # Outbound Vapi Tool Response
