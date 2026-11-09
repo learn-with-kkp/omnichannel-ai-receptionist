@@ -27,6 +27,51 @@ from backend.database import (
     book_new_appointment,
     reschedule_existing_appointment
 )
+import re
+
+def normalize_spoken_email(raw_email: Optional[str]) -> str:
+    """Cleans up spoken email addresses from speech recognition."""
+    if not raw_email:
+        return ""
+    em = str(raw_email).strip().lower()
+    # Normalize common phonetic phrases
+    em = em.replace(" at the rate ", "@")
+    em = em.replace(" at sign ", "@")
+    em = em.replace(" at ", "@")
+    em = em.replace(" dot ", ".")
+    em = em.replace(" point ", ".")
+    em = em.replace(" period ", ".")
+    em = em.replace(" underscore ", "_")
+    em = em.replace(" under score ", "_")
+    em = em.replace(" hyphen ", "-")
+    em = em.replace(" dash ", "-")
+    em = em.replace(" ", "")
+    # Remove enclosing punctuation
+    em = em.strip("<>\"'.,;: ")
+    return em
+
+def normalize_spoken_phone(raw_phone: Optional[str]) -> str:
+    """Cleans up spoken phone numbers into standard E.164 format."""
+    if not raw_phone:
+        return ""
+    digits = re.sub(r"[^\d+]", "", str(raw_phone).strip())
+    if digits.startswith("+"):
+        return digits
+    if len(digits) == 10:
+        return f"+1{digits}"
+    if len(digits) == 11 and digits.startswith("1"):
+        return f"+{digits}"
+    return f"+{digits}" if digits else ""
+
+def normalize_spoken_name(raw_name: Optional[str]) -> str:
+    """Cleans up guest name and converts to Title Case."""
+    if not raw_name or str(raw_name).strip().lower() in ["valued guest", "none", "null", "undefined"]:
+        return "Valued Guest"
+    cleaned = " ".join(str(raw_name).strip().split())
+    # Remove leading phrases like 'My name is' if model passed it
+    cleaned = re.sub(r"^(my name is|i am|this is)\s+", "", cleaned, flags=re.IGNORECASE).strip()
+    return cleaned.title() if cleaned else "Valued Guest"
+
 
 logger = logging.getLogger("VoiceRouter")
 router = APIRouter(prefix="", tags=["Voice"])
@@ -412,16 +457,20 @@ async def handle_vapi_tools(payload: VapiWebhookPayload, tenant_id: Optional[str
             results.append(ToolResult(toolCallId=call_id, result=res_text))
 
         elif fn_name == "book_appointment":
-            name = args.get("caller_name") or "Valued Guest"
-            # Default fallback: if no explicit whatsapp_number is provided, use caller_phone or inbound caller phone!
-            phone = args.get("whatsapp_number") or args.get("caller_phone") or inbound_phone or "+16673070119"
-            email = args.get("caller_email") or args.get("email") or ""
+            raw_name = args.get("caller_name") or args.get("name") or "Valued Guest"
+            name = normalize_spoken_name(raw_name)
+
+            raw_phone = args.get("whatsapp_number") or args.get("caller_phone") or args.get("phone") or inbound_phone or "+16673070119"
+            phone = normalize_spoken_phone(raw_phone) or inbound_phone or "+16673070119"
+
+            raw_email = args.get("caller_email") or args.get("email") or ""
+            email = normalize_spoken_email(raw_email)
             if not email:
                 try:
                     from backend.database import get_customer_by_phone_or_email
                     cust = get_customer_by_phone_or_email(phone=phone)
                     if cust and cust.get("email"):
-                        email = cust["email"]
+                        email = normalize_spoken_email(cust["email"])
                 except Exception:
                     pass
             service_name = args.get("service_name") or "Womens Haircut"
