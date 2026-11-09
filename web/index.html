@@ -11,12 +11,12 @@
   <!-- Self-Hosted Resilient Vapi Web SDK -->
   <script src="/vapi-sdk.js"></script>
 
-  <!-- Clerk Authentication SDK with Full UI Components Bundle -->
+  <!-- Clerk Production Authentication SDK with Full UI Components Bundle -->
   <script>
-    window.__clerk_publishable_key = "pk_test_c2F2ZWQtbWFybGluLTQ3My5jbGVyay5hY2NvdW50cy5kZXYk";
+    window.__clerk_publishable_key = "pk_live_Y2xlcmsua2lzaG9yLnRlY2gk";
   </script>
-  <script async crossorigin="anonymous" data-clerk-publishable-key="pk_test_c2F2ZWQtbWFybGluLTQ3My5jbGVyay5hY2NvdW50cy5kZXYk" src="https://saved-marlin-473.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
-  <script async crossorigin="anonymous" src="https://saved-marlin-473.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js"></script>
+  <script async crossorigin="anonymous" data-clerk-publishable-key="pk_live_Y2xlcmsua2lzaG9yLnRlY2gk" src="https://clerk.kishor.tech/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
+  <script async crossorigin="anonymous" src="https://clerk.kishor.tech/npm/@clerk/ui@1/dist/ui.browser.js"></script>
 </head>
 <body>
 
@@ -60,6 +60,10 @@
 
       <!-- Action & Clerk Auth Buttons -->
       <div class="header-badges" style="display:flex; align-items:center; gap:10px;">
+        <button onclick="openConnectChannelModal()" class="btn-ghost" style="padding:6px 14px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(168,85,247,0.4); color:#c084fc; display:inline-flex; align-items:center; gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-45deg);"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
+          Connect Channel
+        </button>
         <div id="clerkAuthHeader" style="display:inline-flex; align-items:center; gap:8px;">
           <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:6px 14px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.15);">Sign In</button>
           <button onclick="openClerkSignUp()" class="btn-primary" style="padding:6px 16px; font-size:12px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.35);">✨ Join VIP Free</button>
@@ -748,7 +752,13 @@
           <h2 class="section-title">📱 Luxe Saloon Omnichannel & WhatsApp Marketing</h2>
           <p class="section-sub">Connect directly with customers across WhatsApp Business, Telnyx, Facebook, Instagram & LinkedIn.</p>
         </div>
-        <span class="status-chip" style="color:#10b981;">● All Channels Active</span>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="status-chip" style="color:#10b981;">● All Channels Active</span>
+          <button onclick="openConnectChannelModal()" class="btn-primary" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg, #8b5cf6, #6366f1); border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(139,92,246,0.35);">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-45deg);"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
+            Connect Channel
+          </button>
+        </div>
       </div>
 
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:18px;">
@@ -854,6 +864,140 @@
       });
     }
   </script>
+
+  <!-- ==============================================================================
+       OMNICHANNEL "CONNECT CHANNEL" MODAL (PIXEL PERFECT REPLICA)
+       ============================================================================== -->
+  <div id="connectChannelModal" class="connect-channel-overlay" onclick="handleChannelOverlayClick(event)">
+    <div class="connect-channel-modal">
+      <!-- Modal Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:10px; background:rgba(168,85,247,0.15);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg);">
+              <path d="M12 22v-5"/>
+              <path d="M9 8V2"/>
+              <path d="M15 8V2"/>
+              <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>
+            </svg>
+          </div>
+          <h2 style="font-size:21px; font-weight:700; color:#fff; margin:0; letter-spacing:-0.2px;">Connect Channel</h2>
+        </div>
+        <button onclick="closeConnectChannelModal()" style="background:none; border:none; color:#94a3b8; font-size:24px; cursor:pointer; line-height:1; padding:4px 8px; border-radius:6px; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">✕</button>
+      </div>
+
+      <!-- Main Channel Selection View -->
+      <div id="channelSelectionView">
+        <!-- Documentation Banner -->
+        <div class="channel-info-banner" style="margin:20px 0 24px 0;">
+          <span>Visit the <a href="https://developers.facebook.com" target="_blank" style="color:#38bdf8; text-decoration:underline; font-weight:600;">Channels documentation</a> to learn more.</span>
+          <span style="font-size:12px; color:rgba(56,189,248,0.7); font-family:var(--font-mono);">9 Active Connectors</span>
+        </div>
+
+        <!-- 3x3 Channel Grid -->
+        <div class="channel-grid">
+          <!-- 1. WhatsApp Business API -->
+          <div class="channel-card" onclick="openChannelConfig('whatsapp')">
+            <div class="channel-card-icon" style="background:#25d366; border-radius:50%; width:46px; height:46px; box-shadow:0 4px 14px rgba(37,211,102,0.35);">
+              <span style="color:#fff; font-size:22px; font-weight:800; font-family:sans-serif;">B</span>
+            </div>
+            <div class="channel-card-title">Whatsapp Business<br>API</div>
+          </div>
+
+          <!-- 2. Twilio SMS -->
+          <div class="channel-card" onclick="openChannelConfig('sms')">
+            <div class="channel-card-icon" style="background:rgba(255,255,255,0.06); border-radius:12px; width:46px; height:46px; border:1px solid rgba(255,255,255,0.15);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                <circle cx="8" cy="11" r="1.2" fill="#fff"/>
+                <circle cx="12" cy="11" r="1.2" fill="#fff"/>
+                <circle cx="16" cy="11" r="1.2" fill="#fff"/>
+              </svg>
+            </div>
+            <div class="channel-card-title">Twilio SMS</div>
+          </div>
+
+          <!-- 3. Instagram Business -->
+          <div class="channel-card" onclick="openChannelConfig('instagram')">
+            <div class="channel-card-icon" style="background:linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(225,48,108,0.35);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+              </svg>
+            </div>
+            <div class="channel-card-title">Instagram Business</div>
+          </div>
+
+          <!-- 4. Messenger -->
+          <div class="channel-card" onclick="openChannelConfig('messenger')">
+            <div class="channel-card-icon" style="background:#0084ff; border-radius:50%; width:46px; height:46px; box-shadow:0 4px 14px rgba(0,132,255,0.35);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
+                <path d="M12 2C6.48 2 2 6.03 2 11c0 2.87 1.48 5.43 3.79 7.04v3.52c0 .35.39.56.68.37l3.87-2.31c.54.12 1.1.18 1.66.18 5.52 0 10-4.03 10-9s-4.48-9-10-9zm1.09 12.09l-2.58-2.75-5.03 2.75 5.53-5.88 2.64 2.75 4.97-2.75-5.53 5.88z"/>
+              </svg>
+            </div>
+            <div class="channel-card-title">Messenger</div>
+          </div>
+
+          <!-- 5. WebChat -->
+          <div class="channel-card" onclick="openChannelConfig('webchat')">
+            <div class="channel-card-icon" style="background:linear-gradient(135deg, #8b5cf6, #a855f7); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(139,92,246,0.35);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+              </svg>
+            </div>
+            <div class="channel-card-title">WebChat</div>
+          </div>
+
+          <!-- 6. Telegram Bot -->
+          <div class="channel-card" onclick="openChannelConfig('telegram')">
+            <div class="channel-card-icon" style="background:#229ed9; border-radius:50%; width:46px; height:46px; box-shadow:0 4px 14px rgba(34,158,217,0.35);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.38-.49 1.03-.75 4.04-1.76 6.74-2.92 8.09-3.49 3.85-1.6 4.65-1.88 5.17-1.89.11 0 .37.03.54.17.14.12.18.28.2.45-.02.07-.02.14-.04.22z"/>
+              </svg>
+            </div>
+            <div class="channel-card-title">Telegram Bot</div>
+          </div>
+
+          <!-- 7. Messages API -->
+          <div class="channel-card" onclick="openChannelConfig('messages_api')">
+            <div class="channel-card-icon" style="background:linear-gradient(135deg, #a855f7, #6366f1); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(168,85,247,0.35);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </div>
+            <div class="channel-card-title">Messages API</div>
+          </div>
+
+          <!-- 8. TikTok Business -->
+          <div class="channel-card" onclick="openChannelConfig('tiktok')">
+            <div class="channel-card-icon" style="background:#000; border:1px solid rgba(255,255,255,0.2); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(255,255,255,0.1);">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.86.11V9.41a6.33 6.33 0 0 0-.86-.06 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 8.98 5.76V13.8a8.3 8.3 0 0 0 5.47 2.06v-3.45a4.88 4.88 0 0 1-2.99-1.02 4.8 4.8 0 0 1-1.45-2.28 4.79 4.79 0 0 1-.16-1.42h3.45a4.83 4.83 0 0 1 1.76.32v-3.32h-.05z"/>
+              </svg>
+            </div>
+            <div class="channel-card-title">TikTok Business</div>
+          </div>
+
+          <!-- 9. Voice Channel -->
+          <div class="channel-card" onclick="openChannelConfig('voice')">
+            <div class="channel-card-icon" style="background:linear-gradient(135deg, #10b981, #059669); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(16,185,129,0.35);">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </div>
+            <div class="channel-card-title">Voice Channel</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Channel Configuration & Testing Detail Drawer -->
+      <div id="channelConfigView" style="display:none; margin-top:20px;">
+        <!-- Injected dynamically via openChannelConfig() -->
+      </div>
+    </div>
+  </div>
 
   <!-- Clerk Inline Fallback Modal (Guarantees Sign-In/Up Works Even With Popup/Cookie Blockers) -->
   <div id="clerkMountModal" class="modal-overlay" style="display:none; z-index:999999; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); backdrop-filter:blur(10px); justify-content:center; align-items:center;">

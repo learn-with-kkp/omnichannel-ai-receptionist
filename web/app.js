@@ -1429,7 +1429,7 @@ function getClerkBundleUrl(pubKey) {
       }
     }
   } catch (e) {}
-  return "https://saved-marlin-473.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+  return "https://clerk.kishor.tech/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 }
 
 function getClerkUiBundleUrl(pubKey) {
@@ -1442,7 +1442,7 @@ function getClerkUiBundleUrl(pubKey) {
       }
     }
   } catch (e) {}
-  return "https://saved-marlin-473.clerk.accounts.dev/npm/@clerk/ui@1/dist/ui.browser.js";
+  return "https://clerk.kishor.tech/npm/@clerk/ui@1/dist/ui.browser.js";
 }
 
 async function ensureClerkReady(pubKey) {
@@ -2053,11 +2053,20 @@ function showToastNotification(type, title, message) {
 }
 
 // --- Instant Outbound Callback (<500ms SLA) ---
-async function triggerInstant500msCall() {
-  const phoneInput = document.getElementById("instantPhoneInput") || document.getElementById("outboundPhone");
-  const nameInput = document.getElementById("instantNameInput") || document.getElementById("outboundName");
-  const resultEl = document.getElementById("instantCallFeedback") || document.getElementById("fastCallResult");
-  const btn = document.getElementById("btnInstant500ms") || document.getElementById("btnFastCall");
+async function triggerInstant500msCall(sourceSection) {
+  const instantPhone = document.getElementById("instantPhoneInput");
+  const outboundPhone = document.getElementById("outboundPhone");
+  let phoneInput = instantPhone;
+  let nameInput = document.getElementById("instantNameInput");
+  let resultEl = document.getElementById("instantCallFeedback");
+  let btn = document.getElementById("btnInstant500ms");
+
+  if (sourceSection === "fastCall" || (document.activeElement && (document.activeElement.id === "outboundPhone" || document.activeElement.id === "btnFastCall"))) {
+    phoneInput = outboundPhone || instantPhone;
+    nameInput = document.getElementById("outboundName") || nameInput;
+    resultEl = document.getElementById("fastCallResult") || resultEl;
+    btn = document.getElementById("btnFastCall") || btn;
+  }
 
   const phone = (phoneInput?.value || "").trim();
   const name = (nameInput?.value || "").trim();
@@ -2125,7 +2134,7 @@ async function triggerInstant500msCall() {
       resultEl.innerHTML = `❌ Network error triggering outbound call: ${escapeHtml(err.message)}`;
     }
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = "⚡ Call Me Now (&lt;500ms)"; }
+    if (btn) { btn.disabled = false; btn.innerHTML = btn.id === "btnFastCall" ? "<span>📞</span> Call My Phone Now" : "⚡ Call Me Now (&lt;500ms)"; }
   }
 }
 const triggerInstantCall = triggerInstant500msCall;
@@ -2376,3 +2385,344 @@ async function loadScheduleAvailability() {
     console.debug("Schedule availability load error:", err);
   }
 }
+
+/* ==============================================================================
+   OMNICHANNEL "CONNECT CHANNEL" MODAL CONTROLLER
+   ============================================================================== */
+
+const CHANNEL_DEFINITIONS = {
+  whatsapp: {
+    name: "WhatsApp Business API",
+    tagline: "Meta Cloud API direct 2-way conversational booking & instant confirmations.",
+    badge: "CONNECTED",
+    badgeColor: "#10b981",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/webhook/whatsapp",
+    verifyToken: "omnichannel_sec_9e2f4b810d7a46c3b5a19e8",
+    appId: "2026204064725563",
+    resourceId: "Phone Number ID: 1505612242626549 | WABA: 2339204310236447",
+    subscribedFields: "messages",
+    steps: [
+      "Navigate to <b>developers.facebook.com</b> → Apps → Select your App (ID: <code>2026204064725563</code>).",
+      "In the sidebar, locate <b>WhatsApp</b> → Click <b>Configuration</b>.",
+      "Under <b>Webhook</b>, click <b>Edit</b>. Paste the Callback URL and Verify Token below.",
+      "Click <b>Verify and Save</b>. Then click <b>Manage</b> and check the <code>messages</code> subscription field.",
+      "Under <b>API Setup</b>, verify your registered WhatsApp Phone Number (+1555188-3377 / +19124999633) is verified."
+    ],
+    sampleMessage: "Hi Sofia! I'd like to book a haircut and blowdry with Marcus tomorrow at 2 PM."
+  },
+  sms: {
+    name: "Twilio SMS & Telnyx",
+    tagline: "Ultra-fast SMS booking with Telnyx and Twilio carrier redundancy.",
+    badge: "CONNECTED",
+    badgeColor: "#10b981",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/webhook/sms",
+    verifyToken: "omnichannel_sec_9e2f4b810d7a46c3b5a19e8",
+    appId: "Twilio / Telnyx Gateway",
+    resourceId: "Twilio: +19124999633 | Telnyx: +16172718180",
+    subscribedFields: "HTTP POST (TwiML / URL-Encoded Form)",
+    steps: [
+      "Open your <b>Twilio Console</b> → Phone Numbers → Active Numbers.",
+      "Select your Twilio number (<code>+19124999633</code>).",
+      "Under <b>Messaging Configuration</b>, locate 'A MESSAGE COMES IN'.",
+      "Select <b>Webhook</b> and paste: <code>https://ai-voice-receptionist.kishor.tech/webhook/sms</code> with HTTP POST.",
+      "Click <b>Save</b>. Incoming SMS messages now route through Sofia AI and auto-dispatch instant confirmations."
+    ],
+    sampleMessage: "Can I book a facial treatment this Friday at 4 PM?"
+  },
+  instagram: {
+    name: "Instagram Business",
+    tagline: "Automated Instagram Direct message booking & calendar reservations.",
+    badge: "CONNECTED",
+    badgeColor: "#10b981",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/webhook/instagram",
+    verifyToken: "omnichannel_sec_9e2f4b810d7a46c3b5a19e8",
+    appId: "Meta Graph API (2026204064725563)",
+    resourceId: "Instagram Professional ID: 17841447273400649",
+    subscribedFields: "messages",
+    steps: [
+      "Ensure your Instagram account is switched to a <b>Professional / Creator Account</b>.",
+      "In Instagram App Settings → <b>Settings & Privacy → Creator/Business Tools → Connect a Facebook Page</b> (Select page <code>1429742393555082</code>).",
+      "In <b>developers.facebook.com</b> → Select your App → <b>Webhooks</b> → Select <b>Instagram</b> from the dropdown.",
+      "Click <b>Edit Subscription</b>, paste the Callback URL and Verify Token below, then subscribe to <code>messages</code>.",
+      "Under App Roles or Permissions, verify <code>instagram_manage_messages</code> is enabled."
+    ],
+    sampleMessage: "Hey! Do you have any openings for a Balayage haircut tomorrow afternoon?"
+  },
+  messenger: {
+    name: "Facebook Messenger",
+    tagline: "Full salon concierge chatbot on your official Facebook Business Page.",
+    badge: "CONNECTED",
+    badgeColor: "#10b981",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/webhook/messenger",
+    verifyToken: "omnichannel_sec_9e2f4b810d7a46c3b5a19e8",
+    appId: "Meta App: 2026204064725563",
+    resourceId: "Page ID: 1429742393555082",
+    subscribedFields: "messages, messaging_postbacks",
+    steps: [
+      "Open <b>developers.facebook.com</b> → Apps → Select your App.",
+      "In sidebar, click <b>Messenger</b> → <b>Webhooks</b>.",
+      "Click <b>Add Callback URL</b>. Paste the Webhook URL and Verify Token below, then click <b>Verify and Save</b>.",
+      "Under <b>Webhooks for Pages</b>, click <b>Add Subscriptions</b> next to your Page.",
+      "Check <code>messages</code> and <code>messaging_postbacks</code>, then click <b>Confirm</b>."
+    ],
+    sampleMessage: "Hello! How much is a Keratin treatment and when can I book?"
+  },
+  webchat: {
+    name: "WebChat Floating Widget",
+    tagline: "Embeddable Sofia & Marcus salon widget on any webpage or CMS.",
+    badge: "ACTIVE",
+    badgeColor: "#10b981",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/widget.js",
+    verifyToken: "Native JWT / Tenant ID: salon",
+    appId: "Universal WebChat SDK",
+    resourceId: "Host: ai-voice-receptionist.kishor.tech",
+    subscribedFields: "WebRTC Audio + WebSocket Text Stream",
+    steps: [
+      "Copy the embed script tag below.",
+      "Paste it directly before the closing <code>&lt;/body&gt;</code> tag of your website, WordPress, Squarespace, or Shopify store.",
+      "The floating Sofia Concierge will immediately appear in the bottom-right corner with 1-click booking and voice calls."
+    ],
+    sampleMessage: "I want to schedule a blowout for Friday 3 PM."
+  },
+  telegram: {
+    name: "Telegram Bot",
+    tagline: "Instant salon appointment bookings via Telegram bot commands and chat.",
+    badge: "READY",
+    badgeColor: "#38bdf8",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/webhook/telegram",
+    verifyToken: "omnichannel_sec_9e2f4b810d7a46c3b5a19e8",
+    appId: "Telegram BotFather Gateway",
+    resourceId: "Telegram Webhook Endpoint",
+    subscribedFields: "message, callback_query",
+    steps: [
+      "Create a bot on Telegram via <b>@BotFather</b> and copy the Bot Token.",
+      "Set your webhook URL using: <code>https://api.telegram.org/bot&lt;TOKEN&gt;/setWebhook?url=https://ai-voice-receptionist.kishor.tech/webhook/telegram</code>",
+      "Clients chatting with your bot will now automatically be routed through Sofia's calendar booking engine."
+    ],
+    sampleMessage: "/start Can I book an appointment tomorrow?"
+  },
+  messages_api: {
+    name: "Universal Messages API",
+    tagline: "Programmatic REST API to dispatch outbound SMS, WhatsApp and omnichannel notifications.",
+    badge: "REST / SDK",
+    badgeColor: "#a855f7",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/api/messaging/send-sms",
+    verifyToken: "Bearer API Key",
+    appId: "Enterprise API",
+    resourceId: "POST /api/messaging/send-sms",
+    subscribedFields: "JSON Payload",
+    steps: [
+      "Use our secure REST API to trigger messages directly from your CRM or booking software.",
+      "Send a <code>POST</code> request with <code>{'to_phone': '+1...', 'message': '...'}</code>.",
+      "The system handles automatic carrier routing, WhatsApp template fallbacks, and delivery receipts."
+    ],
+    sampleMessage: "Your appointment is confirmed for tomorrow at 2 PM."
+  },
+  tiktok: {
+    name: "TikTok Business Messages",
+    tagline: "Engage TikTok followers and turn viral viewers into salon clients.",
+    badge: "READY",
+    badgeColor: "#a855f7",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/webhook/tiktok",
+    verifyToken: "omnichannel_sec_9e2f4b810d7a46c3b5a19e8",
+    appId: "TikTok for Business App",
+    resourceId: "TikTok Direct Messages Webhook",
+    subscribedFields: "direct_message",
+    steps: [
+      "Register a developer app on <b>business-api.tiktok.com</b>.",
+      "Add the <b>Direct Messaging API</b> capability to your Business Account.",
+      "Enter the Callback URL and Verify Token below in your TikTok Webhook settings.",
+      "All incoming inquiries on TikTok will be answered by Sofia AI with booking links."
+    ],
+    sampleMessage: "Hey! Do you have any bridal package openings next week?"
+  },
+  voice: {
+    name: "Voice AI Receptionist (Vapi & Telnyx)",
+    tagline: "Ultra-responsive WebRTC & PSTN phone calling with sub-500ms latency.",
+    badge: "LIVE",
+    badgeColor: "#10b981",
+    webhookUrl: "https://ai-voice-receptionist.kishor.tech/api/voice/vapi-webhook",
+    verifyToken: "omnichannel_sec_9e2f4b810d7a46c3b5a19e8",
+    appId: "Assistant: 73bc635b-86d3-46ea-9a8f-2a3b0e1591f4",
+    resourceId: "Telnyx Phone: +16172718180",
+    subscribedFields: "function-call, speech-update, end-of-call-report",
+    steps: [
+      "Your Telnyx number <code>+16172718180</code> is already bound to Vapi Assistant <b>Sofia (Luxe Saloon Concierge)</b>.",
+      "Calls are answered in &lt;500ms with natural human voice, turn-taking, and active interruption.",
+      "Sofia automatically collects name, phone, email, checks Google Calendar slots, creates the booking, and triggers instant WhatsApp confirmations."
+    ],
+    sampleMessage: "Call +16172718180 to test live phone conversation."
+  }
+};
+
+function openConnectChannelModal() {
+  const modal = document.getElementById("connectChannelModal");
+  if (!modal) return;
+  modal.style.display = "flex";
+  backToChannelSelection();
+}
+
+function closeConnectChannelModal() {
+  const modal = document.getElementById("connectChannelModal");
+  if (modal) modal.style.display = "none";
+}
+
+function handleChannelOverlayClick(e) {
+  if (e.target && e.target.id === "connectChannelModal") {
+    closeConnectChannelModal();
+  }
+}
+
+function backToChannelSelection() {
+  const selectionView = document.getElementById("channelSelectionView");
+  const configView = document.getElementById("channelConfigView");
+  if (selectionView) selectionView.style.display = "block";
+  if (configView) {
+    configView.style.display = "none";
+    configView.innerHTML = "";
+  }
+}
+
+function copyChannelField(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.innerText;
+    btn.innerText = "Copied!";
+    btn.style.background = "#10b981";
+    btn.style.color = "#000";
+    setTimeout(() => {
+      btn.innerText = orig;
+      btn.style.background = "";
+      btn.style.color = "";
+    }, 2000);
+  });
+}
+
+function openChannelConfig(channelKey) {
+  const def = CHANNEL_DEFINITIONS[channelKey];
+  if (!def) return;
+
+  const selectionView = document.getElementById("channelSelectionView");
+  const configView = document.getElementById("channelConfigView");
+  if (!selectionView || !configView) return;
+
+  selectionView.style.display = "none";
+  configView.style.display = "block";
+
+  configView.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <button onclick="backToChannelSelection()" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#fff; padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+        ← Back to Channels
+      </button>
+      <span style="font-size:11px; font-weight:800; color:${def.badgeColor}; background:rgba(255,255,255,0.05); padding:4px 10px; border-radius:12px; border:1px solid ${def.badgeColor}40;">
+        ● ${def.badge}
+      </span>
+    </div>
+
+    <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; margin-bottom:18px;">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+        <h3 style="font-size:17px; font-weight:800; color:#fff; margin:0;">${def.name}</h3>
+      </div>
+      <p style="font-size:13px; color:var(--text-muted); margin:0 0 16px 0;">${def.tagline}</p>
+
+      <div style="display:grid; grid-template-columns:1fr; gap:12px;">
+        <!-- Webhook URL Box -->
+        <div>
+          <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#94a3b8; font-weight:700; display:block; margin-bottom:6px;">
+            Webhook Callback URL
+          </label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" readonly value="${def.webhookUrl}" class="form-input" style="font-family:var(--font-mono); font-size:12px; background:rgba(0,0,0,0.3); color:#38bdf8;" id="fld_webhook_${channelKey}">
+            <button onclick="copyChannelField(this, '${def.webhookUrl}')" class="btn-secondary" style="padding:0 14px; font-size:12px; white-space:nowrap; border-radius:8px;">Copy</button>
+          </div>
+        </div>
+
+        <!-- Verify Token Box -->
+        <div>
+          <label style="font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:#94a3b8; font-weight:700; display:block; margin-bottom:6px;">
+            Verify Token (hub.verify_token)
+          </label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" readonly value="${def.verifyToken}" class="form-input" style="font-family:var(--font-mono); font-size:12px; background:rgba(0,0,0,0.3); color:#a7f3d0;" id="fld_token_${channelKey}">
+            <button onclick="copyChannelField(this, '${def.verifyToken}')" class="btn-secondary" style="padding:0 14px; font-size:12px; white-space:nowrap; border-radius:8px;">Copy</button>
+          </div>
+        </div>
+
+        <!-- App / Resource ID info -->
+        <div style="font-size:11.5px; color:#cbd5e1; background:rgba(0,0,0,0.25); padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); font-family:var(--font-mono);">
+          <span>🔹 <b>Details:</b> ${def.resourceId} • <b>Fields:</b> <code>${def.subscribedFields}</code></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step by Step Setup Guide -->
+    <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:18px; margin-bottom:18px;">
+      <h4 style="font-size:13.5px; font-weight:700; color:#c084fc; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;">
+        <span>📋</span> Step-by-Step Setup in Developer Portal
+      </h4>
+      <ol style="margin:0; padding-left:20px; font-size:12.5px; color:#cbd5e1; line-height:1.7;">
+        ${def.steps.map(step => `<li style="margin-bottom:6px;">${step}</li>`).join("")}
+      </ol>
+    </div>
+
+    <!-- Live Test Console -->
+    <div style="background:linear-gradient(135deg, rgba(99,102,241,0.06), rgba(168,85,247,0.04)); border:1px solid rgba(168,85,247,0.25); border-radius:16px; padding:18px;">
+      <h4 style="font-size:13.5px; font-weight:700; color:#fff; margin:0 0 10px 0; display:flex; align-items:center; gap:8px;">
+        <span>🧪</span> Live Webhook Simulator (${def.name})
+      </h4>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <input type="text" id="simTestMsg_${channelKey}" class="form-input" placeholder="Type test customer message..." value="${def.sampleMessage}">
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="btn-primary" onclick="simulateChannelWebhookTurn('${channelKey}')" id="simTestBtn_${channelKey}" style="padding:8px 16px; font-size:12px; font-weight:700; border-radius:8px; background:linear-gradient(135deg, #6366f1, #8b5cf6);">
+            🚀 Test Sofia AI Receptionist
+          </button>
+          <span id="simStatus_${channelKey}" style="font-size:11.5px; color:var(--text-muted); font-family:var(--font-mono);"></span>
+        </div>
+      </div>
+      <div id="simResultBox_${channelKey}" style="display:none; margin-top:12px; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; font-size:12px; color:#f1f5f9; line-height:1.5;">
+      </div>
+    </div>
+  `;
+}
+
+async function simulateChannelWebhookTurn(channelKey) {
+  const inputEl = document.getElementById(`simTestMsg_${channelKey}`);
+  const statusEl = document.getElementById(`simStatus_${channelKey}`);
+  const resultBox = document.getElementById(`simResultBox_${channelKey}`);
+  const btn = document.getElementById(`simTestBtn_${channelKey}`);
+
+  if (!inputEl) return;
+  const userText = inputEl.value.trim();
+  if (!userText) return;
+
+  if (btn) { btn.disabled = true; btn.innerText = "Analyzing turn..."; }
+  if (statusEl) statusEl.innerText = "Contacting Universal Orchestrator...";
+  if (resultBox) resultBox.style.display = "none";
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: userText,
+        tenant_id: "salon",
+        session_id: `sim_${channelKey}_${Date.now()}`
+      })
+    });
+
+    const data = await res.json();
+    if (resultBox) {
+      resultBox.style.display = "block";
+      resultBox.innerHTML = `
+        <div style="color:#a7f3d0; font-weight:700; margin-bottom:4px;">✨ Sofia / Marcus AI Response:</div>
+        <div>${data.reply || data.response || "No reply generated."}</div>
+        ${data.suggested_slots ? `<div style="margin-top:8px; font-size:11px; color:#38bdf8;"><b>Available Slots:</b> ${data.suggested_slots.join(', ')}</div>` : ''}
+      `;
+    }
+    if (statusEl) statusEl.innerText = "✅ Simulated turn completed";
+  } catch (err) {
+    if (statusEl) statusEl.innerText = `❌ Error: ${err.message}`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerText = "🚀 Test Sofia AI Receptionist"; }
+  }
+}
+

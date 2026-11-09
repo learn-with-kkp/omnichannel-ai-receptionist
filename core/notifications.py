@@ -28,7 +28,7 @@ class NotificationDispatcher:
         self.twilio_account_sid = os.getenv("TWILIO_ACCOUNT_SID", "")
         self.twilio_auth_token = os.getenv("TWILIO_AUTH_TOKEN", "")
         self.vapi_phone_number = os.getenv("VAPI_PHONE_NUMBER", "")
-        self.twilio_from_phone = self.vapi_phone_number or os.getenv("TWILIO_PHONE_NUMBER", "+18005550199")
+        self.twilio_from_phone = os.getenv("TWILIO_PHONE_NUMBER") or self.vapi_phone_number or "+19124999633"
         self.twilio_whatsapp_from = os.getenv("TWILIO_WHATSAPP_NUMBER", "+14155238886")
 
         # Meta Cloud APIs (WhatsApp, Messenger, Instagram)
@@ -153,26 +153,36 @@ class NotificationDispatcher:
         first_message: Optional[str] = None
     ) -> Dict[str, Any]:
         """Initiates an automated outbound phone call via Vapi REST API."""
-        vapi_key = os.getenv("VAPI_API_KEY")
-        asst_id = os.getenv("VAPI_ASSISTANT_ID")
-        phone_id = os.getenv("VAPI_PHONE_NUMBER_ID")
+        vapi_key = (os.getenv("VAPI_PRIVATE_API_KEY") or os.getenv("VAPI_API_KEY") or "").strip()
+        asst_id = (os.getenv("VAPI_ASSISTANT_ID") or "b9242970-fbef-4991-8e94-4e59ebd4ab47").strip()
+        phone_id = (os.getenv("VAPI_PHONE_NUMBER_ID") or "c3cc95f8-6517-4870-8f82-bc3ea758b205").strip()
+        squad_id = (os.getenv("VAPI_SQUAD_ID") or "816b5fbf-8eb1-4e26-805b-3cc6caade9ce").strip()
 
-        if vapi_key and asst_id and phone_id and not vapi_key.startswith("your_"):
+        clean_digits = "".join(filter(str.isdigit, to_phone))
+        if len(clean_digits) == 10:
+            clean_digits = "1" + clean_digits
+        clean_phone = f"+{clean_digits}" if clean_digits else to_phone
+
+        if vapi_key and (squad_id or asst_id) and phone_id and not vapi_key.startswith("your_"):
             try:
                 import httpx
                 payload = {
-                    "assistantId": asst_id,
                     "phoneNumberId": phone_id,
                     "customer": {
-                        "number": to_phone,
+                        "number": clean_phone,
                         "name": customer_name
                     }
                 }
+                if squad_id:
+                    payload["squadId"] = squad_id
+                else:
+                    payload["assistantId"] = asst_id
+
                 if first_message:
                     payload["assistantOverrides"] = {
                         "firstMessage": first_message
                     }
-                with httpx.Client(timeout=15.0) as client:
+                with httpx.Client(timeout=10.0) as client:
                     resp = client.post(
                         "https://api.vapi.ai/call/phone",
                         headers={"Authorization": f"Bearer {vapi_key}", "Content-Type": "application/json"},
@@ -180,15 +190,15 @@ class NotificationDispatcher:
                     )
                     if resp.status_code in (200, 201):
                         data = resp.json()
-                        logger.info(f"🚀 [VAPI CALL] Outbound call placed to {to_phone} (ID: {data.get('id')})")
-                        return {"status": "success", "call_id": data.get("id"), "to": to_phone, "provider": "vapi"}
+                        logger.info(f"🚀 [VAPI CALL] Outbound call placed to {clean_phone} (ID: {data.get('id')})")
+                        return {"status": "success", "call_id": data.get("id"), "to": clean_phone, "provider": "vapi"}
                     else:
                         logger.warning(f"Vapi API call error {resp.status_code}: {resp.text}")
             except Exception as e:
                 logger.error(f"Vapi outbound call failed: {e}")
 
-        logger.info(f"📞 [SIMULATED VAPI CALL] Calling {to_phone} for {customer_name} at {tenant_name}")
-        return {"status": "simulated", "to": to_phone, "provider": "vapi_simulation"}
+        logger.info(f"📞 [SIMULATED VAPI CALL] Calling {clean_phone} for {customer_name} at {tenant_name}")
+        return {"status": "simulated", "to": clean_phone, "provider": "vapi_simulation"}
 
     def send_whatsapp(self, to_phone: str, text: str, quick_replies: Optional[List[str]] = None) -> Dict[str, Any]:
         """Dispatches WhatsApp push message via Meta Cloud API or Twilio WhatsApp."""
