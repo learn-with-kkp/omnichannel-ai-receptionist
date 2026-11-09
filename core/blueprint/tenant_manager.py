@@ -133,9 +133,11 @@ SALON_PROFILE = BusinessProfile(
         ServiceItem(id="s5", name="Signature Gel Manicure & Pedicure", category="Nails", duration_minutes=75, price=95.0, description="Exfoliating scrub, cuticle care, massage, and long-lasting gel polish."),
     ],
     staff=[
-        StaffMember(id="st1", name="Elena Rostova", role="Master Stylist & Colorist", qualified_services=["Womens Haircut & Blowdry", "Balayage & Full Highlights", "Brazilian Keratin Smoothing"]),
-        StaffMember(id="st2", name="Marcus Vance", role="Senior Barber & Stylist", qualified_services=["Mens Precision Cut", "Womens Haircut & Blowdry"]),
-        StaffMember(id="st3", name="Chloe Dubois", role="Nail Specialist & Esthetician", qualified_services=["Signature Gel Manicure & Pedicure"]),
+        StaffMember(id="st1", name="Sophia", role="Lead Concierge & Receptionist", qualified_services=["Womens Haircut & Blowdry", "Signature Gel Manicure & Pedicure"]),
+        StaffMember(id="st2", name="Marcus Vance", role="Creative Director & Master Stylist", qualified_services=["Mens Precision Cut", "Womens Haircut & Blowdry", "Balayage & Full Highlights", "Brazilian Keratin Smoothing"]),
+        StaffMember(id="st3", name="Kishor", role="AI Forward Deployment Engineer", qualified_services=["Software Customization", "API & Webhook Operations", "Omnichannel Integrations"]),
+        StaffMember(id="st4", name="Tasnim", role="Head of Sales & Growth", qualified_services=["VIP Bridal & Transformation Packages", "Salon Commercial Memberships", "Growth Strategy"]),
+        StaffMember(id="st5", name="Raiyan", role="Director of Communications & PR", qualified_services=["VIP Client Care", "Conflict Resolution & Concierge", "Public Relations"]),
     ],
     faqs=[
         FAQItem(question="Where are you located?", answer="We are located at 120 Newbury Street, Back Bay, Boston, MA 02116, near Copley Square."),

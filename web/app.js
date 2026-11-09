@@ -589,6 +589,9 @@ async function toggleVapiWebRTCCall() {
     }
     if (cfg.assistantId) ASSISTANT_IDS.sophia = cfg.assistantId;
     if (cfg.marcusId) ASSISTANT_IDS.marcus = cfg.marcusId;
+    if (cfg.kishorId) ASSISTANT_IDS.kishor = cfg.kishorId;
+    if (cfg.tasnimId) ASSISTANT_IDS.tasnim = cfg.tasnimId;
+    if (cfg.raiyanId) ASSISTANT_IDS.raiyan = cfg.raiyanId;
     if (cfg.squadId) ASSISTANT_IDS.squad = cfg.squadId;
 
     const VapiClass = await ensureVapiWebSdk();
@@ -694,9 +697,21 @@ async function toggleVapiWebRTCCall() {
       let targetId = cfg.marcusId || cfg.assistants?.marcus || ASSISTANT_IDS.marcus || "f8b6b7fc-ce8e-452c-bb8b-90b27bedb8cb";
       console.log(`Starting Vapi call with Marcus:`, targetId);
       await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
+    } else if (selectedAssistantKey === "kishor") {
+      let targetId = cfg.kishorId || cfg.assistants?.kishor || ASSISTANT_IDS.kishor || "bbfb3462-1d8d-4e61-94a1-607952fb61e6";
+      console.log(`Starting Vapi call with Kishor:`, targetId);
+      await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
+    } else if (selectedAssistantKey === "tasnim") {
+      let targetId = cfg.tasnimId || cfg.assistants?.tasnim || ASSISTANT_IDS.tasnim || "0a8c43e6-5c12-482f-8d01-fb1573bb0bed";
+      console.log(`Starting Vapi call with Tasnim:`, targetId);
+      await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
+    } else if (selectedAssistantKey === "raiyan") {
+      let targetId = cfg.raiyanId || cfg.assistants?.raiyan || ASSISTANT_IDS.raiyan || "7585a6ea-eb5a-47d4-b805-d1ffc960d493";
+      console.log(`Starting Vapi call with Raiyan:`, targetId);
+      await vapiStudioClient.start(targetId, Object.keys(assistantOverrides).length ? assistantOverrides : undefined);
     } else {
-      // Default to Squad mode so Sophia answers and can seamlessly transfer to Marcus mid-call!
-      console.log("Starting Vapi call in Squad mode (Sophia with Marcus transfer):", squadId);
+      // Default to 5-Person Squad mode so Sophia answers and can seamlessly transfer to any colleague mid-call!
+      console.log("Starting Vapi call in 5-Person Squad mode:", squadId);
       await vapiStudioClient.start(undefined, Object.keys(assistantOverrides).length ? assistantOverrides : undefined, squadId);
     }
   } catch (err) {
@@ -1395,6 +1410,9 @@ let selectedAssistantKey = "sophia";
 const ASSISTANT_IDS = {
   sophia: "b9242970-fbef-4991-8e94-4e59ebd4ab47",
   marcus: "f8b6b7fc-ce8e-452c-bb8b-90b27bedb8cb",
+  kishor: "bbfb3462-1d8d-4e61-94a1-607952fb61e6",
+  tasnim: "0a8c43e6-5c12-482f-8d01-fb1573bb0bed",
+  raiyan: "7585a6ea-eb5a-47d4-b805-d1ffc960d493",
   squad: "816b5fbf-8eb1-4e26-805b-3cc6caade9ce"
 };
 

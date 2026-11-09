@@ -172,23 +172,39 @@ async def trigger_vapi_phone_call(payload: VapiCallRequest):
 def get_vapi_web_sdk_config():
     """
     Returns public Vapi Web SDK configuration parameters for browser WebRTC voice calls.
-    Exposes only the Public Key, Assistant IDs (Sophia & Marcus), and Squad ID safe for browser runtime.
+    Exposes only the Public Key, Assistant IDs (Sophia, Marcus, Kishor, Tasnim, Raiyan), and Squad ID safe for browser runtime.
     """
     public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC_KEY") or os.getenv("VAPI_PUBLIC") or "958cb725-4600-4d13-88ff-d555e1f294f5").strip()
     assistant_id = (os.getenv("VAPI_ASSISTANT_ID") or os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or "b9242970-fbef-4991-8e94-4e59ebd4ab47").strip()
     marcus_id = (os.getenv("VAPI_MARCUS_ASSISTANT_ID") or "f8b6b7fc-ce8e-452c-bb8b-90b27bedb8cb").strip()
+    kishor_id = (os.getenv("VAPI_KISHOR_ASSISTANT_ID") or "bbfb3462-1d8d-4e61-94a1-607952fb61e6").strip()
+    tasnim_id = (os.getenv("VAPI_TASNIM_ASSISTANT_ID") or "0a8c43e6-5c12-482f-8d01-fb1573bb0bed").strip()
+    raiyan_id = (os.getenv("VAPI_RAIYAN_ASSISTANT_ID") or "7585a6ea-eb5a-47d4-b805-d1ffc960d493").strip()
     squad_id = (os.getenv("VAPI_SQUAD_ID") or "816b5fbf-8eb1-4e26-805b-3cc6caade9ce").strip()
     return {
         "status": "success",
         "publicKey": public_key,
         "assistantId": assistant_id,
         "marcusId": marcus_id,
+        "kishorId": kishor_id,
+        "tasnimId": tasnim_id,
+        "raiyanId": raiyan_id,
         "squadId": squad_id,
         "assistants": {
             "sophia": assistant_id,
             "marcus": marcus_id,
+            "kishor": kishor_id,
+            "tasnim": tasnim_id,
+            "raiyan": raiyan_id,
             "squad": squad_id
         },
+        "roster": [
+            {"id": assistant_id, "key": "sophia", "name": "Sophia", "role": "Lead Concierge & Receptionist"},
+            {"id": marcus_id, "key": "marcus", "name": "Marcus Vance", "role": "Creative Director & Master Stylist"},
+            {"id": kishor_id, "key": "kishor", "name": "Kishor", "role": "AI Forward Deployment Engineer"},
+            {"id": tasnim_id, "key": "tasnim", "name": "Tasnim", "role": "Head of Sales & Growth Strategy"},
+            {"id": raiyan_id, "key": "raiyan", "name": "Raiyan", "role": "Director of Communications & PR"}
+        ],
         "sdkLoaded": bool(public_key and (assistant_id or squad_id))
     }
 
