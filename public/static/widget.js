@@ -812,9 +812,11 @@
         targetAssistant = cfg.assistantId;
       }
 
-      if (targetAssistant === 'squad' || (!config.assistantId && cfg.squadId)) {
+      if (cfg.squadId && targetAssistant !== cfg.marcusId) {
+        console.log('[Sofia Widget] Starting in Squad mode for seamless Marcus transfer:', cfg.squadId);
         await vapi.start(undefined, undefined, cfg.squadId);
       } else {
+        console.log('[Sofia Widget] Starting direct assistant call:', targetAssistant);
         await vapi.start(targetAssistant);
       }
     } catch (err) {
