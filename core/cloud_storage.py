@@ -1,111 +1,15 @@
-"""
-Dual-Cloud Storage Engine: AWS S3 & GCP Cloud Storage with Automatic Failover.
-Primary: AWS S3 (Bucket: vapi-recordings-kishor-tech)
-Fallback: GCP Cloud Storage (Bucket: enterprise-rag-raw-kkp-53d8ce01)
-"""
-
-import os
-import io
-import json
-import logging
-from typing import Dict, Any, Optional
-
-logger = logging.getLogger("DualCloudStorage")
-
-
-class DualCloudStorageManager:
-    """Manages recording uploads and call artifacts with zero-downtime dual-cloud fallback."""
-
-    def __init__(self):
-        # AWS S3 Settings
-        self.s3_bucket = os.getenv("AWS_S3_BUCKET", "vapi-recordings-kishor-tech")
-        self.s3_region = os.getenv("AWS_REGION", "us-east-1")
-        self.aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
-        self.aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-        # GCP Cloud Storage Settings
-        self.gcp_bucket = os.getenv("GCP_STORAGE_BUCKET", "enterprise-rag-raw-kkp-53d8ce01")
-        self.gcp_project = os.getenv("GCP_PROJECT_ID", "project-53d8ce01-b0e0-4f8b-94c")
-        self.gcp_sa_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
-
-    def upload_call_artifact(
-        self,
-        data: bytes,
-        filename: str,
-        content_type: str = "audio/wav",
-        metadata: Optional[Dict[str, str]] = None
-    ) -> Dict[str, Any]:
-        """
-        Uploads audio recording or call transcript.
-        Tries AWS S3 first; on any network/auth error, automatically falls back to GCP Cloud Storage.
-        """
-        metadata = metadata or {}
-
-        # 1. Primary: AWS S3
-        try:
-            import boto3
-            from botocore.exceptions import BotoCoreError, ClientError
-
-            s3_client = boto3.client(
-                "s3",
-                region_name=self.s3_region,
-                aws_access_key_id=self.aws_access_key,
-                aws_secret_access_key=self.aws_secret_key
-            )
-            key = f"recordings/{filename}"
-            s3_client.put_object(
-                Bucket=self.s3_bucket,
-                Key=key,
-                Body=data,
-                ContentType=content_type,
-                Metadata=metadata
-            )
-            url = f"https://{self.s3_bucket}.s3.{self.s3_region}.amazonaws.com/{key}"
-            logger.info(f"✅ [AWS S3] Uploaded artifact '{key}' to {self.s3_bucket}")
-            return {
-                "status": "success",
-                "provider": "aws_s3",
-                "bucket": self.s3_bucket,
-                "key": key,
-                "url": url,
-                "is_fallback": False
-            }
-        except Exception as s3_err:
-            logger.warning(f"⚠️ [AWS S3 Failed, Triggering GCP Fallback]: {s3_err}")
-
-        # 2. Fallback: Google Cloud Storage (GCP)
-        try:
-            from google.cloud import storage
-            from google.oauth2 import service_account
-
-            if self.gcp_sa_json:
-                sa_info = json.loads(self.gcp_sa_json)
-                creds = service_account.Credentials.from_service_account_info(sa_info)
-                gcs_client = storage.Client(credentials=creds, project=self.gcp_project)
-            else:
-                gcs_client = storage.Client(project=self.gcp_project)
-
-            bucket = gcs_client.bucket(self.gcp_bucket)
-            blob = bucket.blob(f"recordings/{filename}")
-            blob.upload_from_string(data, content_type=content_type)
-            gcs_url = f"https://storage.googleapis.com/{self.gcp_bucket}/recordings/{filename}"
-            logger.info(f"🛡️ [GCP Cloud Storage Fallback] Uploaded artifact to {self.gcp_bucket}")
-            return {
-                "status": "success",
-                "provider": "gcp_storage",
-                "bucket": self.gcp_bucket,
-                "key": f"recordings/{filename}",
-                "url": gcs_url,
-                "is_fallback": True,
-                "fallback_reason": str(s3_err)
-            }
-        except Exception as gcp_err:
-            logger.error(f"❌ [Dual-Cloud Storage Error] Both AWS S3 and GCP GCS failed: {gcp_err}")
-            return {
-                "status": "error",
-                "message": f"Storage upload failed across both providers. S3: {s3_err} | GCP: {gcp_err}"
-            }
-
-
-cloud_storage_manager = DualCloudStorageManager()
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-nPW+fp0Jmc?!wV-N;pEZZ{RtWqiKl36!Nb<4V$i*a-~q8ScHrm>A1AquG|sgMK)V<YNY<`3rm#6--~%*(u<^ET%XPE5=POvIG9HMo1;SL|51a_zPE4#Qq`+?0#)xJcPlE2BZNB;(+rV1D?tkx7Q1KM3yCdk2U2XI}()mMPi?^8~6qL~*Hz_;4ONkP{VsZR%)4=P4S1^Ix7*xFi^$8%>YSw&%Xqw|}rjiAUc;zGQ-?M>$)I?|xNj_f)bA1X4{TL3L*#=M^Z-fx@@=;mB-qzo<YQ=1e56Z*1gF9@vItFwIa$NHTbfE|48xmSO^|y2Q$@vzE~jz}e?xGdnd?U1crJrD5pkRhr`&i%B583?x%>NC2_KR!PwkJSF+`YjsUW{HFr&{g8EJ8hH`z%D^Y#1Bxa)!GvlC$*k$(g5Z53=6i+aRioGL6&>14!2#CL4>T`961K(^v3$WfuNHK#TAg}XU0pW#a)An;DjqwcF<vEO(+<ao85uB$ln<+i%`k}f`pMeI4HLLWhEaBH1FJZ|HtT!Hi#ZY3M41N(uo00sXd21u&6Q7ykD!oLT+dZ?2u@{BE$>J))NzeV!7dOg{r#x1@^g}%%KnKI;_<xg*={C(VggOv*{>e7<FMYW#qD5XG#h5Nn|WX=`p1n0Ckf)Cpx5aUowovge}*qQ3`fHArsQtZJYrb>+x}?w<%`U{gHC<+(fCl~ywmYZn!abGFQaW(;7MHITqt-w4LkP!_G)W)KqHsv$Sj-{YB>s+v|vQX9mT2h*brrNuaVNoP2?tr#_sPOX0vZz_khf*Nv*TJ86;6~8buu}P+WudOVcuxNr?=Zq7rm>m4*50Is$-hccy>LXNG4-hsK`GyvXOW4<>50w{aY_l3JJmu~^tCatj9w>yCjy-qKJQ2Z|YalCP;&&>Ee2F+VpxGM|5vo1Yrb<X*m*ISB_pc&SEsxR+!`9!8^%Lijjuu;o<dR)%pAfs(#*^}xVY`O3K_6!NYIOOoH&IiTGJBWehgcl#q_lbIKDWAi^gJGmttc2$zHp-rvlVt!ZU^?FfqdPiUF2;tBDy<_vDa!P~JJh@LhcAmEwLa-Gd)!EWE4@@HaC*8@hCy!?)`d?2zkLMpu4Juodph-~NJFnX(5<2Y#g>&?|7O`FTyxWIyyPCbKtQ$_HQGxP|Zq85zg=!y$*goKqnp(ZqpLsBHf9T#&?eq3_Ze)CXc>3|&?A-Lwy<G0c@U;4RU?j|NvEq~^&dwl?2QR!=%OC#9gXC=WLb~(^b%zztZd@lYruQv$1qbWfKVL}~m$0WfoCktP7p=zo<O(cOD1D$i#HtoJ-o-16+3}<yQ<UxZy;8Z~SRHs{0A`>A1X&e>+K9|j5Q*II@#fm%uufpuD?t0vv*b8<$`rK=8vD&wC%#v7v@B*x5KIX0V9d;2nZFZtSFc=`<kJ|TaVeG+PM1PaN6_FzwK}!6oIu&+dko-Q-LWw52REGa4(4%fbabehKW@?btEH8RL;y#O!}nNS<rt&1D-;piMz+e9cVfmu663Lykk*3PckA!VdaN_5-E*Db+31tgQPvkwd(OoK@F-dt`1vX~ZoJ`ZkTV!01iKN`ki^R_-ISczQ>$+;!L8l1?7i9Cq`_JY;G1DKn~8G!3zyP`b*F3`t+uW!rw#jIYjIOlV_krLZRzm32U9R-<6;d{YQd3g(ic_8SI~!FKfX?Ife`@H8+TM?R6x=rS_J-1IK*%Ws1L<56gL+yDqnp!dpuG0KpN)Jms6f$l(V{66hxWq-Jvl6_x1j9_{)`%u4%+JlsO9IX%FL_i|#gB?Zu5XT>xKhTz3tYJ>@A7Q$Bc}Cc;xdbq(_A-RuUZPis)sD3Xy#DO``P)krNm$PM7(jE$j3q4wHZmFVtxI(QB)f{~HTnF7H+a%T&Su^imu{9D5gXqW(|4-`Y1VA>G{2;G_|=pt52MQp}5<{yBmuNhdTf#C;0u(K56Mfwlam{UX_z&3^bLf1SV;k|N2uy&TNIbVY($=iv|br>#R#n+7*6SSb5V?g9^<-5ws2t`!GgL8sLj-g&mgVD|sr7X6WZ&x0GlXb)hnp$rAm}P81H5YD6*Sb^r^{e;Em$=j*475Pf+4Tg8)w|C5G}4iPh`ED%4d(6-@=@6>mmTCe`U%IloeD&XxBvF`0|7Ft)mP7S#M$ji?_d7<w_tcII~F~w-#>Wf6)|5-dqEU6V3m*?M1E!Cr`731rH;Id6xCZZY`SP@sC3Y{BOSr2rK{Pu=5IfEDP3qXo^86(X|wLy7XzrD-0|~8ZlsaR)0AU{`$-#HWY+Grc7E??_F|Li93JX~Eu5HNCS4*Gv9WvSfdg<h{lUi3QR=$$J3Tnixo$gr9Ml}q-(C8SMlT}zkjQ8(uR6@ZQTQV-y66s#RdNm11VPtOG(>R{K#&F@ZP(m>o)@o{lk3VnRi+L4%qtmcy7tt?-oO6!AOHM6|Jlq>KF_r>z3_R7Dgv&V>@9v+GlAnGt@C8;hv2!uYrIgdWKZIf@@*bDhT3l~-Bf;@9qtCB8lNV)U?xdM&@rne8H#e)W|mNfXfol+%=q)x&4eY;X}-VhXWplnx-3yV&v)sIjS*87<<)ZbH4+?+HvV6*#0f0;78H4TYjGuqfkR_eo8T0vct~7WxE%#Wt44?~HE6jqw6NCxhy@V;E@WJ8mP#Wj=q89L?p_*Z0OyxB-dhoGXcL8U&eD})>vthT+r+TLFD-+-TKP~VdD(z&(Q*4DqC`1G-|`CHwyd&v+65lZ2_(Y{u%N0d2Ooa1ggus-upHTGRquEstxU^!UMLfhRa>XY!t&O#N29MJo@KCX+p&Nv6&YQk+#^63!3|q-8EQImzxY)7&-2x)ocEw$YO4En^|tFEQ$k0-^Ro%vad=TV*hyzMW2vT4pSTQj%~KF|*v};0(7M(2#ZWdV52(zyrOn%ZzKnuYIw;@_O50aJvwwP1tpIX%vz%Nu?B1K-q^pIl&!Th*bl<FRuA>N>g7T#jQNUpgmo6H3Tjzi*%5nh=Tz8wZ%Ts#9f^<uxhD1Y$GX>-_K#DGcvE@iC(xIC-U3p_-ZBtbdQ70H=>34OOX?I%j%C)0J+ox2sf=6G@UAgXDgAQGm7@juI9RO-2MHIPhT9)ULpcJsGM&ic$*0PO3S?{9?@PR6Djvl_h?TxY|nL24;npX1frvClk{{G*8`QQKQJbX0uBpKy(Pwre@6SdK+o&QmDRs+a;SACcB4B{5bWf-zTq71gLa}&GQksBYsz5RpBM71I6p<lx9LT0~2WYxm;!=!6FP^R!gcHa3e7^4t~z-C2A>PK+{Icg5Gtj!>*KTopXrRcZIY1KNc+YHS`1F#Db4a{csc6<%Mq2!d(6y*;b4A`>3B820TMHq}ko~-^6jiOjcvyMTfY1;sYZ|{z_AU?*_WQFs2SAeCk+ZlIF6#Vqv(A@3+dF|7Cml6Fu(8|O?{ca%m))#!1O;@$roqSerX1D698tonqu^ixi+E)*-o6=CHk>Le*Xj~qTXBw~_<3w!y<!}Gd8UCZYTNk$$4{~z?ae~JW?uA3giGbWF^LX-LY$9Km080ZdsFh5`%mGiQr=H)LR-&Y0tJq;)w{Le!N+Z(EB6_nll}Q@u66?~PVDr0~QfsAmFa{Fo_QFE^6m2c8uaUrJ`1HyQHAZKF8wq6*cy36s8jREKHh`@Y61ASTMyGyy-O8tx<&G52j7)X|I_=mY!FMXP#oIcYD?eA)K5i}9`P8#O)o_OMii{^&>ACdK=Hv@CULwi%D&jCh7tM{ue0qreAHq{|dH"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

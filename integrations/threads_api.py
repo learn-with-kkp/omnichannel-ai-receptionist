@@ -1,144 +1,15 @@
-"""
-Meta Threads API Integration.
-Handles:
-- Webhook Hub Challenge Verification
-- Incoming Threads webhook mention/reply parsing
-- Thread creation and replies via Meta Threads Graph API v1.0 (https://graph.threads.net/v1.0)
-"""
-
-import os
-import json
-import logging
-from typing import Dict, Any, Optional, List
-import urllib.request
-import urllib.parse
-
-logger = logging.getLogger("ThreadsIntegration")
-
-
-class ThreadsClient:
-    def __init__(
-        self,
-        user_id: Optional[str] = None,
-        access_token: Optional[str] = None,
-        verify_token: Optional[str] = None
-    ):
-        self.user_id = user_id or os.getenv("THREADS_USER_ID", "")
-        self.access_token = access_token or os.getenv("THREADS_ACCESS_TOKEN", "")
-        self.verify_token = verify_token or os.getenv("THREADS_VERIFY_TOKEN", os.getenv("META_VERIFY_TOKEN", "omnichannel_threads_token_123"))
-        self.api_base = "https://graph.threads.net/v1.0"
-
-    def is_configured(self) -> bool:
-        return bool(
-            self.access_token
-            and not self.access_token.startswith("your_")
-            and self.user_id
-            and not self.user_id.startswith("your_")
-        )
-
-    def verify_webhook(self, mode: Optional[str], token: Optional[str], challenge: Optional[str]) -> Optional[str]:
-        """Verifies Meta Webhook challenge for Threads subscription."""
-        if mode == "subscribe" and token == self.verify_token:
-            logger.info("Meta Threads webhook verified successfully.")
-            return challenge
-        logger.warning("Meta Threads webhook challenge rejected due to token mismatch.")
-        return None
-
-    def send_reply(
-        self,
-        reply_to_id: str,
-        text: str
-    ) -> Dict[str, Any]:
-        """
-        Publishes a reply to an existing Threads post.
-        Threads publishing is a 2-step process:
-        Step 1: POST /{threads-user-id}/threads?media_type=TEXT&text=...&reply_to_id=...
-        Step 2: POST /{threads-user-id}/threads_publish?creation_id=...
-        """
-        if not self.is_configured() or reply_to_id.startswith(("th_post_", "post_th_", "th_sim_", "test_")):
-            logger.info(f"[SIMULATION] Threads reply to '{reply_to_id}': {text}")
-            return {
-                "status": "simulated",
-                "threads_id": f"th_sim_{os.urandom(4).hex()}",
-                "reply_to_id": reply_to_id,
-                "text": text,
-                "channel": "threads"
-            }
-
-        try:
-            # Step 1: Create Container
-            create_url = f"{self.api_base}/{self.user_id}/threads"
-            create_payload = urllib.parse.urlencode({
-                "media_type": "TEXT",
-                "text": text,
-                "reply_to_id": reply_to_id,
-                "access_token": self.access_token
-            }).encode("utf-8")
-
-            req = urllib.request.Request(
-                create_url,
-                data=create_payload,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                method="POST"
-            )
-            with urllib.request.urlopen(req, timeout=10) as response:
-                create_res = json.loads(response.read().decode())
-                container_id = create_res.get("id")
-
-            if not container_id:
-                return {"status": "error", "error": "No creation_id returned from Threads API"}
-
-            # Step 2: Publish Container
-            publish_url = f"{self.api_base}/{self.user_id}/threads_publish"
-            publish_payload = urllib.parse.urlencode({
-                "creation_id": container_id,
-                "access_token": self.access_token
-            }).encode("utf-8")
-
-            pub_req = urllib.request.Request(
-                publish_url,
-                data=publish_payload,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                method="POST"
-            )
-            with urllib.request.urlopen(pub_req, timeout=10) as pub_response:
-                pub_res = json.loads(pub_response.read().decode())
-                return {
-                    "status": "sent",
-                    "threads_id": pub_res.get("id"),
-                    "container_id": container_id,
-                    "channel": "threads"
-                }
-
-        except Exception as e:
-            logger.error(f"Threads API call failed: {e}")
-            return {"status": "failed", "error": str(e), "channel": "threads"}
-
-    def parse_incoming_webhook(self, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Parses an incoming webhook from Meta Graph API for Threads."""
-        try:
-            entry = data.get("entry", [])[0]
-            changes = entry.get("changes", [])[0]
-            val = changes.get("value", {})
-            post_id = val.get("id")
-            text = val.get("text", "")
-            from_user = val.get("from", {})
-            user_id = from_user.get("id", val.get("sender_id", "unknown_user"))
-            user_name = from_user.get("username", "Threads User")
-
-            if not post_id or not text:
-                return None
-
-            return {
-                "post_id": post_id,
-                "user_id": user_id,
-                "username": user_name,
-                "text": text
-            }
-        except Exception as e:
-            logger.warning(f"Failed to parse Threads webhook payload: {e}")
-            return None
-
-
-threads_client = ThreadsClient()
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-n1P`BxKJw?*4U+bR!;80>&}Ye)_E-kOrsbZe49eEqrJM`Kh(WC)>1%BswWqK5j{Uj>0C+P|N5>fCeo*?XUgqW+uP0ukzqqKjAo*X~XiniI&PtY@3+`zkuvn=1Q8(J;d0=GmfLG67wT?t4soN|MSF)+$o;P&AC!+nZYmQ)DCUF7PTW(a4XVS`x&N)B_fCkg3#I;<*6Qv9$GUZzI(e&TxEv^*p@Km@ZVht|urS<dwF9gtUy6fWk&nGO9Ca6|wCJ3Fu`BgpX}jWa8QB$(Hq{^`&;qX_itNbiXSO>*C(}yJuCO^1dRI9R`PS=Wyd&6up1L0iV;{8s%*iOByHfO~zp0o1NX2ZAoieP&XaEvSHh>5(lEfF=7OZ8s%!qf&fw4yo>Z^I(#<jhGIqiMThVk2B#Z#(1jjF1M0Yp0#(HNs^MFlX&u35ANKaW*w;-;f43Sy3j-9NcFO>YKvFs)(k4_+Ce%SZ%NnHmdO6iJR5r`3!+DL<<&CPqYuIfSC`|&;n*;{Sqi7`xlOt#AZ7!O?z|*Ftzpf6#G!D<=m>~>0T&*{2?RJ=?6+)<aK%E}VtgP*9Yb-r&aP)N44rf{9HkP|-r`3+?O(01iz)PNLNqm~zSJt<8-}&MrUISD8lfiwp2tF;xm%%>k@{B&Aa}|RdguhkL&i;q3@{$M4>24=_0yTLfE2De*>BT7XsEmL}N{@4}`A~9lQ@K?P-22$*dd>jikah#v7aN_zt=XxGdrt~~KDe_mQFstX$?<T3<nn3QJ_-AbS=3`+;9Sd^Mu0<n{ZmbmI1!if$Yn4}kd)hBery4vA@)o6$-;c$-mQCc_Z}|ZTY8e8|NY+miN--%k59Loqt>OlndNGkIiLZsE9wJH1;EUPBEo=I$h=M!0iDWD>N*WtRLO_+!rc9-#o0Ug-=?1C=krsGlTYs~6mE46BkYVOC~9VHxHR?T&cj^c;OwL`F?;Lj#A5$E>cLVG69)Pkq-H%tSOppnkxUbB{>$g|`1I!oI(Slq4C!>+F>-a^OY2?E@fpz2eqiIV2FSN^{roWA-WZKrk&Tq|XCdZzUQ~TjtYL#yk|e6-UhQs|)3q#fw;v5cN!GAk?0SHvYkys0qZXxuCINu%RjZp-Y|H{^>+Us>M&nj^zNt{;#{^3Vg20?u-`}oku?JYdQa;hldIPXNJ<&Q^i|YSmE^$&AQ03Q4FP;-~)}!8ClyRBar^Ggo-I|9)*t>-2p^2(1>(2#D+*VigT&gfU+_)^Geel=HD6>HLNHhpw^aWw-)%$H#KIVaMoJT%%<n-*0!y155ijN)LeHbMdeeOs1T-Dg!tG>Tu5bp7LSEEW|Sw_Cx>&^r=&q<>6$kY7W&8XjMPU@DVe%Rb=Va@#`y{<XqjY;CM0^pq5Z%C8UJoX%(lM~*oe%PyOG&*5Cy8py638Y|b6+KsWLD>~35Vwc*)vV7KsM~p)+fgZW@}<-55{}1$sfuzxl^GbBJVYSu9o7g5<VJbKqJOnkR2h+UtaT&az}m3@1b8%jfKjRWMDi*B?P_kB@SFqfE{iE_)4<EhaIxT#q9@U2+&+C7U6qlW$*mF1;ZVO!gg_)k+P&UxRu)Cz_Y6VuD4sq#&TXw#^Y<k;10d7)4c=s7DHbfBp%BkXH5VzOt7B(?U6811Zf$p$ptg-Euk5K(FG{MH6O1%TcU+Xr$~@V=rmyD&!TY8OeD&ML73y4pRyr$JK$48?84p#pwf*)%noTge?uI0n*|6gi=K{}3(odrWg1n_bm6m1(@3_Y&dzau(qsF)E2R^P~8V4pz(o)j_uE1qA=Y7=HJcr?cN2gCEB*O~scoZ>@UtZz)ci;dC;M}tpuglnTv1|4L2>tl;i52Kd$8$L#mAsRU%e9K~7Nz8F-OW$mdomFY5l2zLSBw+i(xpQdRucDz!k)9lq=bUyDO*#=gWqSH06@0W7{+Hd5cyKZbva%-Kkgi?T`g=u6D#S&z1;CkzHstUWQk+2j@87LO!qmld~AX;Qm9};bG?8f(tww?F0?z_!Or>j#`YDEhON%^!Ww*}xo%{Lg1xxC9JvsbuwDe%Y@Nms#kQ_6m01tZ3-G|O{IZ8x%9D<g;rhGQx@wU7jq`5Tb`3PAX>-x{v}JR7mBO=0lnix@`S~~r&);OIyX3lVzv$AIY<{MThT1?$Zsyj5h1+)?=l|#T+k-{Q6pPOC%(JQ@nkSmq{ZyiW!n>0JJ8d8}8q~`=GBj=2T)lzkyaWhkx?ORMzD5F6_Xulcm<<OX38u7ib#3d_FuEqjtKh6=hZBq5EEa~}BD<IIPau_AFL$5!R5$xz5Y!q;j{#KuP#V^+rR{3m4WCl>Mhjcu)kd=mFe7qvnlVRL2G3hR1;<)8`<Z*W72=UE8{=hkS_wp=0+84aYcX;NW(9L--Dq7TZ@jq*wq5mX<z^Yj$voP6mis*nr#Mh%&1eQ{0jm~e`c3CX8MH%6E-u(cIg{hRhrX9#>bz`|f(H%PI6@dwLc_>RRMri;?U|G$P{Hxo1Yw5f08BbiECURq^Jc}Rv-WjtpK@@VW!~D`+;+gR^6LXx4hzbxrYr1dC{HHlW`;}T#shy)ZXgS&^||eFs(yG4{;P4%Nx-+<Db~vqYS;^r?6};FP30kOt+js&p4oCUzhGp+w1Ki<DDy^7mL;q@ON5d|ZHyRSp2mo9Ud62SR3tTP(c$~C)|Ih5_!OzWP~Lg9xJD|DW^m^dm{y6U^{z?gYTQsVL=QaFq`gJ!rw5)XkoEhri)ojg^;x|v3r@Onjpxf?f=d*!jUzRBs8TlK&G3=wgAq1-#wuc^IC5Wq@=cp5rH1GDO=yd5Q3$fRB$dt>Hb$BE->mPc)Zp~dliw!e?VFo&Fy;z;Y~l39%HDf}Ki~jUGzlMPnGHwwKYKzD)?I-?&_>_CbiOtPBQePGv)y+X{6o1{nJ*vcf*}1K>44{BfHJiztP#U^5T$<~(N{hBtjJ{*3C9N?f2nzM|HF!pfo4wGMrK@H8(4unEkXZ4=G-XZsZ83&sK8*_1ae)C%VeEKu03ZvpMF_bQ&i!zz1;r|4Wes2(;W;N#5N6kL|=mIU{XJ6H*TvxCWsk0vGe*;G|ft1p)x|5)ofXF+}8A;_ddF7V-WqGtFKp;@OwMFT~v$2Fyl$17-$A1xT`nIuv{KU_<iTaS~(n?FkM99fayV9of9<-)mllFB;h~}NI7qq`thX+j1)B+4`p@7xXyPeR`9rj>sv*&grhG>hPn?suY050$~@<t0B8dA<T@I|^QerEFr(ZNkRpRh+MyP>UI}ZmIY}$ue+?Emg~H37_3a7(r|GZGd<;mH<dD)f_up1OHypsE&F;bW#!Y@MdrXE6FT)0;*dmrcN?Xe>s#rUi{DHdGn=vxaGV8XN>98~JnxHwxNF&rKtOQR1lqjB{c}+1z#xI6%ZeZggm}JMJVd7K&+g;X2ncqH|&u*?HO@_eEE=|aeOyJZ1EC?n0Ec1225oczOF*EPF(^3yt$AJ_kB3Xa8`|7Z<w2+_dzq<+kaZ5ZB&8wl9sHmC@*T^!nx?8MgHRoJhI;s&~5Y>uzc=+WYl+1MH`QMQQJQli)IoSS5+G@VTKa?^j)4sT2dwcuUSGeU<{1k0wM~7yC&m)L7jt(R)^E9Xxj+?+yH#oo*0YC76>GP=O81tg12FGD8w_Me<<X5%2P*}p5qF*Ev1jlJofq!?NRdFn8+Sk4#^^(EzzhsVvD$i?@q;0LV_MOJb3FrBoKoGGDs?vC${*1b;=5}Vb_dZn1S#X21Kt_x>+W0v${SOsv{qJT~(b}_~rqdpQTFk;&{y2tbiL)w_6N`qlyHfajILl?CS)robqkPO+Jm0ltmd1R)rX%a${WIzko<+X#trz!y1b=L`6W~j-GmM%<^AobLn45DYg`muxWF&(w{%<hD(u)ghK*S^paIi5Ckb+7(dv78EU>ADMS7L~EBlKXPg`GcmXg(~FjP8~c_4e21(YJq&^ck$Ne-Pdr#COb6ek#278;$mGR*-;1LJ6ijnH-leD2GK|rCeBv8N_nk9JH0_4go$FPEFs9Y?nlre<2<Z8_6}92PWt(-|Vxf=?<6aASJ2(;?~y6=LRAg5WC@E>Gt7LlphOLOu$=)lQ9ydt*^Ws9qHd2npNg207uc;O#bXnIy1H@MX?z6j@<W~A2x|`PzKzWZcq}T-1ro$(&?C?vQ^;bv2b*lTd%(F(FnA<wh@0FBN<b&N&8D8f?}^Cd9Aie{<AhyNE^v;49|uHz^toE<@O*XzSOV`x7L7$x}RIhvsPnF+I)t1nKQ3{stGQnCPp{xu?(zaxbr&8Tvn`D*ST8HAVumzfLgV7Y;X`zCHf-x<3X~1Q|OBnrV1Jq-1xL>do+_Dxvv9SL{SWZ<RD2TGZ~Ps4zWc5r0ljD^BWkZ3Wo+3XIKly+nL?96j31Lbm&DJKk-J}1r{vx=@Xs@>;Jv!Hvr~UsTk6~IGI>+9j{OX!@Dyp+gQu4iSzeAQ$fuuA-7O;>Vx$1Z_mH@y3qwhVFuUwHOB+~gd&uTqt%~mPe0}XA2jN5p!3d{cGK5CaJK&I0w09)f`%E*V9^=0x@27F%dR2=|D#Y{`LM6i$EC)c<`fMo4d9srX$-Ias)Y_=DAi>mUGmDio7tu5BeC&q?17#@T#c(uP)L09a`n=gPi%hJ$%wHXg_A!R>8_~CMfUUYi?#m;tTo}c"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

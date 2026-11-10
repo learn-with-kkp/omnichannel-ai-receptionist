@@ -1,107 +1,15 @@
-"""
-Twitter / X Direct Message & Account Activity API Integration.
-Handles:
-- CRC Challenge Verification (HMAC-SHA256 signature)
-- Incoming DM webhook event parsing
-- Direct Message dispatching via Twitter API v2
-"""
-
-import os
-import hmac
-import hashlib
-import base64
-import json
-import logging
-from typing import Dict, Any, Optional, List
-import urllib.request
-import urllib.parse
-
-logger = logging.getLogger("TwitterIntegration")
-
-
-class TwitterClient:
-    def __init__(
-        self,
-        api_key: Optional[str] = None,
-        api_secret: Optional[str] = None,
-        bearer_token: Optional[str] = None
-    ):
-        self.api_key = api_key or os.getenv("TWITTER_API_KEY", "")
-        self.api_secret = api_secret or os.getenv("TWITTER_API_SECRET", "")
-        self.bearer_token = bearer_token or os.getenv("TWITTER_BEARER_TOKEN", "")
-
-    def is_configured(self) -> bool:
-        return bool(self.bearer_token and not self.bearer_token.startswith("your_"))
-
-    def compute_crc_response(self, crc_token: str) -> str:
-        """
-        Creates HMAC-SHA256 hash using the Twitter API consumer secret.
-        Required for the Twitter Webhook CRC Challenge:
-        https://developer.x.com/en/docs/x-api/enterprise/account-activity-api/guides/securing-webhooks
-        """
-        secret_bytes = self.api_secret.encode("utf-8")
-        token_bytes = crc_token.encode("utf-8")
-        sha256_hash = hmac.new(secret_bytes, token_bytes, hashlib.sha256).digest()
-        return "sha256=" + base64.b64encode(sha256_hash).decode("utf-8")
-
-    def send_direct_message(
-        self,
-        recipient_id: str,
-        text: str,
-        quick_replies: Optional[List[str]] = None
-    ) -> Dict[str, Any]:
-        """Dispatches a direct message to a user on X / Twitter."""
-        clean_recipient = str(recipient_id).strip()
-
-        payload: Dict[str, Any] = {
-            "conversation_type": "one_to_one",
-            "participant_id": clean_recipient,
-            "body": text
-        }
-        if quick_replies:
-            payload["quick_reply_options"] = [
-                {"label": opt[:20], "metadata": opt} for opt in quick_replies[:5]
-            ]
-
-        if self.is_configured():
-            try:
-                url = f"https://api.twitter.com/2/dm_conversations/with/{clean_recipient}/messages"
-                data = json.dumps({"text": text}).encode("utf-8")
-                req = urllib.request.Request(
-                    url, data=data,
-                    headers={
-                        "Authorization": f"Bearer {self.bearer_token}",
-                        "Content-Type": "application/json"
-                    }
-                )
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    resp_data = json.loads(resp.read().decode())
-                    logger.info(f"✅ Twitter DM dispatched to {clean_recipient}")
-                    return {"status": "sent", "channel": "twitter", "response": resp_data}
-            except Exception as e:
-                logger.error(f"Twitter API dispatch failed: {e}")
-
-        logger.info(f"🐦 [SIMULATION TWITTER / X] To: @{clean_recipient} | Body: {text}")
-        return {
-            "status": "simulated",
-            "channel": "twitter",
-            "recipient_id": clean_recipient,
-            "text": text,
-            "quick_replies": quick_replies or []
-        }
-
-    @staticmethod
-    def parse_incoming_dm(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Parses Twitter Account Activity API webhook payload."""
-        events = data.get("direct_message_events", [])
-        if events:
-            event = events[0]
-            msg_data = event.get("message_create", {})
-            sender_id = msg_data.get("sender_id", "")
-            text = msg_data.get("message_data", {}).get("text", "")
-            return {"sender_id": sender_id, "text": text}
-        return None
-
-
-twitter_client = TwitterClient()
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-n1O*?QAR7B+MUYZ@nnBsfc#_NBCy6>X)Gl#TQ^Uta{qxZRK@9pfmr;@u8e0Hc?g7noO=x0rsAxgI$LvvlA2;(W*F{97F*$)LQ9g}_nGPBorSZvoYYL41Q!HlLSEX|3~^N0A^1@tTN?fM)sbgSA}khK?Z}h88e_<Lwz$_7BRN56X?s;^J&?mMTi721BhmjRRH$K(Yi1w$ATPt>xpw%*@%zRDSah7wW(O*8A;`@dC%&JRQ2-yFVoBD#KH<kg^dDNMfnBvVTw}gZN(HI3}O00mWsr&g(V_^Z)=6NHMlSa-XFFB-!ck@cn{xzH?UZz4{G=mf@jG)_rBu0p&XliP8C8Tk#BvB&zB-2QQxyTMT`N?-|*cNxEn7ex&+s7AyQO0%I|%m6$}=6q+f&*m}L6B8OFoGq~>jkTzkh{ZPP1)f*w=3|%zS#w{f>%KNXkUaF`=IU(`k$idhkZuEJKbwW#A(Dg#fSN3*Aqg<)%q!%4mwj5trZ@L<K%qk8J;@0XqWnt*tLYCrEQlK#MXc@bNNV;GTrZ^xV>`hy=7Q(kbcamCzgJS$BCknQ(xX|7`O6T%(3u&AIv;N_?WEiK-__8SjJI_Povhibx6$Sxr3J`y(b(wzn<M+~VuX7p?dV^%h>U2TYL>l|&ooSPZ6kx$rF;IVOoW?gHs;szK=c{5vDLU9Is4TG1+x895p){aNi;Csn9KKENGctC^W3)~WK6Q>$7g%bHbbgLgaN|Qqx44|F@I%3m8K++^@0O5xd^UUQ$@J>NV(#AK{Cw{5bi3MVR;#~sI&mwlCMi%k<_)LscQ;GKfgtYoOb-_njfYy)GlDjS+d7LO#OJluJB5|i+}iTmo6B}wm|mHk?R^+D`>paAjb<<HhLGcq8K^swx)vC&D#ZPxpz?g9q!zHRIpKh(V#95QT4W(FBW3=^<HG&LN2^nJW)=zyvp+m6e3)BX7}e_sd*cNi;58L_UW|~$N(8Cgai&wRkqp`mC^KSwg~k{<VDW^4sU+J%jlm2&guG-zQg97fK|@KPTC%a5-z=HTp$$yh@gE=q04L525O_f-6Y01`7};DHy{m5TwKBS2RGy_g<yivjEEo=%cZlmph=|9SXN5N%J|v$OOj{1zcrv$KjRW8`UJb6bkz`TOZI6Xi?aVk*Xer7tH#PMzdGM~E`yq*W%f>wcW9T*!(wb8u?_mWsa%;C^-O#Zds(u_%WTU*hRF1EObOUIi0yVwofv6KewOa5L7qWgjr9zc~>vO}yx9K!*W&cJrJDrfi;lT9YSF4mHv7EuEesleVynek}LMO7%Q>lDZwCp3`L>jFJY@oCxTBQscwnQROk>Un}(#HN1*ANUqrIcbADh<P9Vg&+C(Z*KwT1cb*$#&fO<P-&{Jm4Q1h5(f2#igqeud0M##b;Fl+&(K1qA2YSf-hF@&7V!2az)C#BtbdsoYtVJ&LU==75X+W%OZ82f4ci@FlvqVuEpQ9k$f2^c`i%PO#Hm4lCFT+Lkx5q?{=T<K@eQTeB>!XAt)l^)_aZ?@|-Mp1D^eOa(>t!J1jEJm+`fb2DB6K4r<nAMt*a0*=r?@29u@ZyJi<AbyeUQfD7BND(&9Iebr>};fTVb9B8$H?890=v(?TR4Nmcfz5>N%e}Ah|h6M)MRF*vN_tI-ph)C<*33S;r0W6L}yWRbN#$zFUoCqn>MEJHH1n6jDSULc_u&h=#4*tOQ>FGV1_4$A`^LGt5y07@rqxss~YL0?ZIV&Dklg8j^dB3#VRuH*}ABAu}nT*lywq|4>>6xf;F$sqXa3lfFy{<e}SP5m&4aA|LXwD_e^=^0HbgonM&8XHa4;#r9-KB$42xobKJQ~;#j_Ho*^FUOANwFDPoZqM`0tVJmyF4*0jUY!@zaOvCB0EJq64&nP&ZD@W;_dWv=d5_dQ`mH9N)!}>E2u@^8oh0|cvW4)RE8?s9KQTgoW?Dd1*|V)E9B5Ltq<a^Mk_SGMj+4WqJo5@?Jvch)4CDaMn6p>Kt-FGQ?3k4cCK+AQhFBn_VfMr4z@DTsgp_ak8KrXMiqekxE{!&y#4?y76@{$H+KIpU~slHXb<LIekuMG1y)N^1C|>l4c>BpigUScA+0kAnd@dytjA4RitH<Q^CqbZApX)>#hcALKir%+W!!mcb276ic5KNM>NZ%EWtz6jPd7?_yWW{NWjqF}+UGl0iS&8F3_8y?=Vs=fjns@F>ST1BML~=-I%089Q+cgEtjgjeq6w0XG3%<v@7t@JHsarhh&W<UP&MB0X$$#AmF4}SE`ezDOY${?8O{dFqrvG=S6Fzihk;IFtLdm7Zlx{ABB)jCfEJ8j%Y}IviI=0^<u^Ew7sPDTxoF8IXJWbTNS0jL-d&mj5d|pr-S+T%oU;WzRgF_e3fMjfcb~73H2xa8>tKYUpqjxj-2IHkSK7EL?oY{)YJ0RC`Ya_>2UW3kTMA7@9hw*by8o<P+QH5&kUfj6_mlEp#<<40InBtha<IF6pM<F1==DU#GHE_DN`wxDfLBj``I?l^W4Jrt&wTvzcb$_WXE<|DH(r^F^3HK6K>?^AIu`3&s2)ML+pq)%FtT-8f7cN0mW?+z?))tp5ya+V7Nu<KO_fmyUzZrp-(1=#Db^tm%=LGZth+pW`u&3Ana$Uga!G9pm<cY{oB#grpUv4%LTcZeswrX+vM!Mne@OV)5zNZ--xC$6f#q8y(CTNKe+Qjv6XMWEY<_#U0*&A-9SkTXK%;v6Ud(($iFEU_QNy3!!BN_1I+CNmKG-ac(hd(OFryYxXzzX98QQ$0TS);z#Tx55UwWE?F9+3UG$=}ARr3%!p<!0N{z|C02HwaIj~8M&uxZ50e(cGLrRgW>x@a~}wk8Zlf<{YrfB)dc%X6mnuRs6uzrkGY!Q9&2rJrv8G~0dhB)7OSwbD6h-CjxVlR<LpFKEO}^R}%Qv(6qwj#aDge8$-aE>eHb|Kl456I+!dPHCTang*r#H0xsS`(VtzNkXDTS;*8?LbFhgTJb-=k!Y6u_SVbFZ?GU3nM4t1vnV@z#4Oci27gzKBm(pI=C*KvFTM$xfreR?UcqcgE0R(he*0Q=d}na~;l!|N`ASH4idaWnb`d~dP$$=yrSrD)&=(B3nB5!mdT<UEEM7Kl2`U<&#KYlTfy}nkpMIRX)REvrliZ!bJj~mwSMRM+>yPFyzdlZ$u%UxD^T%0yVdM;EkxUE}#Y<x3NxbJIH<#{oJfJxmzdm$D0$}*-T7G^siCiFQP<5N_bUeoRBtEW-wy6+dkp+<xmdovu1OTwJlX&jOFDEf8CVZH^gZ5eZYj;;RFvO=91B=b{tmNNLZGJ6&F>=?`P>_;~7A0l5vE%~$p&nTjF4A~DyUb-4XJ>pdtbUUl5ruv&ZzML=$$m4|f|Kz)KDIALM9eNSye7!?!?e~s`$iiW1$?iYgtj|Rxsm+QmA&JprWOO8mU5g3izjjHcxNk>%GP;(Ts-)g^uIH#39%8PYH<Wqfs*Xp{)_yB)P|UH=o#Q7X@ZCuWzX@Io+mR?YG8!&)#p-qZwC~8mRG0(5fs8jy*J$_9&iXtW+V=0?7!RE{y(!FBV_"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None
