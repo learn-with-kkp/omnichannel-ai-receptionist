@@ -1,86 +1,15 @@
-import json
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional, Dict, Any, Union
-from enum import Enum
-from datetime import datetime
-
-class ServiceType(str, Enum):
-    WOMENS_HAIRCUT = "Womens Haircut"
-    MENS_CUT = "Mens Cut"
-    BALAYAGE = "Balayage"
-    FULL_HIGHLIGHTS = "Full Highlights"
-    KERATIN = "Keratin Treatment"
-    MANI_PEDI = "Mani Pedi"
-
-class StylistName(str, Enum):
-    ELENA = "Elena"
-    MARCUS = "Marcus"
-    CHLOE = "Chloe"
-    ANY = "any"
-
-# Vapi Inbound Tool Call Models
-class ToolFunctionCall(BaseModel):
-    name: str
-    arguments: Union[Dict[str, Any], str] = Field(default_factory=dict)
-
-    @field_validator("arguments", mode="before")
-    @classmethod
-    def parse_arguments(cls, v):
-        if isinstance(v, str):
-            try:
-                return json.loads(v)
-            except Exception:
-                return {}
-        return v or {}
-
-class ToolCallItem(BaseModel):
-    id: str
-    type: str = "function"
-    function: ToolFunctionCall
-
-class VapiMessage(BaseModel):
-    model_config = {"extra": "allow"}
-    type: Optional[str] = None
-    toolCalls: Optional[List[ToolCallItem]] = None
-    call: Optional[Dict[str, Any]] = None
-    transcript: Optional[str] = None
-    summary: Optional[str] = None
-    recordingUrl: Optional[str] = None
-    analysis: Optional[Dict[str, Any]] = None
-    artifact: Optional[Dict[str, Any]] = None
-    structuredData: Optional[Dict[str, Any]] = None
-    successEvaluation: Optional[Union[str, bool]] = None
-    durationSeconds: Optional[Union[int, float]] = None
-
-class VapiWebhookPayload(BaseModel):
-    model_config = {"extra": "allow"}
-    message: VapiMessage
-
-# Outbound Vapi Tool Response
-class ToolResult(BaseModel):
-    toolCallId: str
-    result: str
-
-class VapiToolResponse(BaseModel):
-    results: List[ToolResult]
-
-# Salon Domain Models
-class AppointmentCreate(BaseModel):
-    caller_name: str
-    caller_phone: str
-    service_name: str
-    stylist_name: Optional[str] = "Elena"
-    appointment_datetime: str
-    special_notes: Optional[str] = ""
-
-class AppointmentRecord(BaseModel):
-    id: str
-    caller_name: str
-    caller_phone: str
-    service_name: str
-    stylist_name: str
-    start_time: str
-    end_time: str
-    status: str = "CONFIRMED"
-    created_at: str
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-mc7`%~M-8U<nk7!243hX8R_@=7adwU%UA4@)bl20|y3nM-qBN=Sjk5Cv4*0&Itby!5YEa?-h-`}@wB^L^*>Ez1MdYsEDcDSLudYjj(@B_fSO$)Be?$3%-OkTIU}7SJ!lr)-_N7XtzCkSp2{n4EyAvs?3VqqO&8-^Air4uI#Pu*{m|viDSRA%j>ri1V_72T|42!tk+Vo}Ssi5veu?lnWw9P@qM6%f7_^D!4M&l@v|H0(3?UG-@U;{odJeG}HpGUTa*#lzSE0@>*1SY_<5e4TnbkO@%f-4|l`<yCh7KQL$3o&TY*Ux97t1-sLjn4UG;S3X;RR&gFj6jgo3%u2P=Mzh7Oce4EFPIV>aZ_8{qn_Y3*$YGr9*>Ec7TzXXAA3%2>!1bG~O|2$QgD;KJd*Qe(y$zAxR;8Xp27S%BnL|zNNy@-<0)y!0NcJa&i(qeKst64g9(Wpr3knnXM4}OiKi>sxTsipEtu230$h%To&?a$Tojw|=i4m7GeAY2Nl!P>A`2e_+J{XCvxCHZZ5d=-WL>GH?#qsn>MFN&70_m0Dq^IHCKIlny^Mcr9IiTaa9zA&}8St^v)wh8Nko7cl=6jo=q@9%m;pK11YpZB^OioqrG$fF)&`m5^cN$G<xvg3KLX>s6yA}HCtoC=tEO0a<#yy6q?V^MU#G<J_pww4aVcpOqKkfTrztWK|Ylhgx|)`{YHNk6ZozA6`FMa{MMe%VZNfNXrfVLWCdUERb;mm*eJk2u8|p$1Q+4<vnjXFH`z5-vAni<%V<>MUaiko`E2Y2D-?aLjnrg{noymvyFfx^uL4caYK;u1>tc15$&{!|OpDA%bEb`ZBEej6wxb!tIThujMFa`&W}~WOB3Q#-u5zB`O3DoKe@oOm}pU%3WH`Xr#zIi${|^-)946$QM^#inSI|A_E}Q1K9s#ck`DYG;V$(Q(Z6=cd)1dqB%%n!-*(S_&;PG@EkxRpKbqxOl8Z{L9F*xJ%aU}T^?|9d-eUXDi#dUf6UAN;E80?hp_3?-i>!t8Zlz-l7>en-cb3S!}*G=(ebC@ut_~0vyv6HGi2eXf_KR}uLjE$D{7j-+aq1vJL7$gaYkj|mDlQa%@>6Ci>wPDFpQ{QjSe%;OeXi>P{o4B4hO@=EkJ=~N4GcM>I};_|Dt<w*iQ^qF^5r}X2_k_In&`c(#LZYJCgxnYNSG%^u{>OQ!MaW1C|yz3rFuxkM)O&Ep9;zE@$3&1UX}(AP@;V4j(8+Y9x`X&J()dYwwUKUdOnw62)N=V%pAD*P;S(S&9rh>^@Ww!($?3uInYA;!TMfuQE|=waH5?|6wrQvY0wh#7DB>&ZHS!tVxcYiDF?(0!<e+R|!h)b1pPNP2o0NgO<bFWQEtvolHUh<mK6cEPHYI1n_`jA61{Q0?g4C4KEfHtGv-a@6M?nne;|yXa7wL5|9j^vYsPpk~p)%>Uhm}-0Q0;U~LqWuThcm^2Bw!`+E}aFqYM<2ndF~ycn>7R%g}=5;oR7%^!8=HEDe<ynR<ZJv*YAMNOn@GB7tiX!ugbc^oa-ncPI*+)mwxs)0(XtG}g2DldfBH`}}i4l_S19I3YuPqrXoupoblR%;YUET>1|$r}}~dzk+^R07ElHgdhYn<A*;-RGDnp4ndjEi*?jsp01N%NMUzD1DvNYgUdj4(eY_L;(!pVKqgTOg=gv={?X?NvAYl`36~A;)cp@mK1^7wq{Eo<EN}GJiun)^YY<wFUq%6@ATQpf0MET<zdd_gRoFHMab2hXLVLk-R>qMfdX`-fOhAI<s@(Z=;;0NS(ZVMO8PuB&`dMDPWSvgO-gKua+AZ+m81FpIedB2c_xP&hT&$&j~v@DIotSHkUe=BahUDj9j0eu<j7`A!0mkLvuQdjMKAETOjANyuH7Cb+cL|Ot68Q7Ijx&Z8;LXbk>1&DSE@#uCJF=D)3#f{4(gwtq~)KJWyoG8lLMrRoG6-8CokW0!q5ZOtE@M8ABnWJ2CQ_?ql?sadugn?j>GtX7q_&|>CsY>#_Av|8KCh<mV!0kXN7;soz~ZS^r`=T^X%~C=-Z@`G`2-$EfCUEyW-Yc*poOoj!m0P8p$z4WOhyluT%}Ae_7NH*qQ5_xYylzLD+PX?z~b%0NbK-viG(_C8`cqHAb#VZe6^&os<kB_gCpTK1ex7v;jHb{~u=+>M6vUYpYDkIX!KY-e|~#OO-53{+l25HBrz(R8PMUYn;|dz2R8Si#UBO8v;R(Jegs_EGd%%Wcg+V$&Gq)pK_k`hDw3snv-J8F6_!;aeV*w%jR@{f-Et>PyZ-u68zzfoxcIZ$}Ef"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

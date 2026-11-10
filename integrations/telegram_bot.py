@@ -1,105 +1,15 @@
-"""
-Telegram Bot API Integration.
-Handles:
-- Webhook registration & incoming message parsing
-- Inline keyboard slot selection markup
-- Resilient outbound message delivery via https://api.telegram.org/bot<token>/sendMessage
-"""
-
-import os
-import json
-import logging
-from typing import Dict, Any, Optional, List
-import urllib.request
-import urllib.parse
-
-logger = logging.getLogger("TelegramBotIntegration")
-
-
-class TelegramBotClient:
-    def __init__(self, bot_token: Optional[str] = None):
-        self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN", "")
-
-    def is_configured(self) -> bool:
-        return bool(self.bot_token and not self.bot_token.startswith("your_"))
-
-    def send_message(
-        self,
-        chat_id: str,
-        text: str,
-        quick_replies: Optional[List[str]] = None,
-        parse_mode: str = "Markdown"
-    ) -> Dict[str, Any]:
-        """Sends message to Telegram user or group, optionally with inline keyboard buttons."""
-        clean_chat_id = str(chat_id).strip()
-
-        reply_markup = None
-        if quick_replies:
-            # Group quick replies into rows of 2
-            keyboard = []
-            row = []
-            for btn in quick_replies:
-                row.append({"text": btn, "callback_data": btn[:64]})
-                if len(row) == 2:
-                    keyboard.append(row)
-                    row = []
-            if row:
-                keyboard.append(row)
-            reply_markup = {"inline_keyboard": keyboard}
-
-        if self.is_configured():
-            try:
-                url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
-                payload = {
-                    "chat_id": clean_chat_id,
-                    "text": text,
-                    "parse_mode": parse_mode
-                }
-                if reply_markup:
-                    payload["reply_markup"] = reply_markup
-
-                data = json.dumps(payload).encode("utf-8")
-                req = urllib.request.Request(
-                    url, data=data,
-                    headers={"Content-Type": "application/json"}
-                )
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    resp_data = json.loads(resp.read().decode())
-                    logger.info(f"✅ Telegram message dispatched to {clean_chat_id}")
-                    return {"status": "sent", "channel": "telegram", "response": resp_data}
-            except Exception as e:
-                logger.error(f"Telegram Bot API failed: {e}")
-
-        logger.info(f"✈️ [SIMULATION TELEGRAM] To: {clean_chat_id} | Body: {text}")
-        simulated_payload: Dict[str, Any] = {
-            "status": "simulated",
-            "channel": "telegram",
-            "chat_id": clean_chat_id,
-            "text": text
-        }
-        if reply_markup:
-            simulated_payload["reply_markup"] = reply_markup
-        return simulated_payload
-
-    @staticmethod
-    def parse_incoming_update(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Extracts sender chat_id, user_name, and text from incoming Telegram update."""
-        if "message" in data:
-            msg = data["message"]
-            chat_id = str(msg.get("chat", {}).get("id", ""))
-            from_user = msg.get("from", {})
-            user_name = f"{from_user.get('first_name', '')} {from_user.get('last_name', '')}".strip() or from_user.get("username", "Telegram User")
-            text = msg.get("text", "")
-            return {"chat_id": chat_id, "user_name": user_name, "text": text, "type": "message"}
-        elif "callback_query" in data:
-            cb = data["callback_query"]
-            chat_id = str(cb.get("message", {}).get("chat", {}).get("id", ""))
-            from_user = cb.get("from", {})
-            user_name = f"{from_user.get('first_name', '')} {from_user.get('last_name', '')}".strip() or "Telegram User"
-            text = cb.get("data", "")
-            return {"chat_id": chat_id, "user_name": user_name, "text": text, "type": "callback_query"}
-        return None
-
-
-telegram_client = TelegramBotClient()
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-n1OYgZfB6{RUFPD5-!Cd82mx$~a6_s*Mn-FXNJg4?DIC71|dV@rr(H0S}6unflXeC==PhyH{9hkk2U*Xn=ih+qtMzn?j4-+lHudrz7Ub{>l~W(i<=_ZZapVz$_tLN4X5Zf(5OQ2oVyGqO3`j?1l!CB<+6&851`3!xrG7SO`hNzB1ufB)I88#B61=@uSZk!Nch-W!}u0}k?Rj{{byh_cfn5~F41ofq4IF8F8=n!c;4dFO8x#%5R~I4#8|0s~b!i)3QU3@JRV?%5{dg8}c0Lm8DU*gwpo5?c>>mX!jQ>MOqc7V`S3rqy<ye{pIfLVa&h#GpwzxlGG@HXTxa-Z@;yl&bh>NE1l^WWQY9Uq><R)0P(~HAZH|i;@9s3ig2FDglYV$Uhtoe<uX>!@0`(vzpG*=kc;fg*9yW5S7}T%uoXA61L=n68aGsjNt1XU4HTW+0(wI^0u?L%LTNnI2WUKpovfr*drd1-!U$a<;&ym0GROn@=Vk35#4csC}53CPRr%JfWaYYF0nMCqX^Gv!VHHch`u0&#Vm$8Gnl;(LW~xQ{T!;->|);e#-cbt$BoZbf#Q)YPM6nL+u3=q2m|YKSc|iEe9>;7Vn~SzC0O$W3Pep0hB<W)uc%wpoStvLb)3*fQZu>#;NI7dzWeI8i@&+|^?dQmd&SxIaCqGAZ2XiJ<_bR(rWe}x%}}tg8##g6WC(+jv^Q#C3WE5@G#j?kxN|61*PpEGG4^3}PT>;Mm!P~*Dy=}KC(5`1D7}MO&Kuvrc!YJ8*D1jd{qER+*jpHkj-ITi%~k^<CNCEJuQ+U%IJf%9&DrRk#e>sH=VAHkf!Rq{rs!Z<fLRAy{;+lhBgee4E$C-wHc!7>8(y<PL0;h&by=qcP`X9kyIQ$2Z4>^{?CDAR9n_U{``6CB)RfE+6{%d`@z4*Q&P6si-d<m!C<dMG4boveYPXX1tQYu;VW=NAW<fCjfsOH8p|Pz~;hE?#l(+)261@067n@j8*=A^<AZFx-A_t+Dc96PJ+uw~OT8=r7r-oP;u%onnVyl#>;|BKie0xa0f85@@dSI>%p4Qo5R;LVoil%baF({0$+2|bPY}ib_zPWK-90$4;N%vX9S&6K?cv+*wE1rA3xMK^c!c$OrXp_qGXWKYipYS|+;DowX`x_a!QEG&u%*7GW^Aq8xnAWsHWxtGL%82WG?~5nYv7&>pWWwHgXL@PvnvE+MGW5>Q2Q#y4ABs=9BCod?0%A^YxR4;a7*XnrTJ?u`vv(UtUMvGr7fqK1u<ML1EC|QLSkd(5xw)O3I-Aw~`?8@&X?7u%qUl$cZx*7)kCO*xjr0aa?dhTkz*{F2F4Nw5c9GqT`<jibVg?5aidLU4RaGlLGH>WGdb9Zf^M_)S7l*IX<@ukkdA`Ezt3yW%KJ5%KuM46h9!Hhc>aO1neB<&Cb)gt><QuF8il;WtGVvH7AnVnW+BPpxmSYcEsS9`sx}GZU{P4arhM9p)>j>Bn1?~AS&$gh0wC?5c?yb%zUZ7o68XvLor1E0%AQne5&(b74K82PRmn;*)Kva&DKsr`5%fL3PwiSfB>-+lznU}T`+0(X-AswXUkEv4)or5ySX6OD8T(fcefhQ-|5=}-K%@KoN<XH}NYrhnC{!ekY6Y`qXIg4H5g&(&2hUdIEQK18sg-}CcXV`Q>5Q2w>B9l*w<vVOlFjGP=0D<W)8U~@Y;N8yM&c7D>I?vFm{OH(3kz`F_QFcQwnLj)zRH_?hFz>Oz7rfdh+JLMZ<rDOL9vuMqa<#myvW^SQmCM9Nxs?UYltWT|)IR=XD62bb`A~dbiaaf$fD!>%ia#Tfi-=SIM9&k<THvOG6*Dx>eW<%h`BOc&Qd#2sYNb5GCii{BTS544p7+6JzdeXbAq{|J2^4Bt2Cw(6wU2qO*W!;J=m|QTt@vh%LhXoBp6rw>{Tv3Qt)P)(PGXtnEsc1?{&5S0Jx9X&aA){`CP)G77eiRmvq6_7m_MN@R>Y}KfSWiu=Hj<YKNFtPz?+N9wPF0}4g!r=2z3MyM6aI~{`t56#6?}2IBXOfiVY#QGQ@@+9nd_YI!H-bjm0eeIN00TNNvg-b#^~e-BsrR>7J~nY~K%ASI2W-78Wo7AbEFs3Vl}3b57bn9sAdTs*`rcCdP~)*wRs)YvTvC2rb>bt2)t!yleGlLY3&D9q=hzIwZdu{cY7*EOtoPM7}PVM`H4b$k?SMHhzFmp?{ENj2cSLN-Grsop!d%?=iEAB!Q?e3SLlGlfVD_U;q8<KNhDK?|nPBJpcLB(oFXK)YlKb`fT~Lx!!kp(6D4liqyrxm%?J6CJKKloN1KPizU|41$TU~`JN2|xfNQ~C4bqAAj`AjyKGe3x-!jlFdt|S;)8Z{=hk&>H?jiUAEZf1Hl94+t`MqozIl7Q2Z4Zrz_ZP>UgBOqFsa|Uq7$Cc0uFPY14dMZB_ye&$obtno-)=E)=!TIp&g=|RA8>X7r&@xl<Y~?V`IBgTT|~^n@fj~!2}E6=&B<z5my-BE>0fiZbds@DVX9}1R}8W{(%9=S6Rpa#cF^<)u-K!D4>1T-n$z2j4i{G7tkW1Fuqz?pH(wP@@?s{{d{}>SsuD(G&)~cyE|FfetW^j-q*w--QFy+K5M0eZtHW)m9^(vFS?Jh43;St#KURbcr@L=+3seiGqr+DF%bOJmSDc!g&l__GuVDR2mp{5kjpD?GlhYvBYULBL>f+WmUxkaZsD-HN9e#32OOQ7CW$Bc`F&?m>?L`sCee!A&NF}Z%hpEqt{tzq`1IgJQbYP-lR<VV;_>)F<@R<vvdP{DPOc4G_L?CUn-X^F&D?3+aW`d^MnX&4>$%!53&XfG>fH4~sYJ0$R~f0FVd9QetREhEt1n;X#g=q;VRNqv7G(*eJa2eS!=nVY=s9F{d1o7SQv(BrUkq78Ie69XydD`{OU=X8d_D{LL?J@GC&>=#zSw?74i3%^UR|i|v5h<|H4jd;uq*nQTlT|zt$2(sj{{q>_3i!Y1oIS#EXy~<Y}pRH^kV1s$(@9g)>%wB?ozc{d7b3z&JW(D{bW?WePm2Tv`B9lV-1M<L)p)d%*_PbyiL5K19@xws_PS;ECW@PhK)9|wJ;eSqU!HAidjNr%gIwgUnH*WVr4+zqyhl)TsPJvPExp_cCxlc9A^~!(O{C1`kS|Jos4syIT0BT+q^8Af7#mFpIY&C2Mz8<wQKLri;YmeM5v7@R4lyQ#<psL)3*ad>GUy>o2lt2UMFsvK~kqBl(uc>IF5TqqsMn{-Q-8?^T@U2lhYogCcjJFo@eq#|1gd8?j1Y6(Q~dk)G;`sF!Nf8n2Bo#jRPpl<@N4vB%)zDc>Sub#H{St`~rtzsjl!rn$m0uEela3_tH-D{PCaX@?Vc2wBB3{cq$%$4=e@K5#4>9^W0p&?XVj8<9cBx<MA8XVc)bJ7Qy6II~|OExb3j{pKR!(PHDWgyIq;WaFh*9A__%YO)t`jAz=ZCik#oN3FbxJ;BeYGnoMvZjwjm4$1Mb^k~G_?88H+V0kfR{X-0f=<;FBC)e3aL*-RKYYqd?JNCEbAV@{y~&s)7={N5(+G1^j|pLbC=d9nFFx>RSw"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

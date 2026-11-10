@@ -1,133 +1,15 @@
-"""
-FastAPI Router for Tenant Knowledge Ingestion & Semantic Search.
-Allows any business tenant to upload FAQs, documents, policies, and service menus.
-"""
-
-import io
-import logging
-from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
-from pypdf import PdfReader
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-from core.engine.qdrant_rag import qdrant_engine
-from core.blueprint.tenant_manager import tenant_registry
-
-logger = logging.getLogger("KnowledgeRouter")
-router = APIRouter(prefix="/api/knowledge", tags=["Knowledge Ingestion & Vector RAG"])
-
-
-class IngestChunkRequest(BaseModel):
-    tenant_id: str
-    text: str
-    category: Optional[str] = "general"
-    title: Optional[str] = "Manual Ingestion"
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
-
-
-class KnowledgeQueryRequest(BaseModel):
-    tenant_id: str
-    query: str
-    top_k: Optional[int] = 3
-
-
-@router.post("/ingest")
-def ingest_tenant_document(payload: IngestChunkRequest):
-    """
-    Ingests text into the specified tenant's isolated vector partition.
-    Guarantees isolation between business tenants.
-    """
-    if not payload.text.strip():
-        raise HTTPException(status_code=400, detail="Text payload cannot be empty")
-
-    meta = payload.metadata or {}
-    meta["title"] = payload.title
-
-    result = qdrant_engine.ingest_document(
-        tenant_id=payload.tenant_id,
-        text=payload.text.strip(),
-        category=payload.category or "general",
-        metadata=meta
-    )
-
-    return {
-        "status": "success",
-        "message": f"Successfully indexed knowledge chunk into partition '{payload.tenant_id}'",
-        "details": result
-    }
-
-
-@router.post("/query")
-def query_tenant_knowledge(payload: KnowledgeQueryRequest):
-    """
-    Performs semantic vector search against a single tenant's partition.
-    """
-    res = qdrant_engine.retrieve(
-        tenant_id=payload.tenant_id,
-        query=payload.query,
-        top_k=payload.top_k or 3
-    )
-    return res
-
-
-@router.get("/stats")
-def get_tenant_knowledge_stats(tenant_id: str = Query("salon")):
-    """Returns indexed knowledge chunks for a given tenant."""
-    clean_tenant = tenant_id.strip().lower()
-    local_chunks = qdrant_engine._local_points.get(clean_tenant, [])
-    return {
-        "tenant_id": clean_tenant,
-        "indexed_chunks_count": len(local_chunks),
-        "knowledge_connected": True,
-        "semantic_cache_entries": len([k for k in qdrant_engine._semantic_cache if k.startswith(f"{clean_tenant}::")])
-    }
-
-
-@router.post("/upload-pdf")
-async def upload_salon_pdf_document(
-    file: UploadFile = File(...),
-    tenant_id: str = Form("salon"),
-    category: str = Form("salon_menu_and_policies")
-):
-    """
-    Extracts text content from uploaded Salon Menu, Services Catalog, or Policy PDF
-    and indexes it into vector knowledge memory.
-    """
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are supported.")
-    
-    contents = await file.read()
-    if not contents:
-        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
-    
-    try:
-        reader = PdfReader(io.BytesIO(contents))
-        extracted_pages = []
-        for idx, page in enumerate(reader.pages):
-            text = (page.extract_text() or "").strip()
-            if text:
-                extracted_pages.append(f"[Page {idx + 1}]\n{text}")
-        
-        full_text = "\n\n".join(extracted_pages)
-        if not full_text:
-            raise HTTPException(status_code=400, detail="No extractable text found in PDF.")
-        
-        result = qdrant_engine.ingest_document(
-            tenant_id=tenant_id.strip().lower(),
-            text=full_text,
-            category=category,
-            metadata={
-                "filename": file.filename,
-                "total_pages": len(reader.pages),
-                "source": "website_pdf_upload"
-            }
-        )
-        return {
-            "status": "success",
-            "message": f"Successfully ingested {file.filename} ({len(reader.pages)} pages) into Luxe Salon vector knowledge base!",
-            "details": result,
-            "snippet": full_text[:300] + "..."
-        }
-    except Exception as e:
-        logger.error(f"Error parsing PDF: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-nQB`*+hwlZIJffSCYE41^FurX{zemb!Im+q$({5(&Ya@60)q%@}_sGr1><t@si<4k3^U{@1tdFqvU@zu)VWs^7QjsZySw)_){%e0%;uZ_x-bj7F{&W%ClPZCB@>VyUS66_*SjQUZ)rPU%Uzx1cHjFk+7iB$2SxuKrNo-g*0W1c8}3iUeXng3PoON~11Q4`M1y5RL9Xcnl76si+w{_01KM_n?u46nNgS4Sl;^WO1Y!YKvgtq=R4DSA&%|M5;KiR|`ANnijgTtmdf^5aN?%&jg@n%aLm*q~np$k$8T0@zJBLx7C`N_ZDaG-Fi+PV5h`Wn*GNNap$D<G?5K6x(~|UVSYzJY-#3f!$hkkKaNjB!;M7oYLuE$cga*1plyJpu0>AL3OQ0}bz^<bLrLVT{TT#60ZLqJ_Ft$-HveUnrD7JS6wpcwAdb!I%vBW=iNWO0(;t|Jo7pQF!Qsh6;9LjWPMHim)grPqc=P^sgVI?Qy8Q?i4KvM<9SZ3RSc8&{SBr^5a?TlPTgYg<e!WBKE&!bJ_#sLZm{?)olVd6JTP_Ar#!C^aNQ@?NJ=ok@4*);AIOVZbA(XTeD_wMufur{EPe3XGrdaI1G){Hz>Lq)<VNk4QC;cZc7M?o^<>3J^4Xn|x$33C*LB&>4YMQcsG%T#v*2%@Q^T#|@6i*7QY(^n2iJ+t%^!Dbl8aU<rQDM40pZ!`7YTFIs^<H7umEsxGP^>A7DU63lQ*s3FNRnP|4eP^Jo&}Sx%RTAr%v0qL`7j%$KuQOF5~Zv8L2J*nsUBF7nz!z`f$40nZ+8jhKZ=_BmWNpg-F&$}I_WatLwMHviDRVF5-fOucf0VY@U#Gd1e5+ttpdonH}c;_a1W{+7&bMty?eGMsn|q!&o|ar?s`nkPiMLFcz$%A{VZENYU<dQW0TDmP423u@zEr<a~`muUWT!jy-4CD1rY%c5=&NJp_HqUd-M>d?4cTYaCcNa92I7&H3|V(h$^idP;)u^+-^&Tk@~}f$mOe9XS5eP#pm*<Gi6sdwmu~Kvly$7PS1wt_2sn}AylxD?uJBU?i?#rB}6;kT|-h>*w|cW9-E?mQr5JE2&zQ265Nb!$JT&xmi;gZo{}8de$-fgS0l99TRZKa=7Z+dq>L97p*VI#BYCvr*|9U^66pALqxQ#tdm_Vi=6%v82Gl4v^j@lBSK=8@%CR?=ZvR*Dz{0?Q+{LQvvmqf+4<_8Oaa=JW=xHHA8Us;IbtBnaU7oLJy|b);+J7VLZj-dFr1<1p&AU|B+$Is>?qN3zW(sqoaWJ3}^RnkZ&;IzhTxMygspf8p*)$|ehU1%OgFnxPh4+n>gvfdGo@>NIH!10!VfVRJ1ghUE;vSG}*SY$#@+RvXj&|zR#^|C4A?7ji+a-$zwgHn9ndgD~ORtx8N-$0y9LFR;Y^Gb78o9Qq$JA?T1Z$wS+!kGzV&*}&H_YOwjHvdUU~JOH(jOlJLBs_wr91&N?bh1k;BGJXP1^?aiKm>|C8`)E7*y+<V-&>F*WXXa&EL*GrxwDe|DPJe8#Sn~wPKj13*9Jj$I^EVnL}Oj-H{cI1~$REmuwf7_#{}^4LzFJ&@|3t7LmzVHCNX}*X5?ixi25Wo6P;9iZnr=(dRr+I6*PnJDjK?f=2^|c&QRJ3J>PO<||31uEboYtntsXQei$aa->?J3{U`b9>to~F==(DP)&Rm(<tTnSz;U9g+^r%A%IN2q!~f`s{3X%Mu9M8=GsB6+3EuVoN~G*TC^{}eYg4})hZ18`?kgK<?&G^l+0fWFL?yeSw(Y!^N=zH`sve%0wxp9hDQl>%NC0A)@@uYmmBZvwZ{%t`7O7|JrD1XCZ=>xI&Xv;y(N%@R#XBl2Bd59>%asC=u4#JbAftdgo2JebRY`Xb$#R#T2kZv^w6%YRCmVYZ+{SDHEdqxlbTH<>75;f3b%1^3u*yV1&Ss7dZY20byp{*2)nU`10|jIa6dr|TDH*+m_2SJAni`ZYHW()_%c2#LRE-mXA^E@{}MI#Zn$y56?J>3_S=9;a3So+k>G}Cr1t)Vb&<*|9ApVAy{T_Jh>Xx-ub1jI-0fU?DplE_Q@26dCN7={u_mkTtb&WkBvHkj^8y7g&wr1v_QmIg#5KLF!(?cIPAAKL$%TXMW^ayF-@g7pGL1<-^39<|Vac^@pPg7LH;bhnGLjL<1C|inaoFbi=E|ViIiC>8(V2norB;$ip^%P4FqRIP1HdD~JLij=Tg%Kpx|#&11~>G3sHjl*e|3I>ob~nX+%_~urLQj0x?BT+@)R<OfcT`f@TB=4njiXF3FD_E&If&7M7FkgUB+<oz;TOS{jvS;ni$L}l_^{X3miIrnjepf2<+LKY|9I_UlF@zFI(#zUOU)Sn4xgrtbkj{@D-~pDB2kwES4jjSI1*D&fN3aj!?r>XMIQmf6l`=Bs}<*dA_)ZB)?PH19TXgzF5)S`sTWb`LZCnDH2pd3(P<PJAo)iM*@s~Ks<n>UAyUP<;MDEjsXySHe16%=l1@88Y_n*r}qBmYE<l8t(A*dbF#=Peomq>WM(IJ&$=jFG94#|Kz2S&q$_FxX!Y-hsgc-s9L?(QpG;|rx_h#_+u5y;AIJ$F*SzuXha<6J#qNHpO6XJW1sY7Qj`sf7q8FFU;eO$KYqiwvh=7#O35q5QfnrbFK++5WzD{%P@2;Cn%21<XKdZ&l*o$#n^_0{Vw<wB;vKJ+KF;Pe~e2Mg;F&fo3#ol>EeHe-hH(NBQD8nC)$^S$%HIsLyf0&*eC#DgJ4f`95v6e;f6vWhNmpMvP^F#$|1wumyVog9tqRoljg_)<5)fRcD;=~%6#I-Wd6AmKFJdvf6Zsxn<2sFLO#J|ta%-a$=@3d~n9~vPsy7yi^pT8^4-N_|$8O1Q5q+8qija_^>{P?x+5e<6U#pPXvt0%91nm(|QjJ-}$CL<7sZqdVy_lr-@*T&?ZWabcy%N&xEeh*c2#Ck=g44bB>o84?8-A<T+h@O^XO%vP7J6Qg<tqvH_V$ga1?A7#~V*u`WTiXk7u^1!oQ8_lfi}vNmk8Rt<7L?ESUQKR(rsN@mBvbrRV{2taZFjB*c4PcNGb|m~Cz%DlI4~pe>(Ohykc>H2d*4|7M5HhGG4$EOPoKo32ozv`*qrcr%sNQ1q#INRw^r8cHIfa_mZoo{God_EbuT*zfQ~bT?h&dg#5Wzbu+nHmfPZnzzR$jlCSd&QfgE})8;tTWshCYram-q+DkjAP-ODjWn^*g7BMn2lc{pj&zxE)r#3jS=1NMy@*Dx1l@Nz0AB*f<8xD0PUp&^UOUa|M{bgj{tgTx@&=l((E@eAru5o}%^z3Y9;e1igmmbXu;HI4T2tpAWdi<<+<aFhe_la|_sZz{71#H_Si|F$#>8}H|+!On^rPv$hBrK6jBW1=%u2+W_~Uwm<^qOq0LKQ?GL22fQbVQOSubT2Re9AU(e0srjWGCC}b%@U5Gg;-&=@hi?y<nW4U{%m^s&Zqo(r;IbNep6$}h!-L(j_r4mZ!`MH<$@+G6Mt=15zpw7;VBTX?#%<oHLo^4B$!PRud9+6(saSGv!eKFvUhxBN+C!-wX&NBjv+%ap(mcEqzl-J&F1po5A0=j;*x+f=fYNSqp`KB=BxiO<+EzR1QUk7mTxYZzcLrz@00}?k$>9CT~fB%sjRuw0{HI@dqe)}PPI`Mn@{$O{ozn&N*7y3g~bO6f@Z0?zxG{bQS+52Nj`N&a1&XYA*b%GR7YZ`nvyN`>i-O0yE)Z%CzEo0LWEIdw%F=F%Qzy{_39haJUeTOL&fkslIP#q-9b7jp};#HX2#LOceV8z@sOk^x^Pft0p)fZhpL2|ie!qPM~U(L6M_UEdXpI(xON#xpY6N|1Iz2T<phK7Z629>uWY?Y_fqC?)$iDJ>)m!O5_gGKF8ZxO{@qv|E0{s0Txw_EdSmIkNof*==#d4lK6Vke;S$4faQE`d$-%R{*Et$2F3sGiQQ5d2E9BZycZvd&G9ly$u#tEA<}aPghAvF}>PM1c9uzMhhq4oQ6GX?STDJJ|{&0lMN;A7Ts8kpg{ru(Z)XQ5E5?-q^*mF2wk@tjKChJ{&{<wP>HCAgo<qLFvryM54&oIpN5SAHFdN1xjzU;Ze#+;m6;zz9dKOVkh$N"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None
