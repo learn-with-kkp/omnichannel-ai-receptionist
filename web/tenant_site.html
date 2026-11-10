@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="siteTitle">Luxe Salon & Spa | AI Voice Concierge</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/@vapi-ai/web/dist/index.umd.js"></script>
+  <style>
+    .site-hero {
+      padding: 60px 20px 40px;
+      text-align: center;
+      background: radial-gradient(circle at 50% 0%, rgba(0, 240, 255, 0.12), transparent 70%);
+      margin-bottom: 30px;
+    }
+
+    .site-badge {
+      display: inline-block;
+      padding: 6px 16px;
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid var(--border-glow);
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+    }
+
+    .site-h1 {
+      font-size: 42px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, #ffffff, #94a3b8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .site-tagline {
+      font-size: 17px;
+      color: var(--text-secondary);
+      max-width: 650px;
+      margin: 0 auto 30px;
+    }
+
+    .omni-launchers {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 40px;
+    }
+
+    .omni-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .omni-btn.wa {
+      background: #25d366;
+      color: #04101e;
+    }
+
+    .omni-btn.fb {
+      background: #0084ff;
+      color: white;
+    }
+
+    .omni-btn.ig {
+      background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+      color: white;
+    }
+
+    .omni-btn.tg {
+      background: #229ed9;
+      color: white;
+    }
+
+    .omni-btn.tw {
+      background: #000000;
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .omni-btn.li {
+      background: #0a66c2;
+      color: white;
+    }
+
+    .omni-btn.tt {
+      background: #000000;
+      color: #25f4ee;
+      border: 1px solid #fe2c55;
+    }
+
+    .omni-btn.phone {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .omni-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    /* Service Cards Grid */
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .service-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: all 0.2s;
+    }
+
+    .service-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-2px);
+    }
+
+    .service-price {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      font-family: var(--font-mono);
+    }
+
+    /* Staff Grid */
+    .staff-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .staff-card {
+      background: rgba(18, 24, 38, 0.7);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      text-align: center;
+    }
+
+    .staff-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+      margin: 0 auto 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+    }
+
+    /* Pricing Plans Section */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .pricing-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .pricing-card.featured {
+      border-color: var(--accent-cyan);
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+    }
+
+    .pricing-card.featured::before {
+      content: "MOST POPULAR";
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--accent-cyan);
+      color: #04101e;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 12px;
+      border-radius: 9999px;
+      letter-spacing: 1px;
+    }
+
+    .price-num {
+      font-size: 38px;
+      font-weight: 800;
+      color: var(--text-primary);
+      margin: 12px 0 20px;
+    }
+
+    .plan-features {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 24px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .plan-features li::before {
+      content: "✓ ";
+      color: var(--accent-emerald);
+      font-weight: 700;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-container">
+
+    <!-- Top Navigation Bar -->
+    <header class="app-header">
+      <div class="brand-wrapper">
+        <div class="logo-badge" id="siteLogo">✨</div>
+        <div>
+          <h1 class="brand-title" id="navBusinessName">Luxe Salon & Spa</h1>
+          <p class="brand-subtitle" id="navBusinessPhone">📞 +1 (617) 271-8180</p>
+        </div>
+      </div>
+      <div class="header-badges">
+        <a href="/" class="chip" style="text-decoration:none; color:var(--text-secondary);">← Studio Dashboard</a>
+        <button class="btn-primary" style="padding: 6px 16px; font-size:12px; width:auto;"
+          onclick="document.getElementById('voiceSection').scrollIntoView({behavior:'smooth'})">
+          🎙️ Speak with Sofia
+        </button>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="site-hero">
+      <div class="site-badge" id="heroBadge">⚡ AI-POWERED CONCIERGE LIVE 24/7</div>
+      <h1 class="site-h1" id="heroTitle">Effortless Appointments & Showings</h1>
+      <p class="site-tagline" id="heroTagline">
+        Meet Sofia, our 24/7 AI virtual receptionist. Book in seconds via voice calling, WhatsApp, Messenger, or
+        Instagram.
+      </p>
+
+      <!-- 1-Click Omnichannel Launcher Buttons -->
+      <div class="omni-launchers">
+        <button class="omni-btn wa" onclick="triggerHandsOnTest('whatsapp')">
+          <span>🟢</span> WhatsApp
+        </button>
+        <button class="omni-btn fb" onclick="triggerHandsOnTest('messenger')">
+          <span>💬</span> Messenger
+        </button>
+        <button class="omni-btn ig" onclick="triggerHandsOnTest('instagram')">
+          <span>📸</span> Instagram
+        </button>
+        <button class="omni-btn tg" onclick="triggerHandsOnTest('telegram')">
+          <span>✈️</span> Telegram
+        </button>
+        <button class="omni-btn tw" onclick="triggerHandsOnTest('twitter')">
+          <span>🐦</span> Twitter / X
+        </button>
+        <button class="omni-btn li" onclick="triggerHandsOnTest('linkedin')">
+          <span>💼</span> LinkedIn
+        </button>
+        <button class="omni-btn tt" onclick="triggerHandsOnTest('tiktok')">
+          <span>🎵</span> TikTok
+        </button>
+        <a href="tel:+16172718180" class="omni-btn phone" id="btnTelLink">
+          <span>📞</span> Call: <span id="telDisplay">+1 (617) 271-8180</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Embedded Sofia Voice Agent Section -->
+    <section class="main-grid" id="voiceSection">
+
+      <!-- Voice Studio -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <h2 class="card-title"><span>🎙️</span> In-Browser Voice Calling</h2>
+            <p class="card-desc">Talk directly with Sofia. Supports barge-in interruption & multi-accent English.</p>
+          </div>
+          <span class="status-chip" style="color:var(--accent-emerald);">⚡ Live WebRTC</span>
+        </div>
+
+        <div class="voice-hero">
+          <button class="btn-primary" id="btnSiteLiveCall" onclick="toggleSiteVoice()" style="margin-bottom:14px; width:auto; padding:10px 22px; font-weight:700; display:inline-flex; align-items:center; gap:8px;">
+            <span>📞</span> <span id="siteCallBtnLabel">Call Sofia Live (WebRTC)</span>
+          </button>
+          <button class="mic-button" id="siteMicBtn" onclick="toggleSiteVoice()" title="Click to speak with Sofia">
+            <span id="siteMicIcon">🎙️</span>
+          </button>
+          <div class="voice-status-text" id="siteVoiceStatus">Click to talk live with Sofia via WebRTC or tap microphone</div>
+          <div class="waveform" id="siteWaveform">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+          <div id="siteLiveTranscript" style="display:none; width:100%; max-height:70px; overflow-y:auto; font-size:12px; color:var(--text-primary); background:rgba(0,0,0,0.3); border-radius:8px; padding:8px 12px; margin-top:10px; border-left:3px solid var(--accent-cyan); text-align:left;"></div>
+        </div>
+
+        <!-- Call My Phone -->
+        <div style="padding-top:16px; border-top:1px solid var(--border-color);">
+          <h3 style="font-size:13px; font-weight:700; margin-bottom:8px;">📞 Prefer a real phone call? Sofia will ring
+            you right now:</h3>
+          <div style="display:grid; grid-template-columns:1fr 1.3fr auto; gap:8px;">
+            <input type="text" id="siteCallerName" class="form-input" placeholder="Your Name" value="Guest">
+            <input type="tel" id="siteCallerPhone" class="form-input" placeholder="+1234567890" value="+16673070119">
+            <button class="btn-primary" onclick="siteOutboundCall()" style="width:auto; white-space:nowrap;">
+              Call Me Now
+            </button>
+          </div>
+          <div id="siteCallFeedback" style="font-size:12px; margin-top:8px; color:var(--accent-cyan);"></div>
+        </div>
+      </div>
+
+      <!-- Quick Chat -->
+      <div class="card">
+        <h2 class="card-title"><span>💬</span> Instant Chat Booking</h2>
+        <p class="card-desc">Select a quick request or type naturally to check availability and confirm your slot.</p>
+
+        <div class="chat-window">
+          <div class="chat-messages" id="siteChatMessages">
+            <div class="chat-bubble bot">
+              Hello! Welcome to <span id="chatTenantName">our boutique</span>. I am Sofia, your virtual receptionist.
+              How can I assist you with scheduling today?
+              <div class="bubble-meta"><span>Sofia</span></div>
+            </div>
+          </div>
+
+          <div class="quick-chips" id="siteQuickChips"></div>
+
+          <div class="chat-input-bar">
+            <input type="text" id="siteChatInput" class="chat-input"
+              placeholder="Ask Sofia anything (e.g. 'Can I book tomorrow at 2pm?')...">
+            <button class="chat-send-btn" onclick="sendSiteChat()">Send</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Services & Pricing Catalog -->
+    <section class="data-card">
+      <div class="table-header-row">
+        <div>
+          <h2 class="card-title"><span>📋</span> Available Services & Offerings</h2>
+          <p style="font-size:13px; color:var(--text-muted);">Transparent pricing and real-time scheduling.</p>
+        </div>
+      </div>
+      <div class="services-grid" id="servicesGrid"></div>
+    </section>
+
+    <!-- Specialist Staff Team -->
+    <section class="data-card">
+      <div class="table-header-row">
+        <div>
+          <h2 class="card-title"><span>👥</span> Our Team of Specialists</h2>
+          <p style="font-size:13px; color:var(--text-muted);">Request a specific specialist or choose first available.
+          </p>
+        </div>
+      </div>
+      <div class="staff-grid" id="staffGrid"></div>
+    </section>
+
+    <!-- SaaS Subscription Pricing Plans -->
+    <section class="data-card">
+      <div style="text-align:center; margin-bottom:30px;">
+        <div class="site-badge">💎 COMMERCIALIZE THIS PLATFORM</div>
+        <h2 class="site-h1" style="font-size:32px;">Plans for Every Business Size</h2>
+        <p style="font-size:14px; color:var(--text-secondary);">
+          Deploy Sofia for your own business or resell to clients with full white-label support.
+        </p>
+      </div>
+
+      <div class="pricing-grid">
+        <!-- Starter Plan -->
+        <div class="pricing-card">
+          <h3 style="font-size:18px; font-weight:700;">Starter</h3>
+          <p style="font-size:12px; color:var(--text-muted);">For boutique studios & solo practitioners</p>
+          <div class="price-num">$99 <span
+              style="font-size:14px; font-weight:400; color:var(--text-secondary);">/month</span></div>
+          <ul class="plan-features">
+            <li>1 Virtual Phone Line (Twilio / Vapi)</li>
+            <li>500 Voice Calling Minutes / month</li>
+            <li>Website Chat & WebRTC Calling Widget</li>
+            <li>Google Calendar 2-Way Synchronization</li>
+            <li>Automated SMS Reminders (24h & 1h)</li>
+            <li>Excel Live Syncing</li>
+          </ul>
+          <button class="btn-primary" style="margin-top:auto;" onclick="selectPlan('starter')">Select Starter</button>
+        </div>
+
+        <!-- Growth Plan -->
+        <div class="pricing-card featured">
+          <h3 style="font-size:18px; font-weight:700; color:var(--accent-cyan);">Growth / Professional</h3>
+          <p style="font-size:12px; color:var(--text-muted);">For high-volume clinics, salons & agencies</p>
+          <div class="price-num" style="color:var(--accent-cyan);">$249 <span
+              style="font-size:14px; font-weight:400; color:var(--text-secondary);">/month</span></div>
+          <ul class="plan-features">
+            <li>Everything in Starter +</li>
+            <li>Meta WhatsApp Cloud API Integration</li>
+            <li>Instagram Direct & Messenger Auto-Booking</li>
+            <li>1,500 Voice Calling Minutes / month</li>
+            <li>Multi-Staff Scheduling (Up to 10 specialists)</li>
+            <li>9 Regional English Dialects (US, CA, UK, EU, AU)</li>
+            <li>Live Sentiment Detection & Manager Escalation</li>
+          </ul>
+          <button class="btn-primary" style="margin-top:auto;" onclick="selectPlan('growth')">Get Growth Plan</button>
+        </div>
+
+        <!-- Enterprise Plan -->
+        <div class="pricing-card">
+          <h3 style="font-size:18px; font-weight:700;">Enterprise</h3>
+          <p style="font-size:12px; color:var(--text-muted);">For multi-location chains & law firms</p>
+          <div class="price-num">$599 <span
+              style="font-size:14px; font-weight:400; color:var(--text-secondary);">/month</span></div>
+          <ul class="plan-features">
+            <li>Everything in Growth +</li>
+            <li>Unlimited Voice Minutes & Dedicated SIP Trunk</li>
+            <li>Custom Domain White-Label Branding</li>
+            <li>Custom Voice Cloning (ElevenLabs / Cartesia)</li>
+            <li>CRM Webhook Integrations (HubSpot / Salesforce)</li>
+            <li>99.9% Latency SLO Guarantee (&lt;500ms)</li>
+            <li>Dedicated 24/7 Account Architect Support</li>
+          </ul>
+          <button class="btn-primary" style="margin-top:auto;" onclick="selectPlan('enterprise')">Select
+            Enterprise</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="waterfall-card" style="text-align:center; padding:30px;">
+      <p style="font-size:13px; color:var(--text-secondary);">
+        Powered by <b>Universal AI Voice Receptionist Engine</b> • Compliant with HIPAA, GDPR & SOC-2 Architecture
+      </p>
+    </footer>
+
+  </div>
+
+  <script src="/static/tenant_site.js?v=3.6"></script>
+  <!-- Universal Plug-and-Play Sofia Voice & Chat Embed Widget -->
+  <script src="/widget.js" data-tenant="salon"></script>
+</body>
+
+</html>

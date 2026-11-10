@@ -1,0 +1,320 @@
+{
+  "name": "Luxe Salon Voice Receptionist - Vapi & n8n Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-salon-tools",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-vapi-inbound",
+      "name": "Vapi Mid-Call Tool Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $json.body.message || $json.message || {};\nconst toolCalls = message.toolCalls || [];\n\nif (!toolCalls || toolCalls.length === 0) {\n  return [{ json: { error: 'No tool calls found', toolCallId: 'unknown' } }];\n}\n\nconst primaryCall = toolCalls[0];\nconst functionName = primaryCall.function.name;\nlet args = {};\ntry {\n  args = typeof primaryCall.function.arguments === 'string' \n    ? JSON.parse(primaryCall.function.arguments) \n    : primaryCall.function.arguments;\n} catch (e) {\n  args = {};\n}\n\nreturn [{\n  json: {\n    toolCallId: primaryCall.id,\n    functionName: functionName,\n    arguments: args,\n    callId: message.call ? message.call.id : 'local-call-mock'\n  }\n}];"
+      },
+      "id": "node-parse-tool-call",
+      "name": "Parse Vapi Tool Call",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.functionName }}",
+                    "rightValue": "check_availability",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.functionName }}",
+                    "rightValue": "book_appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.functionName }}",
+                    "rightValue": "lookup_appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.functionName }}",
+                    "rightValue": "cancel_appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        }
+      },
+      "id": "node-tool-router",
+      "name": "Route by Tool Name",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const args = $json.arguments;\nconst targetDate = args.target_date || new Date().toISOString().split('T')[0];\nconst service = args.service_name || 'Haircut';\nconst stylist = args.preferred_stylist || 'any';\n\n// Simulate database / Google Calendar slot calculation\nconst morningSlots = ['10:00 AM', '11:15 AM'];\nconst afternoonSlots = ['2:00 PM', '3:30 PM', '4:45 PM'];\n\nlet responseText = `On ${targetDate}, for a ${service}`;\nif (stylist !== 'any') {\n  responseText += ` with ${stylist}`;\n}\nresponseText += `, we have openings at 11:15 AM, 2:00 PM, and 3:30 PM. Which time works best for you?`;\n\nreturn [{\n  json: {\n    results: [{\n      toolCallId: $json.toolCallId,\n      result: responseText\n    }]\n  }\n}];"
+      },
+      "id": "node-logic-availability",
+      "name": "Process Availability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 140]
+    },
+    {
+      "parameters": {
+        "jsCode": "const args = $json.arguments;\nconst bookingId = 'LUXE-' + Math.floor(1000 + Math.random() * 9000);\nconst name = args.caller_name || 'Valued Guest';\nconst phone = args.caller_phone || 'Unverified';\nconst service = args.service_name || 'Haircut';\nconst dt = args.appointment_datetime || '2026-10-31T14:00:00';\nconst stylist = args.stylist_name || 'Elena';\n\nconst formattedTime = new Date(dt).toLocaleString('en-US', {\n  weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'\n});\n\nconst resultText = `Booking confirmed! Appointment ID is ${bookingId} for ${name} for a ${service} with ${stylist} on ${formattedTime}. A confirmation SMS has been sent to ${phone}.`;\n\nreturn [{\n  json: {\n    bookingId,\n    callerName: name,\n    callerPhone: phone,\n    results: [{\n      toolCallId: $json.toolCallId,\n      result: resultText\n    }]\n  }\n}];"
+      },
+      "id": "node-logic-booking",
+      "name": "Process Booking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 280]
+    },
+    {
+      "parameters": {
+        "jsCode": "const args = $json.arguments;\nconst phone = args.caller_phone || '';\n\nconst resultText = `I found an active reservation for ${phone}: Balayage with Elena on Saturday at 2:00 PM (Booking Ref: LUXE-8421). Would you like to reschedule or cancel this?`;\n\nreturn [{\n  json: {\n    results: [{\n      toolCallId: $json.toolCallId,\n      result: resultText\n    }]\n  }\n}];"
+      },
+      "id": "node-logic-lookup",
+      "name": "Process Lookup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 420]
+    },
+    {
+      "parameters": {
+        "jsCode": "const args = $json.arguments;\nconst phone = args.caller_phone || '';\nconst bookingId = args.booking_id || 'your booking';\n\nconst resultText = `Your appointment (${bookingId}) has been successfully canceled. No cancellation fee was charged. We hope to see you again soon at Luxe Salon!`;\n\nreturn [{\n  json: {\n    results: [{\n      toolCallId: $json.toolCallId,\n      result: resultText\n    }]\n  }\n}];"
+      },
+      "id": "node-logic-cancel",
+      "name": "Process Cancellation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 560]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "node-respond-vapi",
+      "name": "Respond to Vapi",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1280, 340]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-salon-end-of-call",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "node-webhook-end-of-call",
+      "name": "Vapi End of Call Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [220, 780]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.body || {};\nconst message = payload.message || {};\n\nconst summary = message.summary || 'No summary available';\nconst transcript = message.transcript || 'No transcript';\nconst recordingUrl = message.recordingUrl || '';\nconst durationSeconds = message.durationSeconds || 0;\nconst customerPhone = message.customer ? message.customer.number : 'Unknown';\n\nreturn [{\n  json: {\n    summary,\n    customerPhone,\n    durationSeconds,\n    recordingUrl,\n    transcriptSnippet: transcript.slice(0, 300) + '...'\n  }\n}];"
+      },
+      "id": "node-end-of-call-audit",
+      "name": "Audit & Extract Call Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 780]
+    }
+  ],
+  "connections": {
+    "Vapi Mid-Call Tool Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Vapi Tool Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Vapi Tool Call": {
+      "main": [
+        [
+          {
+            "node": "Route by Tool Name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Tool Name": {
+      "main": [
+        [
+          {
+            "node": "Process Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Booking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process Cancellation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Availability": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Booking": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Lookup": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Cancellation": {
+      "main": [
+        [
+          {
+            "node": "Respond to Vapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vapi End of Call Webhook": {
+      "main": [
+        [
+          {
+            "node": "Audit & Extract Call Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
+

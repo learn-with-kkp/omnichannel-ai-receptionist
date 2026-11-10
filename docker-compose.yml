@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  salon-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: salon_voice_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - SALON_DB_PATH=/data/salon_bookings.db
+    volumes:
+      - salon_data:/data
+    networks:
+      - salon-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    container_name: salon_n8n_engine
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=America/New_York
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - salon-network
+
+volumes:
+  salon_data:
+  n8n_data:
+
+networks:
+  salon-network:
+    driver: bridge
+

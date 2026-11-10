@@ -1,0 +1,42 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Sensitive Environment Variables
+.env
+*.pem
+*.key
+credentials/
+*service_account*.json
+
+# Local Databases & Dynamic Data
+*.db
+*.sqlite3
+*.xlsx
+salon_bookings.db
+salon_appointments.xlsx
+test_*.db
+test_*.xlsx
+
+# Local PIDs & Logs
+*.log
+.backend.pid
+.cloudflared.pid
+.live_tunnel_url
+.vercel/
+nimbus-voice-agent/
+
+# macOS System Files
+.DS_Store
+.AppleDouble
+.LSOverride
+nimbus-voice-agent
+.vercel

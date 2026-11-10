@@ -1,0 +1,45 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "backend/**,core/**,integrations/**,web/**,public/**"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/reminders",
+      "schedule": "0 9 * * *"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/widget.js",
+      "dest": "/widget.js"
+    },
+    {
+      "src": "/vapi-sdk.js",
+      "dest": "/vapi-sdk.js"
+    },
+    {
+      "src": "/vapi-call",
+      "dest": "/vapi_web_sdk_test.html"
+    },
+    {
+      "src": "/call",
+      "dest": "/vapi_web_sdk_test.html"
+    },
+    {
+      "src": "/vapi-test",
+      "dest": "/vapi_web_sdk_test.html"
+    },
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.py"
+    }
+  ]
+}

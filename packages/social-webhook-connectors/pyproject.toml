@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "social-webhook-connectors"
+version = "2.2.0"
+description = "Multi-platform asynchronous webhook connectors for WhatsApp Business, Facebook Messenger, Instagram Direct, LinkedIn, Telegram, Twitter/X, and Reddit"
+authors = [{ name = "Kishor Kumar Paroi", email = "1703053@student.ruet.ac.bd" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+    "fastapi>=0.100.0"
+]

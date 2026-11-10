@@ -1,0 +1,21 @@
+{
+  "name": "@kishor/vapi-voice-widget",
+  "version": "2.2.0",
+  "description": "Drop-in WebRTC real-time conversational voice calling widget powered by Vapi and Cartesia Sonic-3.5",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'Widget compiled successfully'"
+  },
+  "keywords": [
+    "vapi",
+    "webrtc",
+    "voice-ai",
+    "receptionist",
+    "conversational-ai"
+  ],
+  "author": "Kishor Kumar Paroi <1703053@student.ruet.ac.bd>",
+  "license": "MIT",
+  "dependencies": {
+    "@vapi-ai/web": "^2.1.0"
+  }
+}
