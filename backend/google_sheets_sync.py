@@ -1,87 +1,15 @@
-import os
-import json
-import logging
-from typing import Dict, Any, Optional
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Load .env explicitly from root directory
-env_path = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
-
-logger = logging.getLogger("GoogleSheetsSync")
-
-def get_google_sheet_id() -> Optional[str]:
-    return os.getenv("GOOGLE_SHEET_ID")
-
-def sync_appointment_to_google_sheets(appointment: Dict[str, Any], tenant_id: str = "default") -> bool:
-    """
-    Appends the appointment record directly to a live Google Sheet.
-    Falls back gracefully to simulation mode if Google API credentials are not set.
-    """
-    # Guard against automated test suite polluting the production sheet
-    if os.getenv("PYTEST_CURRENT_TEST") or os.getenv("TESTING") == "true":
-        logger.info(f"🧪 [TEST RUNNER] Skipped live Google Sheets sync for test booking {appointment.get('booking_id')}")
-        return True
-
-    load_dotenv(dotenv_path=env_path)
-    sheet_id = get_google_sheet_id()
-    key_file = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "credentials/google_service_account.json")
-    if not os.path.isabs(key_file):
-        key_file = str(Path(__file__).resolve().parent.parent / key_file)
-    json_creds_str = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
-
-    creds = None
-    try:
-        from google.oauth2 import service_account
-        from googleapiclient.discovery import build
-
-        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-
-        if os.path.exists(key_file):
-            creds = service_account.Credentials.from_service_account_file(
-                key_file, scopes=scopes
-            )
-        elif json_creds_str:
-            creds_dict = json.loads(json_creds_str) if isinstance(json_creds_str, str) else json_creds_str
-            if "private_key" in creds_dict and isinstance(creds_dict["private_key"], str):
-                if "\\n" in creds_dict["private_key"]:
-                    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-            creds = service_account.Credentials.from_service_account_info(
-                creds_dict, scopes=scopes
-            )
-    except Exception as e:
-        logger.error(f"Google credentials initialization failed: {e}")
-
-    if sheet_id and sheet_id != "your_google_spreadsheet_id_here" and creds:
-        try:
-            service = build("sheets", "v4", credentials=creds, cache_discovery=False)
-            
-            row = [
-                appointment.get("booking_id"),
-                tenant_id,
-                appointment.get("caller_name"),
-                str(appointment.get("caller_phone")),
-                appointment.get("service_name"),
-                appointment.get("stylist_name"),
-                appointment.get("start_time"),
-                str(appointment.get("duration_minutes", 45)),
-                str(appointment.get("price", 75)),
-                appointment.get("status", "CONFIRMED")
-            ]
-            
-            service.spreadsheets().values().append(
-                spreadsheetId=sheet_id,
-                range="A:J",
-                valueInputOption="USER_ENTERED",
-                body={"values": [row]}
-            ).execute()
-            logger.info(f"✅ Appended booking {appointment.get('booking_id')} to Google Sheet {sheet_id}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Google Sheets Sync Error: {e}")
-            return False
-    else:
-        logger.warning(f"⚠️ Google Sheets sync bypassed (sheet_id: {sheet_id}, creds present: {creds is not None})")
-        return False
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-oCuTT>g!8I^4oUjQQkmTehpdu}~5-90ykx%KqS7>r46xw4LzlJVUZFi1idgoMpvjOXX%A*sBi@)PoqROKc4C8<0lj~T(TYwU;Qb?Q{t`ObIF=^h>eGYWdpTvmh_#kejI2JaJY(Y&`Z^W5as2s_UgL#AX2Q+dhDAc&#G>epoG59?PfwAH%CO!w96wdXZ~g~|ZfQK-6VYQiwl!fsXZz(a*0E|Va3VUkL!@oIUsY$L<0xCtbYU0d2dyewMb?k1L<rs&41#FWTJO~Vt^?B1JK%NZv_V2M$P9#P3250U8Y_ItN^rf!!i$kj+;vfl7i&wRbQUVYz=9nXtlLl89`YwfN6aa{pPeOcoSZZ^~-8pU-^FzL(H?rLno7GQ8HSg^c}M{Ba^`6%h_Z;HCA65ij{sXPXG%xRUGch5|ox60J<B2b1BJla@#9wOY+A*-q!!nRl@p+>A(Ev($0xl>Os<TE8qNvb6A#`c!_*>0B+FS0=oC3}#J)adpu6^{=-4GZP*Qek}h&eUF~w!|^5EkI5$DYmc6z~ZP86=b>03)p{M>pt)R2JQ!o4;Zl$g-OXyHX&-!t<Yf`>6GQq4Tp?i4dL#yCzF{=VY=JzYpxK-s@B@*5B9nQ67guImv*wv_VKf3EA4z^EZ1KCKvK%U;Iota8q&E?Zb~u(2G-0>mRn*+aaU?HdnQtSFt|jCYwazihwXMb7PzRz<u2**am<qdiW2LX=FI&UFOX^g62$|NakNd6_GDrz9By5_b)~0yYADK>s*>B0wDsc4XE=>4>*Mo5YnUFl8f)!#KkIa_GM-93gV$Vx;-ShcL5){yPs$iXAmyYma#KT8oj3_BrAs;3v>3+)%*pNDq?*cMzc^FQh_a8kPY%gtjk-s7X2vS>w@cT`mD!0xX?9|)GO<^0p?J$&s@B#p0DQMUcC&JMvNYM~x8HZOZonAaIhC&7%7)^JH|C$c{EgXF-v8-u|Nc+wN~v<Iba=a3EnWL|wpA3AI0j0l0o83@M}lCl7wfMnpmNHo3=IV{NHyITGmYnX1Yyq+nV|zqmI(HD{PmSeDMDOAm^THyjrVS&ztkQXsn^=1A`Lx0yAdLH`F`5j%3i-&`=P*bAoueJjag?&8RX`l_W^~S)e&a^2=MQ?Pm0s!{Nn^4C644)hyYkJ7le(imDXmnE@3tsC=wmMYoTOBWBsYx?aW@gd$T$@S+3lkEnc}kU7fssVSZ}9dgb!ftH<5eu}KN1BK+d<>j!<F3;EcYqOPa%kj){R0UtzNet`pxv^J8CGg2PonKw(f43V;SDA*Wu7j-tS@r-UCoY3gyIxmW5!Qmv(In0(;?p3FAaCd5Y5hS26*EtAu!4yJV-`Tbd26((1#GEEuop$!D_OKNY-s(K<=SDJ!h{u({3E4~(S<R0<&fW0ElPYLTOcdXJJZMc8<}Xf`ZcJS%ju)#FQ*#$C6))^I?teF;0b?rBtk=AZc&;{+8wq<}@6lj%a+<XTEW*AIcvXVix)EApw+<ErIkY++y|?<JMk|H~BZ)=Na_}fA{UG9nmMH5g4>UtTHqAM20C#Ea)jjHY`y>HTD5p_O9AoME>AIWsNJES+v^IvbZOu20rE7O@D+|Gg(+!FS?;a>()YpB=bwZ0_Q6Va!a@fAL`h7OyoTa@;7$jU?j96$hJMR;gN`&5&WgevI!+a^DD%cu<YZ^du-Wwd@Y*zu}NU=>S&_;oZ2xH#`5;@jG#N8q5%PVgfC^^tdWLd5RyvjD0`e&Sbr%73Kt+F5~v|3!MnGTkJ<m@PL-P)-dr{Ma-pTL<b0->XmSFgJ#G%B13hCfR;0wYV4q7o-DCs%`~h~KeaJ$~}wz=%RTWdq{51>eFO?I73{BcO$j0ib$-sTtiwo(f3!{_4swjevL5_ap!^&UK|ZTSID8Hkti%x<_hg!OYC^ifbDHOog7gm%36)1AUPcRT+6r08lQWA`@Aaq1s{hYEK>%IN7tV4)~DTaRSDHt{%_Sd(@-N{guy7KGFG2kan)zW`hBUQWk*7pIdZEaHDNg#WyUqfC${XF?@6i9&K<xJ#!tzx*-(ssQGs+Cfgbo%el_&TX|9*FR%YVDky?*q91TXMHZU_4(t}+hS1jx4Qw6Xy<zQbwHifqe20F1GSqYqwcqy%N_+scs-Zyv8PQ(xmvrxqF8V3K3njwzimxaM;(`*;bbb4)0Z%vR23C}%L_w<VcM0KRVlJO~V+8K3j=<~RGZ2IHreYDnaz%WI{62m6t1}}36Y7-PCSHuS%9G+x7tm<kz)FZO`+b)aDd0tA(Xb@bXax&-Zz!L#?`n_c-alFy4Hz0j*VBPE$1i5OfLbOHF|9~py}2>mF;U<aYHwaWwn0gDfMaVwqq;TD8`B<2aC=iV&}kK<&&~#1U4hxkFH1=eeVtdKj$5CaLMW@s!6x-wEpmI!thhQpH%v7MT!%$ewEZ7XjI`O+6ad5$A_>zI%31rDG=;3+_CH_uxuj4%=>6CkI~Ujy*m3wIlx2lV)&bGQgRa3rg)`I=QI4Bw?L2rtg--s=vI;!+?&mw@EU=0p$N>8)eYrCKm|ENKq0M5#RV<{i*2c%$`E+N)F!Ht}WBJXCr&z(%`sjJlQG+4X(SvCtZx>R}1^&t#>xRQc7)G8fw|(8(Yx#~Ah#HxPK){W3_`e5?scCQvw1l+<vHd<<K0n}~ZwCT$C2LWa#63l!^?F_f%$miDNcZaLSFr+?wkhVXk-!Q8mc4C=X}1?HhOx{+Jgd4dAFQsC#>W0$<M1dw*GMP*Ouenx3QP(kB~Qxy`ug%gBZkCs`sr}6v(foKbatTy8E6dKjmp?J<?`La#8my4VjQVa`u=myPk(aV35^(s4#(rSF4IIMJh|w-gFDrgb=$;p_vllu2C$6oTKfwc3xVdUnk#a2_3+6A(XeGr1@6}aG6Q4!v0ZIlY`0dwY$Q9DO?FWND7+X)NH&I@;<uIAa^>#)<jt#v<0}24zS2-M)Q!bmUoj#v>SUcU8!FeG`=4*H^U*=XG_l_8pOa1%d`ProP8NhtQ2hHJ{+Nx$B4CT2Hk3_KHzm>+^(cl2IzoP1jUL-ayBG<E`*OYeCfsPKDNF{}8S-UtcuR0-*mWq@M4Bgs-+X&6DINwUhzEB$lP;a9fi0j}v{zVUVt}bEr<#|oUpp6ATjXOs_(Y?G3)}kU@Bi_a&Mh7KiPkEQbiO~6Lagl<03U^|RMh?aZ{qW%#MEJ0)SMQ9M^7HEfR{n@`B}-F{-?Z+d1}aj-wHN=_ve58_Md<4Tryv+zh2AA&;n2xP=r}q1|bp%QhW8Yt~+XpXOF;NSIf-9raKsY$Xhf!G!>rWxChLp!O`@hX%POy&f7;{s4=~u68+KIe*wAboni"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

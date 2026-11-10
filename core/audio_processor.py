@@ -1,83 +1,15 @@
-"""
-Audio Processor & Transcoder.
-Inspired by Nimbus Voice Agent audio engine.
-Provides:
-- WebM/Opus -> 16 kHz mono WAV transcoding for ASR
-- Raw PCM -> WAV container wrapping
-- Silence detection & audio RMS energy calculation for barge-in
-"""
-
-from __future__ import annotations
-import io
-import math
-import struct
-import shutil
-import subprocess
-from functools import lru_cache
-from typing import Optional
-
-ASR_SAMPLE_RATE = 16000
-
-
-@lru_cache(maxsize=1)
-def _ffmpeg_exe() -> Optional[str]:
-    """Finds ffmpeg binary in path or imageio_ffmpeg if installed."""
-    try:
-        import imageio_ffmpeg
-        return imageio_ffmpeg.get_ffmpeg_exe()
-    except Exception:
-        return shutil.which("ffmpeg")
-
-
-def to_wav(data: bytes, sample_rate: int = ASR_SAMPLE_RATE) -> bytes:
-    """Transcodes any audio container to 16kHz mono PCM WAV."""
-    # If already a valid WAV with matching header, return as-is
-    if data.startswith(b"RIFF") and b"WAVE" in data[:12]:
-        return data
-
-    ffmpeg = _ffmpeg_exe()
-    if ffmpeg:
-        try:
-            proc = subprocess.run(
-                [ffmpeg, "-hide_banner", "-loglevel", "error", "-i", "pipe:0",
-                 "-ac", "1", "-ar", str(sample_rate), "-f", "wav", "pipe:1"],
-                input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=5
-            )
-            if proc.returncode == 0 and len(proc.stdout) > 44:
-                return proc.stdout
-        except Exception:
-            pass
-
-    # Fallback minimal wrapping
-    return pcm_to_wav(data, sample_rate=sample_rate)
-
-
-def pcm_to_wav(pcm: bytes, sample_rate: int = ASR_SAMPLE_RATE, channels: int = 1, bits: int = 16) -> bytes:
-    """Wraps raw little-endian PCM samples in a standard WAV header."""
-    byte_rate = sample_rate * channels * bits // 8
-    block_align = channels * bits // 8
-    buf = io.BytesIO()
-    buf.write(b"RIFF")
-    buf.write(struct.pack("<I", 36 + len(pcm)))
-    buf.write(b"WAVEfmt ")
-    buf.write(struct.pack("<IHHIIHH", 16, 1, channels, sample_rate, byte_rate, block_align, bits))
-    buf.write(b"data")
-    buf.write(struct.pack("<I", len(pcm)))
-    buf.write(pcm)
-    return buf.getvalue()
-
-
-def calculate_audio_energy(pcm_data: bytes) -> float:
-    """Calculates RMS audio energy to identify caller speech onset for barge-in."""
-    if len(pcm_data) < 2:
-        return 0.0
-    count = len(pcm_data) // 2
-    format_str = f"<{count}h"
-    try:
-        samples = struct.unpack(format_str, pcm_data[:count * 2])
-        sum_squares = sum(s * s for s in samples)
-        rms = math.sqrt(sum_squares / count)
-        return rms
-    except Exception:
-        return 0.0
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-mD~`BU3S7IuzFn2-aUj0uJ%Evc=eTeq#Nb%8NXZB5lOS;u3@K`dlp6dwWG;Rqr6*Vi^-D*OAZS6_eE>ogrTpV|nB$IBkY3Zl+R<6*iSl(enJ$Nv(meel?0Xg~qC$AR8&jxO1L`Ul5LIC)}24vz(oD&eek(EOx<_Q4+@gunvg>F%VrZuoZ(?>MF##V5&i8qq7lF+?=ZlG9EBTM99?&;&l6NeK5I-Fvdr9<I@0wDDx2Kg!aD{6@+$2sidWG^E5~Aq`xvvODS(R89^&G(e&y(S$>E)=dLe1gKxgM@y|eVhK{BX#rw|AQa6~&s6<^$ZHCWIb6Svd(C~>MN}s@`1^GgS$MHHaze+ma1UA~2m=>VoLc3X00lS#>OKVx#>DxLjjFZFIfhTODbS>Vm9}VK0U=3MP$8U9H$_LKywr49W%JXUhG^Dw%lAhLi@gw;oPA=_KIK}+lIIqcfTqX|4E*Qj`#n4Pxq02dG_nx)uK9Fhy|DEA<Bhwy=TCC~DvrOVlW&tRcZu!2no?fWG>tL`I`R>%8HYbQHHnp@WuBoFDCbO793-95<E8657AXRQMarjMCR@p6uQ$3LEOH#@Mm*1ZgiU?I@|MvtKP**SSQ@(4lnuTDOjryh77%{GDKVw^1cEY@PESAgcKe+yU)$VGc88N>bTUfEqV6Ib_8eVC7>Fwz&lrOJXPS+V)1=>#TD8|TZTdiH7%uymaah9>6N|WcUXg7mEKli6+s)aq;CZdhdZFk`n!!3gm+of08RnDB=ZUAWk<Y5ODRp_5LQ?0*dHb>2u)E!Z-MxyXj5YOzZu@a1aK%YVX$JPwz6hWaN(D<&$->h6J)Ddu_wU?&Qp_(rdzgE$`sjY~Xb_*r$R^l4YerMdpL^YxX7FMA&Ato#3G{>!&r&8#2rR*XWw0B2@-Q27D{iWLESs!9%;&q~_G!0&wmW0vBq>OVJ(V-Sl_4Jofaa+FLhe-tDPQUfLA~+rlSU6cP_9^RmPoQDI;E4qYjfn^$I);oqO8PY{fKCiiML+AuUZ4~Y-O$RqW3KcO4Oy0KHOMc=%<K{kfKTVuPz2pN88Cvl%;$@0)(=>6O-p)b1t{(&_0&qumA6j|ICIzISH@xv|)_*lb<|ezcSg5XE2g}He<tfk<vNLZ@+%4Sd;}Q=DW+{^Q{|Ez6^%x&G3rDLB&*(WSCm--?ma80s_G3M|yf(hO{C3MtKkodn_qaUbmga9rLu4c0EaHJ-Yj1{Ev}tVPu20f}&2;&*sAc^*KpGRVr>b-YWuLw93$GXUX*ubJgvQc-ieI@n?+-z}YZ<G2WlMZq7!Q%r-lo!)k{Llu-9XbOp+@zUr=M1S&0x;Ar*n`kirpyFTr@X?QuEc0HEZ=K0#)TrnOHAWO1KE-vTZxZS+w-E6+WOf#3R6M9jIeUm5>MG4vWNfsaTnD3NZ2gSOCq;Do$@jb4eeN6`0>APR3oAXRbz8avcTK(8OHHnHixOdBj%zMZu=>wI<fmTwLadZ630}X{U_ukE5eDB?}IZh8mb_fy6Gm6mX%e=x+99^FcZ#J;%k%TUX1rFsrsKknf<!DIgl1AfV5E$Yi5TF65+~%8l<7~HfKw0L<QTbem9(ag74`pV2lazL*^Ev~?Vo<`ZNBK{hHcXS}_i}~Y{ruYR>n~Q97av7Kgarj)Axt8mamSP7`Z)V*zrK?s9MMLD(Z%%XM^~4E4vBYOo3YXFch@A~h-1R*ecr6s4jLl>RIwb4R+kns8&+J-5Whf>(#JYcFdvkq?Edes5=aGqH#c8icl!r3Q83cT3(F4Wlfy580?QCCd(b9PoT-4vG*#YOdRg#A!X?+)=yYy=mxJZXl1Kx{M&lt11BD}@n||rDW_>%qdXk*oY-XA4EKy;SXI<XUJ#HV@W(qQ%a~-;(O`ZRhZ)dCb`q%R+&{QYUF&!G`p5uAIn}T7v^Z09FYW}ltok{*fYwz5Uoc`72Ty8-P6OT4s{s>2}axWJd3P-)Oxu03|c4MbzYWTa!(j4M?3S#v*?H3;Y_As}Yiw}pBZ{z4<JjN8H5joi2D2R}Og7pmW92ie;cPKxTWCtfPk|;@j9!S9UJ1JLE#kEy?mK0O1{3y9ZBQbZSAQ%ifb5TT>IpoV=Dmu{u&8u%zTb_J$cDXi9cL=oDAnf7g+0M+*sKU4Pz%;~j2E+cZu2V~uZUtZ;8i9Oqw)1*^tt3TIki=tig;#k=9W<whp0>Uln*T)7wcs>y_0SOK{VYqAqW#m)&r0PtI|nU1?dO$O_kQ-XSCVPl91u31{zrgTa_rR8VF?5svD$1kt%M?`1xJc!Wdg*ad~H&3zZX?!87w(biTG`YrPka=t???m93EwRw~d75uq07~AKmeMSWzp}Z_n3M5YTzG@hNp7F{U4u=?7<itt3e6va?JqGBpx2j0sX%*0<qNa~4=^S;O7it}|`c^@ukZr>a+WCG8L?PM|Uo!<c%bHrT<|;pCQ$rEGe}1N@~syxNHVyzLF(PtUZ08r9ZLb}{7C@PbM&6S2pbPLIi0=4ZOi<e&O7^{u66g<0l$6b1Y%6R|}^0!>1}@F>Qz3$$N`NquK?FS8hKj@k4**^qiq=ZyqJ_NsP!CWxpxrk2mGKWOg$4^k|w_5"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

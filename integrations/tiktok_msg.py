@@ -1,91 +1,15 @@
-"""
-TikTok Direct Messaging & Business Webhook Integration.
-Handles:
-- Webhook subscription verification
-- Incoming direct message parsing
-- Auto-response delivery via TikTok Business Messaging API (https://business-api.tiktok.com/open_api/v1.3/im/message/send/)
-"""
-
-import os
-import json
-import logging
-from typing import Dict, Any, Optional, List
-import urllib.request
-import urllib.parse
-
-logger = logging.getLogger("TikTokIntegration")
-
-
-class TikTokClient:
-    def __init__(
-        self,
-        client_key: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        access_token: Optional[str] = None
-    ):
-        self.client_key = client_key or os.getenv("TIKTOK_CLIENT_KEY", "")
-        self.client_secret = client_secret or os.getenv("TIKTOK_CLIENT_SECRET", "")
-        self.access_token = access_token or os.getenv("TIKTOK_ACCESS_TOKEN", "")
-
-    def is_configured(self) -> bool:
-        return bool(self.access_token and not self.access_token.startswith("your_"))
-
-    def send_direct_message(
-        self,
-        recipient_open_id: str,
-        text: str
-    ) -> Dict[str, Any]:
-        """Dispatches a direct message to a TikTok user via TikTok Business Messaging API."""
-        clean_recipient = str(recipient_open_id).strip()
-
-        if self.is_configured():
-            try:
-                url = "https://business-api.tiktok.com/open_api/v1.3/im/message/send/"
-                payload = {
-                    "to_user_id": clean_recipient,
-                    "msg_type": "text",
-                    "content": json.dumps({"text": text})
-                }
-                data = json.dumps(payload).encode("utf-8")
-                req = urllib.request.Request(
-                    url, data=data,
-                    headers={
-                        "Access-Token": self.access_token,
-                        "Content-Type": "application/json"
-                    }
-                )
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    resp_data = json.loads(resp.read().decode())
-                    logger.info(f"✅ TikTok DM sent to {clean_recipient}")
-                    return {"status": "sent", "channel": "tiktok", "response": resp_data}
-            except Exception as e:
-                logger.error(f"TikTok Direct Messaging API failed: {e}")
-
-        logger.info(f"🎵 [SIMULATION TIKTOK] To: {clean_recipient} | Body: {text}")
-        return {
-            "status": "simulated",
-            "channel": "tiktok",
-            "recipient_open_id": clean_recipient,
-            "text": text
-        }
-
-    @staticmethod
-    def parse_incoming_dm(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Parses TikTok Webhook Event."""
-        event = data.get("event", "")
-        payload = data.get("content", {})
-        if isinstance(payload, str):
-            try:
-                payload = json.loads(payload)
-            except Exception:
-                payload = {"text": payload}
-
-        sender_id = data.get("from_user_id") or payload.get("sender_id") or data.get("sender_id", "")
-        text = payload.get("text") or data.get("text", "")
-        if sender_id and text:
-            return {"sender_id": str(sender_id), "text": str(text), "event": event}
-        return None
-
-
-tiktok_client = TikTokClient()
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-n<lNmJWg7IpIRWrV~SK9Uf}d76i((Xyr|J()R`%7Uhe69|OF7$Fqd!bUU+A^!A_x>vpIZLj(#^`d10nX9_$EpOdA@7#ONJ#l>0dPp;mB&vOjvjyLbE0%|7DC@2A^voj-V`x)EJO(f&S|E9#d%WP0K2LyT<sRU?ri}8HI1gKY+0jJi*y8GhNJwf^vY3QLnC1ZxOpbsnN9~fXakNBI`HRiDbze_iKv0Hag{o+aBxARBdv|@C>-y00H5H*uk_4uX=AKsOEIKVo?iePs>!KssibLgBd5lPv2SPY;_eT8Q^Re0dv;XL?PnInRIV;ymFw`wjywK3dUBYGAni@zQp&xZW5%fEPkmlD~>wOC%VtBfd45HS&)bMB$9+G%bWOTyUyJnr$HwoILELhooz2->3SZ$D)&UDt3Y$<W;P147mab8Aox29@YcHPw(sIPC=W~L+zRy|Czgq{bs$&vK|=9@n2nM)k+YX;6)#0U&KSXi4|MypGXXxg@yeaJa6kjTJkixA)CSOMC5!#_adI!BI^8fq=9FIXZt>2AE*5Sz5*gcBqf)95=SU|I8cDeUHL8JPz&vy5o19QJChFg*^B`bRMUh8(XaNk2dAr7@s+2=u82t%YAO$IH;3I{t7}!<-ejlJNArSUK-JiGeE9`2Q74vdDV%NhESe&GM>)B}xo-lKBPsej10>rY~)Vc@p*q^PgdK4(gDkc6}Kj?9V6y&hM7jUReNuS=WTIZ|Ai2UQ%d8c>Bq{E4OB^+?lFQlx81QXYSm5G^~}&(<iGJAIvPoQSW)qMT9$vSZF{L4sw#QEEdl;34gA&GNak4XMM75Y(b$DO<XOFmB%U*zu%g;J3BdZvpO|?d$1QrX|Gi&S7!2pI?MJOQJwV_OPp>t8zPk+cLY*~R<mTX4U3J%U{9N`wbmg3WUoK=@apwj)6-+KH}3p4UVd=p>a}Z~-84#1o-O9tK}-l_zO~qEX^_VxN80k)2y;K#Pji_hnA3%JnvNzI%a-rk<Q{(gW~U|rvYr@*E&;356zdAp4+tUUB)^TJAP#`&7lNI2VB_UZbs5q=uo#ym&LWo9;B<U?vixMkGXwdsiB!2{6CO~t(wo-&azMgQtLM}eL$Q2L{?z(Bly>R^)zZ(0BKm~h+k7#eTZoM}E{a20G3f9xK;F}$IPG?i^7tWwxYpF<S~=Tb?;r1k7oFqi>@G>EiYpVW*H%-4k!cZTjAS(#=Vf_iGykG)O;YSrOzQcCBaM3&qti&rem^hX+G)+y{<!`z>K|=<hH;wkK2oSjkA-}|0TQ;4bKrZufbh5Gw$^oh(lhN~0@&SwqeIgBaKXliXU1(K)Kns=`Ots8^ZbpY`8x6O^kDI#^SM%xhmM|I3}rOIu)CL6mgipOAJP+<rAZXO>kC?8U#8^0Rb6r4<QSc59Ew^Hv8EuF*5|e!2*+=ucOD+nmL-X#zvq}b-0d!YhViv?BY3v``lT0U$H5n#PcH>q6nBw0CDtW*oRFiFJ%6XQzEQHFEs?IxabGpqyZm6$IjIA6MmHO%e5*1Ifd!&JU;UzU+GQ!-lyvT07P7XsU3;-uH}R*SPun^dg^BJPP5ET`+s-4*jnxqw7fLxFw@pJa+)D^bBRZn5IQ9L2HVuXMKJH6Uh2G2i<wZz!y3yHBFmzc<v(S}g#?tpafORy#RNX@jPq)|)8^6GuYJt&<y}HkT;2F4Hb-u#*TFmjP%%XZ`u6{ScZ!jm7b9L`O9;v&Vb&3<fC$djU61ay&j?inU@~h4TjHJY=2tw!R4^6cS>QY8s*xqUdI_JS5B3K;#awv_~k1&2_qd}PL=z}uALnJj^LRzUkSu(^xhaXAX$wNr;J{{1z@Apz(J1`(NPg=kFAZa6N))RFnIq91|2_lsPBJKsK?hXi<C-!=S7p=8T59|-SzuY>KAR#g$3oC3--2d0#|5@3!lvz(Xntoi|6ulYBbOL>fSGg*pWzJ-fipfEH@kgFVon0UYZjd()F(&;6?&jTLeYAC9m~!^|&i1+y9Un)m>tbISM&X&OP%5CX)IMsDQbCE~Vcq<$GY}2i<-%Em^}VL65j_=k<g=w81Y6$ObV$f1c5%yyo*PeUpcwbzO|I|_GyM%TC7@VXjmN4J`SZ1{SBN-14s5yqc60TT4T=;L79DbcqTX}KKmPOY|AzPO6%hV>e|!AOY<TU#gGbdnSCdI=@G~1(Bfd@n_D1>X0>Vi6X8B!(7BQ99pMEQ=#Bvz;WU)M+M;P;*Z(xfUMyuahfh^0qDj9>LICA91%A3vUZ1vj}EvPfBCJj0Jo)SPfRiv>ngA9<x(p+opjVeK;e{Tgn7wY!AvlM{_e0E74>6|bB9ZolBPYeL0L_9x&Awad`03U-XOD(*P;K(UZpMAc*5aelD(&?Lsv$JH(uFst2yIFe87$rs;jQtLLZVKtaL7weAORnZimzalfbW?OG<o9L)Usag2B4B~loP%*g5Mi}ap8k?#ECVt6=}FQEJn5~%`f(Q;f^H^R_AcqJT<%6-`a#o>i$JB)vKZRP3%jDknnmnMvv!^QxNxbIH*Uxk=agc3%%YCz)VXE=+bOcq!RJ7A$p)Nzdc*(G3Ot>qNLB9qtxaQ*9LQ{7du>z3#_P2gk6Ygs1A<ooJiK9vtTT$lKMVFNW-S_B*x}!L0gq@!6`hqY#Wvc0{&J}#iADNq7`UD|iav;CQX?xKVo{9~qcB&zoDwvFV!Z0hmkaMBtV7ELGey?j4K4Q@>M$TZ+AAR`iM#v5hhMyI<ow}oa=}JNknFde;=nt@gIFUDWZGc{t=39ys6$Ebe>zGA-7j88^RXtYVv!FmCJwL^>w*t&eCMJzYHE;4;LzuR{2B8}UdQs8CqbT&i@fnT3%dY_bU({1==MfzoOF6!$&^)8_y)2I-}q_;MSdh~zh7lBXw9$6B%n3AA~Rx9oPOxu=E>VWbxU9fedYc`zx6*N2ZT="))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

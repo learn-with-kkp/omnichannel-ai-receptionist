@@ -1,79 +1,15 @@
-"""
-FastAPI Router for Tenant Knowledge Ingestion & Qdrant Semantic Search.
-Allows any business tenant to upload FAQs, documents, policies, and service menus.
-"""
-
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
-from core.engine.qdrant_rag import qdrant_engine
-from core.blueprint.tenant_manager import tenant_registry
-
-router = APIRouter(prefix="/api/knowledge", tags=["Knowledge Ingestion & Vector RAG"])
-
-
-class IngestChunkRequest(BaseModel):
-    tenant_id: str
-    text: str
-    category: Optional[str] = "general"
-    title: Optional[str] = "Manual Ingestion"
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
-
-
-class KnowledgeQueryRequest(BaseModel):
-    tenant_id: str
-    query: str
-    top_k: Optional[int] = 3
-
-
-@router.post("/ingest")
-def ingest_tenant_document(payload: IngestChunkRequest):
-    """
-    Ingests text into the specified tenant's isolated vector partition.
-    Guarantees isolation between business tenants.
-    """
-    if not payload.text.strip():
-        raise HTTPException(status_code=400, detail="Text payload cannot be empty")
-
-    meta = payload.metadata or {}
-    meta["title"] = payload.title
-
-    result = qdrant_engine.ingest_document(
-        tenant_id=payload.tenant_id,
-        text=payload.text.strip(),
-        category=payload.category or "general",
-        metadata=meta
-    )
-
-    return {
-        "status": "success",
-        "message": f"Successfully indexed knowledge chunk into partition '{payload.tenant_id}'",
-        "details": result
-    }
-
-
-@router.post("/query")
-def query_tenant_knowledge(payload: KnowledgeQueryRequest):
-    """
-    Performs semantic vector search against a single tenant's partition.
-    """
-    res = qdrant_engine.retrieve(
-        tenant_id=payload.tenant_id,
-        query=payload.query,
-        top_k=payload.top_k or 3
-    )
-    return res
-
-
-@router.get("/stats")
-def get_tenant_knowledge_stats(tenant_id: str = Query("salon")):
-    """Returns indexed knowledge chunks for a given tenant."""
-    clean_tenant = tenant_id.strip().lower()
-    local_chunks = qdrant_engine._local_points.get(clean_tenant, [])
-    return {
-        "tenant_id": clean_tenant,
-        "indexed_chunks_count": len(local_chunks),
-        "qdrant_connected": qdrant_engine.connected_to_cloud,
-        "semantic_cache_entries": len([k for k in qdrant_engine._semantic_cache if k.startswith(f"{clean_tenant}::")])
-    }
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-nPVX;a%s8fLTE%|#O85Qkw2Y28P6OKRJ?THVsv5K`GxEz3AwAOi#g!U!AL#*lLu{q+@QDpjf3{oGHz_4adhXW4n@9^(Ag!rgqy451tqt`?;W0%`B9Rp+4~8Gge>lUag*nTQD)_VWde0zlK36zN10%=D!Y|J;7R(77!JrXro|oE3&+ii(Ta8AaHzX-=e~5!RW3)BAsW)Lg3k;;2ywm@K3d*U=CaEom}D03Sv&3y@8_GUc51*N(5|Xz*`rN*7XHQgsOxqHf5cTs(Sl=O2i>kY$7C&t5#PIwoL_x4XAoedIuuZFxYAQ@bVvN)oc6EQN@=`K+AKSvB(HG`)}M-n*O01cFFwq@L<}VKSOaLQTa6KFIGW$W4pqf=Tv|mUrIVfK@K~Jr4#VWGQW6OQKa`sJW&yr_KuzMY8D3Z0>bF5U^VFIX^d<PgBi}Er3;t_IzyHfIO`MEpFf_RSbK#wN`}yxKMozPy?aF2hFDF&=5w4m)*z9v&&9{Q(-^!4bl7O!?~YgSNmqML{U5;uzHvMgamB#tbbRvLJ{bJoK?AvyZ}2pbMw`E00R?@X70}SZXK+*n>veGoX=oe=JfBfX^RiNkb%VcG}>skE2c?|Z>L+?BrOu)n~FT68W)+v>Z^G=C|smz=b0CHoyuIL%4AAJF2c#=zMUXXG1+YvviWl7fdNEX*X!d}mJW{Kud93QH2sTAqJ-(ma(Thq{g0!oTL>^w?%n~Sfn4D5)0GljeCVugMlyAa^Oqv0CNYg$kHtEik7+bKnF0R7lj67RCyEu}2+(&MuiwK(-Br~DIJw~IWYlcFXA<J{@UONI8b+j|M=FlkvS7XLG+UqU*cy15cqkd9&GbvZFH->lz9c9YdCAz@teBhxj^U|y=bA0No?oQrG7o31w13~YHoql21DGx4B|n|FD=!6&5yKm|K9rMtT@GDW;NwBZ21#Fx12d-8Kje-q(~Pl3jvDdXo!!l-$X`ssbJ$d@2NqQ*3wx6{C*3^n<yX@+W*`*M+DfHGIlVwk=9z|R-!m*d3{~CCZYK9p7nFxOF+j1}*=RX_F3UiUuBl7c%L|ScC}KKhGUTa(EG5<i6%JIo_Ik5TQY3g$>{F0J3zkWd#;?xu?C|t(uv*I91>r<h$>5Kj`;>6?cYzDYJ{%l2`=erb4W>Zj;KvLuzJevM-orY_-sk?e%ges)LQ57ex=XT0Qx*q`Q$v}GO|rXMc}G(ix~ehS-(D~J=@-?K<KZX|MS=xeIH<`y_6;r%Ag;V!XGNM{=)PR9jER>REUS(VhTL{aS<QW-K#V%uC#CB=+I+RwDn93m00`r=fFR^sX-IUP^Ce{ANH>Vv?M$x0M@40Ib1R1Q0rJj7-7L#X_>@?2EQC*hcJwyCHh(uOG)&0&f3b1-oec;m6eS#7*fpY<7>qYI*4lx|aLUE=eghE8547yJ&J<kAErB3bbXdETL7+@y^>KZ*blnIb&B014exH0=qc#cA;iMQxOtl5ntSnF2D8c9b7@$Cot?aZghA$X^GUrlQ$4)_23>rdI`E_SoH=rZ>BT^cm(MNtFk8CTUz!xl#ANV$KuKT$kOq)ORg!-iS`}_0jDkw$CZWN^5^Dcv4Sa(-Si)O*vzdGlw-4zJfSC>m_cYJEa0M@cE9jNPBjmykm45(c`6VF8`)$5z@I_*!cjSWt`$>b4{Yp!McbUA<#U6hjuB=BT16(v8u3Q9JLXHb>6n9zwwRoPF(dJ*cFBU+|Sj+v3g4FkZ$DcW<*4@4A6s=7?)<a3Z3W+;1+ENEw~GFEARbvWJGH~ix9+{!Ol24K;TUBJOO1UM93!%SDFqLgw&S&KQVBK?cqezUh73;O`DYa^kkH;vV`D1nFT{=~&9R%8Eo+8fKX+&TT;8wZgLw6gfRp%5-fU4fOoQ5tE|op#;NowXGVa}@~hw^p9|PE1&s`ZP)h#|{IO_tK7n!ikN@Q-|(s?6hVq5Y=MWv%E!=$T&FsvA((&#Vw9}cW~9**xM$(-c_+RDi!QqWzSg>i-etNnubGYrW&#0x`!+<(EQhX+ph{qP}BOz1xnc|gehhWyTd_$+DIxWGd`nXt$f-_>ekxin!2d*8`XR-Ivb^0qMOO_{uFFT3@9@WU{L!r&+~?-n`|Z#HO-HP1|&xeqnJPEKvc-uQswN{;QyH4g+LbJGKj|KS;<$tGrU<Nn_lqRqTfWNL4Dn<0?+`8_mo+TXs44D2xM_*w-Xyre5}PG{hD?9>5YQJ1e5Y}@<f%0jhKdU@8gm6pH_PdE<!4n#n^L9q5zs$jhRS%V%l26JXoJrL20C3BGk&Hd|->%RjK<Bae_r)X5&%al#VO<iB`(36}tB0uVDXy=kvOzAvUiDy5trr%*C_FwHZmua`L}f{n*xNd+)48p-qW>deZ;8@NxQD;m)i70=X?*{{"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None
