@@ -1,80 +1,15 @@
-import os
-import json
-import logging
-from typing import Dict, Any, Optional
-from pathlib import Path
-from dotenv import load_dotenv
-
-# Load .env explicitly from root directory
-env_path = Path(__file__).resolve().parent.parent / ".env"
-load_dotenv(dotenv_path=env_path)
-
-logger = logging.getLogger("GoogleSheetsSync")
-
-def get_google_sheet_id() -> Optional[str]:
-    return os.getenv("GOOGLE_SHEET_ID")
-
-def sync_appointment_to_google_sheets(appointment: Dict[str, Any], tenant_id: str = "default") -> bool:
-    """
-    Appends the appointment record directly to a live Google Sheet.
-    Falls back gracefully to simulation mode if Google API credentials are not set.
-    """
-    load_dotenv(dotenv_path=env_path)
-    sheet_id = get_google_sheet_id()
-    key_file = os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "credentials/google_service_account.json")
-    if not os.path.isabs(key_file):
-        key_file = str(Path(__file__).resolve().parent.parent / key_file)
-    json_creds_str = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
-
-    creds = None
-    try:
-        from google.oauth2 import service_account
-        from googleapiclient.discovery import build
-
-        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-
-        if os.path.exists(key_file):
-            creds = service_account.Credentials.from_service_account_file(
-                key_file, scopes=scopes
-            )
-        elif json_creds_str:
-            creds_dict = json.loads(json_creds_str)
-            creds = service_account.Credentials.from_service_account_info(
-                creds_dict, scopes=scopes
-            )
-    except Exception as e:
-        logger.error(f"Google credentials initialization failed: {e}")
-
-    if sheet_id and sheet_id != "your_google_spreadsheet_id_here" and creds:
-        try:
-            service = build("sheets", "v4", credentials=creds)
-            
-            row = [
-                appointment.get("booking_id"),
-                tenant_id,
-                appointment.get("caller_name"),
-                str(appointment.get("caller_phone")),
-                appointment.get("service_name"),
-                appointment.get("stylist_name"),
-                appointment.get("start_time"),
-                str(appointment.get("duration_minutes", 45)),
-                str(appointment.get("price", 75)),
-                appointment.get("status", "CONFIRMED")
-            ]
-            
-            service.spreadsheets().values().append(
-                spreadsheetId=sheet_id,
-                range="A:J",
-                valueInputOption="USER_ENTERED",
-                body={"values": [row]}
-            ).execute()
-            logger.info(f"✅ Appended booking {appointment.get('booking_id')} to Google Sheet {sheet_id}")
-            return True
-        except Exception as e:
-            logger.error(f"❌ Google Sheets Sync Error: {e}")
-            return False
-    else:
-        # Development / Simulation mode
-        logger.info(f"📊 [GOOGLE SHEETS SIMULATION] [Tenant: {tenant_id}] Synced booking {appointment.get('booking_id')}")
-        return True
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-oCt*-{%x78SM|FNkJy%UIAjYs*?PYm=x&Sy@$pF^(BWG~vc-b{h!_A(vE=5N(VxuJ7rOn3sO;h<TluubC1IHuOC7yr0N8_uO;NO%?*fuO!e|lDI$#P>sVBKF7?wv9LV3Ww5f3tgU&EN@+-CR&Y`X0%+3OBN4j&+5=NLXg;Ebz58};tIAPNItFFmlWjRNpckrMdroq|D~T#hDnMkzFcM^acWI?iR&=9ihY<Va>f+(qectps`$)8ocsq~<D*0vQNOw3nU3j;<lrka&ChvR7DiO-Vp29nwZt|3+^5H~Lu~nSQ*BXxO7;jhB=RU-N<v0OsaJ;G^H9qKG)FcqrmQ+S(raa9jeo$jLgY2xdR{|3@0fnQLlIhe}*F@fNl`uKk=QUZztlQCucn`9OQHztmZW=6W7Kr8epa2DUUSHhu6qIO?&dH2|%6tKPDmJH7ulRIwrWOrlGlf(N=WyuU>n(QEPMc!KFM~u0dk_!QXeW2aFHXPobA{oF-0;}UXs=aWWT+Z*kkKZjva5-}WQgwPM6tkf$bDOFzi<Eo_9v6AP;7=06~g!F2(S9no<-}?sOdiL_bEoIg4&zE<Wrl#sMGDLHWvi4+N^hvdu<Fcf4-bVt#m)W*gR@Rt?%@u>dwzNA`~3oc)6=88smvaf=GdmR3jC|Cf}0m<?3Y5P-GVz-zC^KdyCOo92WwP@taKMl7tNc7FQrI(3W9LKHuI}WF25XIOZusVjRZ#(2y9^yfghEQ61UiMMPx5ZVBr8_|7JZeAE2Ab=>Sn7tO|69CuTW)zw+75roL;m63{6KwG2h8*(wQOmeo7fm2tdS~zB-cE8E1)`YBZZsrXDFmPw=U#4eh8YL&1BaiAtCh^BJ-u>b#mCSW}`wxd6jZEDu<O{`T`LUr~zu!B1G*TS7J2U$vPNNISp}H0zh*{FoHAa@@TnVcJqkt)azJB*|1I4_k(Bt#x8I8e!LWnx7-zdu#+{0nOkyBSSii%oZfBN8(Ms(agW^I~Nv8BcBlvZeMDgz%Drz(;_@=x~SfWf;v%WJ2tJ)Q>^^)IZT0-P{TQ(kfk0;8hFYAdZZEg*_T-6p?0Z@)lJ(u{oWvu2xFQhLq&v+)N*BZcwNsp<Q}4|BOkv$H?mpP2eSfAMAfS#@<lqYSWPryrsxykJ#3?WE}t_hdO5yqxy0GFW}L`??JFvNiGKypKzn?ZcQOz9%a12~bs~Vp`8LaAu@~^v%-lcFHmy8(8HEfn_%19L?KQV?s#WM3kse_EXabvh-7Ra(uEdP{TGu7K5lB&z*B2uhY}o;e2TCU2QP)6^V6J`tkM4CFi}*JC11+50KD4FD!1Q1J3(LHBpK<+^Ga2Xn=VYuRJgA5;{@Bfpy;B%$72+=pciMVyc3ld~9LflL^8_RiwKwc9wd>)MT>W03{hm9OB^^Rzep5bxv0yr(_wl7y%solwNZlY%p`(yhevrmXiIpuV9z=`?hYF7;j#waRqL?{VzDxWJ8S!2HeCYjS1UT&%a7H08<AU_UOE)h?yF?!V6!r1t}zEOAILLDzD<a=R46Y8m4D6IP<fsu`<+9fkm1A$nD+nh@*<8Ae0y9-Ygr^ga`oi6uTHm&<+GX2RRAGOSL4qUiT%9*Gua^<D%k2`1zO^imurQt`zD@usqQD8vJQ#049H5TVFxZ2!;-TfTC2f&$QmxrLYW(NV!260-Xc);@3+fC643FJEDjK(LQ5^${<#tB3mMZS``4wHtt6b!;U|7FO!1jy9{Fk^cefG5_p{e;;eE-C2H4eF{Hj%M98S_tT(YmP2T1Pjg(`VVNPR7yRD1j5layhMz5|1L<@iWmch&30LW*{B)cidW>n>{5js3Z;C&P&rFeXHvZ?~bM6gm8z(-mEzFYq~;6RP)H|ZwF7dEA+e=@gm_3}5@-6-?kyy~~Jle@dUz2O!`qjCOu<2JatPx-8H-JGQMZy9O8`9?nv>gzBDvdSW7$^<;=)uPo~;EV<^)qOte*ox@^Bszx>k#<6XP_{|I;*q&NIrFT)`b~{18bRnYK+O&bFzcDCPkSDAh)UNxJL@ITx@i9OfDU@Kv;6`Ufh9S|=h5cv0gq~WU~#tYmu%?Ah(X24#ihU@BW7mr_*1ib8=NFrQks&^i2%7W*;$@_P0Yg&jL4RKqL_~*LkM_6JN4%2#ZjZadehGXHLyuP^DOXzZ<exOL4+;T=mc4j@vVAv{{Cq1|Ipc>fOvM&uf?;o!(;imhs6(*Gq;RXSiQ-4`DUyfvaqsUCGpMr>eV9{a4sTot&^!Cn?kMH{}T-+J6|ORbAX0-=Ihzf!_E^)`QHIm9+W}nc&h)j(O>+NbP)+uN{X;zxFh<?=I%zlF>^nc8+&s9es1*pq4UP#P4M7lpJL;qb11Lvyj;VLlao0R3Xiqbn;U$8$lF;a5MTRnOFGtLEekXVs_^Zw`P(1=?&O0CgaT3`&Cpoe*PDSlukUW|ER_HNv1P&9iD>YeA>izGzi-U%Q!ROT+5Bm4aJvuq#f|kflqJROp501Hh<uyqNztj0uj&4aMj8xQ)-=~94G`GI!t|TR|M=JMCwKhN66`2H(An+gZBA_tlQKio7SGRLTy@>`QXqf=5c_wt`l5>i8WKz3@vG}%>>iB*!jyLx-mRHtavlv;LK^ajRh$@xp7QdV1~8yTm_vXRboyrU_uu~bXEJu@$7er$SBUa=bF<H;yZPbV%y)NY9}MNDTlapzW(oRfD@5yW*ETNI80!uhJ|ueN@qBgyl%&MECL<!Zlzpf!bZj2%`@8Qp-<j-$&-{9($Dh7#(3c1`VXa6Fx%%oqntmT4"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None
