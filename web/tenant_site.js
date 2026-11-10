@@ -111,13 +111,8 @@ function prefillBooking(serviceOrStaff) {
 // --- Voice Recognition with Smart Silence Detection & Barge-In for Custom Site ---
 
 let siteSpeechSilenceTimer = null;
-let siteTurnStartIndex = 0;
-let siteFinalizedTranscript = "";
-let siteLastInterimTranscript = "";
-
-function calculateSiteAdaptiveSilenceMs(text) {
-  return 500; // Industry standard fast response (500ms)
-}
+let siteTranscriptBuffer = "";
+const SITE_SILENCE_THRESHOLD_MS = 1800;
 
 function setupSiteVoice() {
   const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -130,15 +125,10 @@ function setupSiteVoice() {
 
   recognition.onstart = () => {
     isRecording = true;
-    siteFinalizedTranscript = "";
-    siteLastInterimTranscript = "";
+    siteTranscriptBuffer = "";
     if (siteSpeechSilenceTimer) {
       clearTimeout(siteSpeechSilenceTimer);
       siteSpeechSilenceTimer = null;
-    }
-    if (activeSiteAudio) {
-      activeSiteAudio.pause();
-      activeSiteAudio = null;
     }
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
@@ -151,77 +141,36 @@ function setupSiteVoice() {
     updateSiteMicUI(true);
   };
 
-  recognition.onspeechend = () => {
-    const liveText = (siteFinalizedTranscript + siteLastInterimTranscript).trim();
-    if (!liveText || isProcessingTurn) return;
-
-    if (siteSpeechSilenceTimer) clearTimeout(siteSpeechSilenceTimer);
-
-    siteSpeechSilenceTimer = setTimeout(async () => {
-      const completeTurn = (siteFinalizedTranscript + siteLastInterimTranscript).trim();
-      if (!completeTurn || isProcessingTurn) return;
-
-      siteTurnStartIndex = recognition.results ? recognition.results.length : 0;
-      siteFinalizedTranscript = "";
-      siteLastInterimTranscript = "";
-
-      try { recognition.stop(); } catch (e) {}
-      isRecording = false;
-      updateSiteMicUI(false);
-
-      const statusEl = document.getElementById("siteVoiceStatus");
-      if (statusEl) statusEl.textContent = `You: "${completeTurn}"`;
-      appendSiteChatBubble("user", completeTurn);
-
-      isProcessingTurn = true;
-      try {
-        await processSiteTurn(completeTurn);
-      } finally {
-        isProcessingTurn = false;
-      }
-    }, 500);
-  };
-
   recognition.onresult = (event) => {
     if (isProcessingTurn || isBotSpeaking) return;
 
-    let turnFinalized = "";
-    let interim = "";
-
-    for (let i = siteTurnStartIndex; i < event.results.length; ++i) {
+    let interimTranscript = "";
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
       const piece = event.results[i][0].transcript;
       if (event.results[i].isFinal) {
-        turnFinalized += piece + " ";
+        siteTranscriptBuffer += piece + " ";
       } else {
-        interim += piece;
+        interimTranscript += piece;
       }
     }
 
-    siteFinalizedTranscript = turnFinalized;
-    siteLastInterimTranscript = interim;
-
-    const liveText = (siteFinalizedTranscript + interim).trim();
+    const liveText = (siteTranscriptBuffer + interimTranscript).trim();
     if (!liveText) return;
 
     const statusEl = document.getElementById("siteVoiceStatus");
     if (statusEl) {
-      statusEl.textContent = `🎙️ Listening: "${liveText}"`;
+      statusEl.textContent = `🎙️ Listening: "${liveText}" (waiting for you to finish...)`;
     }
 
     if (siteSpeechSilenceTimer) {
       clearTimeout(siteSpeechSilenceTimer);
     }
 
-    const adaptiveSilenceMs = calculateSiteAdaptiveSilenceMs(liveText);
-
     siteSpeechSilenceTimer = setTimeout(async () => {
-      const completeTurn = (siteFinalizedTranscript + siteLastInterimTranscript).trim();
+      const completeTurn = (siteTranscriptBuffer + interimTranscript).trim();
       if (!completeTurn || isProcessingTurn) return;
 
-      siteTurnStartIndex = event.results.length;
-      siteFinalizedTranscript = "";
-      siteLastInterimTranscript = "";
-
+      siteTranscriptBuffer = "";
       try {
         recognition.stop();
       } catch (e) {}
@@ -237,7 +186,7 @@ function setupSiteVoice() {
       } finally {
         isProcessingTurn = false;
       }
-    }, adaptiveSilenceMs);
+    }, SITE_SILENCE_THRESHOLD_MS);
   };
 
   recognition.onerror = (event) => {
@@ -264,10 +213,6 @@ function setupSiteVoice() {
 
 function toggleSiteVoice() {
   if (isBotSpeaking) {
-    if (activeSiteAudio) {
-      activeSiteAudio.pause();
-      activeSiteAudio = null;
-    }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     isBotSpeaking = false;
     return;
@@ -284,9 +229,8 @@ function toggleSiteVoice() {
       clearTimeout(siteSpeechSilenceTimer);
       siteSpeechSilenceTimer = null;
     }
-    const pendingText = (siteFinalizedTranscript + siteLastInterimTranscript).trim();
-    siteFinalizedTranscript = "";
-    siteLastInterimTranscript = "";
+    const pendingText = siteTranscriptBuffer.trim();
+    siteTranscriptBuffer = "";
     try { recognition.stop(); } catch(e) {}
     isRecording = false;
     updateSiteMicUI(false);
@@ -297,9 +241,7 @@ function toggleSiteVoice() {
     }
   } else {
     try {
-      siteFinalizedTranscript = "";
-      siteLastInterimTranscript = "";
-      siteTurnStartIndex = 0;
+      siteTranscriptBuffer = "";
       recognition.start();
     } catch(e) {
       console.warn("Could not start site voice:", e);
@@ -380,16 +322,13 @@ async function processSiteTurn(text) {
       body: JSON.stringify({
         message: text,
         tenant_id: activeTenantId,
-        accent: currentSiteAccent,
+        accent: tenantData?.default_accent || "general_american",
         caller_name: name,
         caller_phone: phone,
         session_id: "site-guest"
       })
     });
     const data = await res.json();
-    if (data.accent && data.accent.key) {
-      currentSiteAccent = data.accent.key;
-    }
     appendSiteChatBubble("bot", data.reply);
     playSiteSpeech(data.reply);
   } catch (e) {
@@ -407,65 +346,33 @@ function appendSiteChatBubble(role, text) {
   container.scrollTop = container.scrollHeight;
 }
 
-let activeSiteAudio = null;
-let currentSiteAccent = "general_american";
-
 function playSiteSpeech(text) {
+  if (!window.speechSynthesis) return;
+
   if (recognition) {
     try { recognition.abort(); } catch(e) {}
     isRecording = false;
     updateSiteMicUI(false);
   }
 
-  if (activeSiteAudio) {
-    activeSiteAudio.pause();
-    activeSiteAudio = null;
-  }
-  if (window.speechSynthesis) {
-    window.speechSynthesis.cancel();
-  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.pitch = 1.15;
+  utterance.rate = 1.0;
 
-  // Stream low-latency neural TTS (Cartesia / OpenAI nova) matching phone line
-  const audioUrl = `/api/chat/tts?text=${encodeURIComponent(text)}&accent=${encodeURIComponent(currentSiteAccent)}`;
-  const audio = new Audio(audioUrl);
-  activeSiteAudio = audio;
-  isBotSpeaking = true;
-
-  audio.onended = () => {
-    activeSiteAudio = null;
+  utterance.onstart = () => {
+    isBotSpeaking = true;
+  };
+  utterance.onend = () => {
     setTimeout(() => {
       isBotSpeaking = false;
-    }, 300);
+    }, 500);
+  };
+  utterance.onerror = () => {
+    isBotSpeaking = false;
   };
 
-  audio.onerror = () => {
-    activeSiteAudio = null;
-    // Resilient fallback to browser synthesis if network fails
-    if (window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.15;
-      utterance.rate = 1.0;
-      utterance.onend = () => { isBotSpeaking = false; };
-      utterance.onerror = () => { isBotSpeaking = false; };
-      window.speechSynthesis.speak(utterance);
-    } else {
-      isBotSpeaking = false;
-    }
-  };
-
-  audio.play().catch(() => {
-    // Autoplay policy fallback
-    if (window.speechSynthesis) {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.pitch = 1.15;
-      utterance.rate = 1.0;
-      utterance.onend = () => { isBotSpeaking = false; };
-      utterance.onerror = () => { isBotSpeaking = false; };
-      window.speechSynthesis.speak(utterance);
-    } else {
-      isBotSpeaking = false;
-    }
-  });
+  window.speechSynthesis.speak(utterance);
 }
 
 // --- Hands-On Channel Testing Trigger ---
