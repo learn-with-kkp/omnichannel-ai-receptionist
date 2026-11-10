@@ -1,0 +1,234 @@
+{
+  "name": "Sophia Salon Voice AI - Post-Call & Escalation Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-end-of-call",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Vapi End-of-Call Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.message.analysis.structuredData.sentiment }}",
+              "rightValue": "frustrated",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.body.message.analysis.structuredData.sentiment }}",
+              "rightValue": "angry",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.body.message.analysis.structuredData.escalation_needed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "2",
+      "name": "Is Customer Frustrated?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [500, 180]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "U0A57CPCBRC",
+          "mode": "id"
+        },
+        "text": "🚨 Urgent Caller Escalation: Frustrated Customer Alert",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        },
+        "blocksUi": {
+          "blocksValues": [
+            {
+              "type": "header",
+              "text": "🚨 Marcus Urgent Alert: Frustrated Caller"
+            },
+            {
+              "type": "section",
+              "text": "*Customer:* {{ $('Vapi End-of-Call Webhook').item.json.body.message.analysis.structuredData.customer_name }}\n*Phone:* {{ $('Vapi End-of-Call Webhook').item.json.body.message.call.customer.number }}\n*Sentiment:* 🔴 {{ $('Vapi End-of-Call Webhook').item.json.body.message.analysis.structuredData.sentiment }}\n*Service:* {{ $('Vapi End-of-Call Webhook').item.json.body.message.analysis.structuredData.service_requested }}"
+            },
+            {
+              "type": "section",
+              "text": "*Call Summary:*\n{{ $('Vapi End-of-Call Webhook').item.json.body.message.analysis.summary }}"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "Send Slack Alert to Marcus",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [780, 120],
+      "credentials": {
+        "slackApi": {
+          "id": "salon-slack-credentials",
+          "name": "Slack Bot Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/upsert",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_CRM_API_KEY"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"name\": \"{{ $json.body.message.analysis.structuredData.customer_name }}\",\n  \"phone\": \"{{ $json.body.message.call.customer.number }}\",\n  \"email\": \"{{ $json.body.message.analysis.structuredData.customer_email }}\",\n  \"tags\": [\"sophia-voice-lead\", \"{{ $json.body.message.analysis.structuredData.sentiment }}\"],\n  \"customFields\": [\n    { \"key\": \"last_call_summary\", \"field_value\": \"{{ $json.body.message.analysis.summary }}\" }\n  ]\n}"
+      },
+      "id": "4",
+      "name": "Sync Lead to CRM (GHL/HubSpot)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 380]
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "hours"
+      },
+      "id": "5",
+      "name": "Wait 2 Hours (Post-Call)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [780, 380]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v21.0/YOUR_PHONE_NUMBER_ID/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_WHATSAPP_TOKEN"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Vapi End-of-Call Webhook').item.json.body.message.call.customer.number.replace('+', '') }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $('Vapi End-of-Call Webhook').item.json.body.message.analysis.structuredData.customer_name }}, thank you for calling our salon! We'd love your feedback: https://g.page/r/YOUR_PLACE_ID/review\"\n  }\n}"
+      },
+      "id": "6",
+      "name": "Send WhatsApp Review Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1020, 380]
+    },
+    {
+      "parameters": {
+        "amount": 30,
+        "unit": "days"
+      },
+      "id": "7",
+      "name": "Wait 30 Days",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [780, 560]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.resend.com/emails",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_RESEND_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"Marcus <marcus@yoursalon.com>\",\n  \"to\": [\"{{ $('Vapi End-of-Call Webhook').item.json.body.message.analysis.structuredData.customer_email }}\"],\n  \"subject\": \"Time for a touch-up, {{ $('Vapi End-of-Call Webhook').item.json.body.message.analysis.structuredData.customer_name }}? ✨\",\n  \"html\": \"<p>Hi {{ $('Vapi End-of-Call Webhook').item.json.body.message.analysis.structuredData.customer_name }}, it has been 30 days since your last appointment. Keep your style fresh by booking your next visit!</p>\"\n}"
+      },
+      "id": "8",
+      "name": "Send 30-Day Retention Email",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1020, 560]
+    }
+  ],
+  "connections": {
+    "Vapi End-of-Call Webhook": {
+      "main": [
+        [
+          { "node": "Is Customer Frustrated?", "type": "main", "index": 0 },
+          { "node": "Sync Lead to CRM (GHL/HubSpot)", "type": "main", "index": 0 },
+          { "node": "Wait 30 Days", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Is Customer Frustrated?": {
+      "main": [
+        [
+          { "node": "Send Slack Alert to Marcus", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Wait 2 Hours (Post-Call)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Wait 2 Hours (Post-Call)": {
+      "main": [
+        [
+          { "node": "Send WhatsApp Review Request", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Wait 30 Days": {
+      "main": [
+        [
+          { "node": "Send 30-Day Retention Email", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}
