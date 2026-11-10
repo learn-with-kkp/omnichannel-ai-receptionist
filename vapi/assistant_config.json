@@ -1,5 +1,5 @@
 {
-  "name": "Sofia Omnichannel Voice Receptionist",
+  "name": "Luxe Salon Voice Receptionist - Sophia",
   "transcriber": {
     "provider": "deepgram",
     "model": "nova-2",
@@ -13,9 +13,7 @@
       "Elena:2",
       "Marcus:2",
       "Chloe:2",
-      "Luxe:2",
-      "Appointment:2",
-      "Reschedule:3"
+      "Luxe:2"
     ]
   },
   "model": {
@@ -25,7 +23,7 @@
     "messages": [
       {
         "role": "system",
-        "content": "# Identity & Mission\nYou are \"Sofia\", the intelligent, warm, and highly efficient AI Voice Receptionist for multi-tenant businesses (Salons, Clinics, Law Firms, and Real Estate).\n\n# Tone & Conversational Protocol (Strictly adhering to PRD requirements)\n- Keep spoken responses concise: 1 to 2 spoken sentences maximum per turn. Never read long lists.\n- Sound welcoming, graceful, and natural.\n- Repeat back times, dates, and phone numbers clearly for explicit accuracy.\n- Never invent availability or claim a booking is confirmed before live scheduler response.\n\n# Multi-Tenant Core Behavioral Rules\n1. DISCOVERY & AVAILABILITY: When a caller inquires about slots or services, invoke `check_availability`.\n2. FAST BOOKING: When caller agrees to a slot, summarize the service, date/time, and provider, collect their name and phone, obtain explicit confirmation, and invoke `book_appointment`.\n3. RESCHEDULE & MODIFICATION: If a caller wishes to change a time, verify their phone via `lookup_appointment` and call `reschedule_appointment`.\n4. CANCELLATION: Ask for their phone number, verify the booking, and call `cancel_appointment`.\n5. HUMAN ESCALATION & HANDOFF: If the caller is frustrated, asks for a human supervisor, or has medical/legal emergencies, invoke `transfer_to_human` immediately with a concise escalation reason."
+        "content": "# Identity & Persona\nYou are \"Sophia\", the warm, professional, and attentive front-desk receptionist for \"Luxe Hair & Wellness Salon\" located at 450 Newbury Street, Boston.\n\n# Tone & Voice Dynamics\n- Keep answers concise: 1 to 2 spoken sentences maximum per turn. Never read giant lists.\n- Sound welcoming, graceful, and natural. Use verbal acknowledgments (\"Certainly!\", \"I'd be happy to check that for you\", \"One moment while I check the calendar\").\n- Repeat back times, dates, and phone numbers clearly for accuracy.\n\n# Salon Services & Pricing Reference\n1. Women's Haircut & Blowout: $75 (45 min)\n2. Men's Precision Cut & Styling: $45 (30 min)\n3. Balayage & Gloss Treatment: $180+ (150 min)\n4. Full Highlights & Toning: $160 (120 min)\n5. Brazilian Keratin Smoothing: $220 (120 min)\n6. Luxury Manicure & Pedicure: $65 (60 min)\n\n# Salon Stylists\n- Elena (Master Colorist & Balayage Specialist)\n- Marcus (Precision Cuts & Styling Master)\n- Chloe (Keratin, Blowouts & Treatments)\n- Any Stylist (Default if client has no preference)\n\n# Core Behavioral Guidelines\n1. DISCOVERY FIRST: Determine the desired service and preferred date/time before checking availability.\n2. TOOL CALLING RULE: Never confirm an appointment or say a slot is available without first calling the `check_availability` or `book_appointment` tool.\n3. PHONE NUMBER VERIFICATION: Always ask for and verify the caller's 10-digit callback phone number before finalizing any booking.\n4. RESCHEDULING & CANCELLATIONS: Ask for the caller's phone number to look up their existing appointment using `lookup_appointment` before modifying or canceling.\n5. CANCELLATION POLICY: Mention kindly that cancellations require 24 hours notice to avoid a 50% deposit fee.\n6. ESCALATIONS: If a client asks to speak to the owner or has a complaint about a previous service, invoke `transfer_to_manager` immediately."
       }
     ],
     "tools": [
@@ -33,40 +31,62 @@
         "type": "function",
         "function": {
           "name": "check_availability",
-          "description": "Checks live available appointment slots for a specified service, date, and preferred provider.",
+          "description": "Checks available appointment slots for a specified salon service, date, and preferred stylist.",
           "parameters": {
             "type": "object",
             "properties": {
               "service_name": {
                 "type": "string",
-                "description": "The exact service requested."
+                "enum": [
+                  "Womens Haircut",
+                  "Mens Cut",
+                  "Balayage",
+                  "Full Highlights",
+                  "Keratin Treatment",
+                  "Mani Pedi"
+                ],
+                "description": "The exact salon service requested."
               },
               "target_date": {
                 "type": "string",
-                "description": "Target date in YYYY-MM-DD format (e.g. 2026-11-06)."
+                "description": "Target date in YYYY-MM-DD format (e.g. 2026-10-31)."
               },
               "preferred_time_of_day": {
                 "type": "string",
-                "enum": ["morning", "afternoon", "evening", "any"],
-                "description": "Preferred time window."
+                "enum": [
+                  "morning",
+                  "afternoon",
+                  "evening",
+                  "any"
+                ],
+                "description": "Preferred time window of the caller."
               },
               "preferred_stylist": {
                 "type": "string",
-                "description": "Preferred provider or specialist name, or 'any'."
+                "enum": [
+                  "Elena",
+                  "Marcus",
+                  "Chloe",
+                  "any"
+                ],
+                "description": "Preferred stylist name, or 'any' if no preference."
               }
             },
-            "required": ["service_name", "target_date"]
+            "required": [
+              "service_name",
+              "target_date"
+            ]
           }
         },
         "server": {
-          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       },
       {
         "type": "function",
         "function": {
           "name": "book_appointment",
-          "description": "Confirms and atomically commits an appointment to the source-of-truth calendar once caller provides details.",
+          "description": "Confirms and books a salon appointment once the caller agrees to a slot and provides their details.",
           "parameters": {
             "type": "object",
             "properties": {
@@ -76,23 +96,23 @@
               },
               "caller_phone": {
                 "type": "string",
-                "description": "Caller phone number in E.164 format (+1XXXXXXXXXX)."
+                "description": "10-digit phone number in E.164 format (+1XXXXXXXXXX)."
               },
               "service_name": {
                 "type": "string",
-                "description": "The selected service."
+                "description": "The selected salon service."
               },
               "stylist_name": {
                 "type": "string",
-                "description": "Assigned specialist (e.g. Elena, Marcus, or Any)."
+                "description": "Assigned stylist (Elena, Marcus, Chloe, or Any)."
               },
               "appointment_datetime": {
                 "type": "string",
-                "description": "ISO 8601 formatted datetime string (e.g. 2026-11-06T14:00:00)."
+                "description": "ISO 8601 formatted datetime string (e.g. 2026-10-31T14:00:00)."
               },
               "special_notes": {
                 "type": "string",
-                "description": "Optional client notes."
+                "description": "Optional client requests (e.g., thick hair, sensitive scalp)."
               }
             },
             "required": [
@@ -104,42 +124,14 @@
           }
         },
         "server": {
-          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
-        }
-      },
-      {
-        "type": "function",
-        "function": {
-          "name": "reschedule_appointment",
-          "description": "Reschedules an existing appointment to a new date and time.",
-          "parameters": {
-            "type": "object",
-            "properties": {
-              "caller_phone": {
-                "type": "string",
-                "description": "Client's registered phone number."
-              },
-              "new_appointment_datetime": {
-                "type": "string",
-                "description": "New requested ISO 8601 datetime (e.g. 2026-11-07T15:00:00)."
-              },
-              "booking_id": {
-                "type": "string",
-                "description": "Optional booking reference."
-              }
-            },
-            "required": ["caller_phone", "new_appointment_datetime"]
-          }
-        },
-        "server": {
-          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       },
       {
         "type": "function",
         "function": {
           "name": "lookup_appointment",
-          "description": "Looks up an existing reservation by client phone number.",
+          "description": "Looks up an existing appointment by the client's phone number.",
           "parameters": {
             "type": "object",
             "properties": {
@@ -148,74 +140,79 @@
                 "description": "Client's phone number in E.164 format."
               }
             },
-            "required": ["caller_phone"]
+            "required": [
+              "caller_phone"
+            ]
           }
         },
         "server": {
-          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       },
       {
         "type": "function",
         "function": {
           "name": "cancel_appointment",
-          "description": "Cancels an existing appointment following the cancellation policy.",
+          "description": "Cancels an existing appointment by booking reference or phone number.",
           "parameters": {
             "type": "object",
             "properties": {
+              "booking_id": {
+                "type": "string",
+                "description": "Booking reference ID (e.g. LUXE-1082)."
+              },
               "caller_phone": {
                 "type": "string",
                 "description": "Client's verified phone number."
               },
-              "booking_id": {
-                "type": "string",
-                "description": "Optional booking reference ID."
-              },
               "reason": {
                 "type": "string",
-                "description": "Reason for cancellation."
+                "description": "Brief reason for cancellation."
               }
             },
-            "required": ["caller_phone"]
+            "required": [
+              "caller_phone"
+            ]
           }
         },
         "server": {
-          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       },
       {
         "type": "function",
         "function": {
-          "name": "transfer_to_human",
-          "description": "Escalates and transfers the caller to a human manager or supervisor.",
+          "name": "transfer_to_manager",
+          "description": "Transfers the call to the salon manager or human front-desk supervisor for complex escalations.",
           "parameters": {
             "type": "object",
             "properties": {
               "escalation_reason": {
                 "type": "string",
-                "description": "Detailed reason for human handoff."
+                "description": "Reason for transferring to the manager."
               }
             },
-            "required": ["escalation_reason"]
+            "required": [
+              "escalation_reason"
+            ]
           }
         },
         "server": {
-          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+          "url": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
         }
       }
     ]
   },
   "voice": {
-    "provider": "cartesia",
-    "voiceId": "694f9389-aac1-45b6-b726-9d9369183238",
-    "model": "sonic-3.5"
+    "provider": "vapi",
+    "voiceId": "Elliot"
   },
-  "firstMessage": "Hi, thanks for calling! This line may be recorded for confirmation. My name is Sofia from the front desk. How can I help you today?",
-  "endCallMessage": "Thank you for calling. We have confirmed your details and look forward to welcoming you. Have a wonderful day!",
+  "firstMessage": "Thank you for calling Luxe Hair and Wellness Salon! My name is Sophia. How can I pamper you today?",
+  "endCallMessage": "Thank you for calling Luxe Salon. We look forward to seeing you soon. Have a wonderful day!",
   "recordingEnabled": true,
   "silenceTimeoutSeconds": 30,
   "maxDurationSeconds": 600,
   "backchannelingEnabled": true,
   "backgroundDenoisingEnabled": true,
-  "serverUrl": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+  "serverUrl": "https://int-glen-titten-firm.trycloudflare.com/webhook/vapi-tools"
 }

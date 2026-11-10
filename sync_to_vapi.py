@@ -11,9 +11,6 @@ import sys
 import json
 import httpx
 from pathlib import Path
-from dotenv import load_dotenv
-
-load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_FILE = BASE_DIR / "vapi" / "assistant_config.json"
