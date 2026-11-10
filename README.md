@@ -13,11 +13,15 @@
 
 ---
 
-## 🌐 Live Touchpoints
+## 🌐 Live Touchpoints & Interactive Demos
+
+> 🚀 **Live Demo URL**: [https://ai-voice-receptionist.kishor.tech](https://ai-voice-receptionist.kishor.tech/)  
+> ⚡ **Vercel Edge Mirror**: [https://ai-voice-receptionist-chi.vercel.app](https://ai-voice-receptionist-chi.vercel.app/)
 
 | Channel | Access / Endpoint | Experience |
 | :--- | :--- | :--- |
 | **Production Web App** | [ai-voice-receptionist.kishor.tech](https://ai-voice-receptionist.kishor.tech/) | Full multi-tenant dashboard, appointment manager & voice studio |
+| **Vercel Edge Mirror** | [ai-voice-receptionist-chi.vercel.app](https://ai-voice-receptionist-chi.vercel.app/) | High-availability global CDN edge deployment |
 | **In-Browser WebRTC Studio** | [/vapi-call](https://ai-voice-receptionist.kishor.tech/vapi-call) | Direct real-time browser calling powered by `@vapi-ai/web` & Cartesia Sonic-3.5 |
 | **PSTN Telephony Line** | `+1 (667) 307-0119` | Dedicated Vapi SIP/PSTN line with sub-500ms turnaround |
 | **Outbound Voice Callback** | Web Studio $\rightarrow$ *Call Me* | Triggers Sofia to dial client phone directly via Twilio / Vapi REST API |
