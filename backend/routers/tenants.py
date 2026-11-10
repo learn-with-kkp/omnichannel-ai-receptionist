@@ -1,144 +1,15 @@
-"""
-Tenants & Universal Blueprint API Router.
-Enables instant plug-and-play vertical switching across:
-- Salon & Spa
-- Dental Health Clinic
-- Automotive Repair & Tires
-- Family Medical Clinic
-And multi-accent English pronunciation configuration.
-"""
-
-import logging
-from typing import Dict, Any, List, Optional
-from fastapi import APIRouter, HTTPException, Query
-from pydantic import BaseModel
-
-from core.blueprint.tenant_manager import tenant_registry
-from core.blueprint.schema import BusinessProfile, AccentProfile
-from core.engine.rag_engine import knowledge_engine
-from integrations.google_calendar import calendar_service
-
-logger = logging.getLogger("TenantsRouter")
-router = APIRouter(prefix="/api/blueprint", tags=["Blueprint"])
-
-
-class RagToggleRequest(BaseModel):
-    enabled: bool
-
-
-@router.get("/status")
-def get_blueprint_status():
-    """System health, Google Calendar sync status, RAG mode, and tenant count."""
-    return {
-        "status": "operational",
-        "google_calendar_connected": calendar_service.is_connected() if calendar_service else False,
-        "rag_mode_enabled": knowledge_engine.use_rag,
-        "available_verticals": [t.id for t in tenant_registry.list_tenants()],
-        "available_accents": [a.key for a in tenant_registry.list_accents()]
-    }
-
-
-@router.get("/tenants")
-def list_blueprint_tenants():
-    """Returns all ready-to-sell vertical industry manifests."""
-    tenants = tenant_registry.list_tenants()
-    return {
-        "tenants": [
-            {
-                "id": t.id,
-                "name": t.name,
-                "industry": t.industry,
-                "phone": t.phone,
-                "address": t.address,
-                "services_count": len(t.services),
-                "staff_count": len(t.staff),
-                "currency": t.currency,
-                "lead_time_hours": t.business_rules.min_lead_time_hours,
-                "cancellation_window_hours": t.business_rules.cancellation_window_hours
-            }
-            for t in tenants
-        ]
-    }
-
-
-@router.get("/tenants/{tenant_id}")
-def get_tenant_details(tenant_id: str):
-    """Retrieves full manifest for a specific industry tenant."""
-    tenant = tenant_registry.get_tenant(tenant_id)
-    return {"tenant": tenant.model_dump()}
-
-
-@router.get("/accents")
-def list_accent_profiles():
-    """Returns available English pronunciation / accent profiles."""
-    accents = tenant_registry.list_accents()
-    return {
-        "accents": [a.model_dump() for a in accents]
-    }
-
-
-class CustomerOnboardRequest(BaseModel):
-    business_name: str
-    vertical: str = "real_estate"
-    phone_number: str
-    address: str
-    currency: str = "USD"
-    whatsapp_phone_number_id: Optional[str] = ""
-    meta_page_id: Optional[str] = ""
-    instagram_account_id: Optional[str] = ""
-    google_calendar_id: Optional[str] = "primary"
-    primary_accent: Optional[str] = "general_american"
-    services: Optional[List[Dict[str, Any]]] = None
-    staff: Optional[List[Dict[str, Any]]] = None
-
-
-@router.post("/onboard-customer")
-def onboard_new_customer(payload: CustomerOnboardRequest):
-    """
-    Customer Self-Serve / Sales Onboarding Endpoint.
-    Instantly provisions a customized AI Voice & Chat Receptionist tenant
-    with Google Calendar sync, Meta omnichannel webhooks, and regional accent voice.
-    """
-    clean_id = payload.business_name.lower().replace(" ", "_").replace("&", "and")
-    clean_id = "".join(c for c in clean_id if c.isalnum() or c == "_")[:32]
-
-    profile = tenant_registry.onboard_custom_tenant(
-        tenant_id=clean_id,
-        business_name=payload.business_name,
-        vertical=payload.vertical,
-        phone_number=payload.phone_number,
-        address=payload.address,
-        currency=payload.currency,
-        services=payload.services,
-        staff=payload.staff,
-        whatsapp_phone_number_id=payload.whatsapp_phone_number_id or "",
-        meta_page_id=payload.meta_page_id or "",
-        instagram_account_id=payload.instagram_account_id or "",
-        google_calendar_id=payload.google_calendar_id or "primary",
-        primary_accent=payload.primary_accent or "general_american"
-    )
-
-    return {
-        "status": "success",
-        "message": f"Tenant '{profile.name}' provisioned and active immediately!",
-        "tenant_id": profile.id,
-        "tenant": profile.model_dump(),
-        "webhooks": {
-            "whatsapp_webhook": f"/webhook/whatsapp?tenant_id={profile.id}",
-            "messenger_webhook": f"/webhook/messenger?tenant_id={profile.id}",
-            "instagram_webhook": f"/webhook/instagram?tenant_id={profile.id}",
-            "twilio_voice_webhook": f"/webhook/twilio-voice?tenant_id={profile.id}",
-            "vapi_tool_webhook": f"/webhook/vapi-tools?tenant_id={profile.id}"
-        },
-        "shareable_studio_url": f"/?tenant_id={profile.id}&accent={payload.primary_accent or 'general_american'}"
-    }
-
-
-@router.post("/set-rag")
-def toggle_rag_mode(payload: RagToggleRequest):
-    """Toggle between RAG (vector retrieval) and RAGless (unified context) modes."""
-    knowledge_engine.set_rag_mode(payload.enabled)
-    mode_str = "RAG (Vector Cosine Retrieval)" if payload.enabled else "RAGless (Direct Prompt Assembly)"
-    logger.info(f"Knowledge Retrieval Mode switched to: {mode_str}")
-    return {"status": "success", "rag_mode": payload.enabled, "mode_description": mode_str}
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-nnf`B&RWwx%<gOs6|E;4mbC9=ar#N>VM7%Cff77M9SbPtJKX&mn{?fCIuPUND#;Nhgl~^;b5K^y~BH{eF*p>)!8vi_7wSd&vL>OKQE7;t@A;p~QySx#Rx2y}IrbadG?Bqw}T2Ay)8y<)<uT3K55joeHRuX5=FK2&&+G^>t%&<PyYV*VP8Tp>k1Gv+$I%n8vk>^^?v$pgHNuY4J-v3;$I)7esjG`NP1-dC<P&saljgIp}@wCstMAnhDEkKQw4|^s#dEYF+s2AB%aOgFG4C0jX+m_w*+fFhyOTA;yR%uC5$GTNkg_D+8{osW19!oDi%b2j`KabQxlnVa5R?2I9ljcB}Va+ppfN?lRsBu@}U8eKU%1y`7sjs+uL%xRUVBl7Y$S<a^?sjK1uytPYCrAdmCJ$gheSr!mdIp+Yky2uD+o7QWLHZu*1DhvT<1Q+@zc7^ActEjme5dl{u_wRE{=1Fj`aP^;=O@7&2&wnw`$Q1>?LY6=I)iNJeP*F>J{dT{I!Am_Xcv(&UecI59rezQ&r!HJup1qFnv&u+d9beA0H0K<q0l(us{*m=`f@Qo}EP=7W7lv_Stit-34q&U2*GD5-`7exZnP3$}Svs=3i9B|@A2^|I*T}(6@aop9RtGl9SsgAFSz^02P4qxr<BvGJ5MVuj853-#4TKFXds;Qv|s;vSw2JuK}5zd^^*4AEwD>hnGJdg_{RyI9I1Ce$IrL7}VC*%xK@{4Y%rvHBSXy-*ng#IAa5LH^2D}kTo9y{&#zQ6z7eI@25D<kGxAU!+oHy*!wl$tU3K$N6s<tT?)c=_XST8XJE3?N!_mrvKW9ccLZ(R5?ycsEp4{vc3v3i$iG5L<Wh7%Q#8Zzs)O52#sHKJdKMtHcdOc*$@K0Qlljy*oVe8O}A@Jz8hTYMO-KPgx?W0+4WtZftF=(Qd1^dEP%S&sxKW3C^u_q#L#tfNt+Du7-?`W=##KAbUK!vdK|T=PuO6sF?oY)<*>E;;?J$`pMP0o7h2egT3QnI9pj51q3)CJFo2)qjvGJ-R=*Q$WHzE@S@kM+Az*^1rcTpmxU}YdKbm{xrY+fwH5`|Jx*w{0CXD=6bh|f42WTxIBu+VpNJq#QSc=e_mHCz32QHI9rb{Aa<joHz+zX^MP+;Mi73AJOvU@MHn?u%oLP7dQVQn?VJV~W*?DQH#Ms+@z9klkP~$9UAz#b~A#J@JopyWW;YqV&yUb@snzIGh^vSD6<0WlfTr8t6F&k8!s9<e18^sewT26?nQ7=YA2>ft~?CdpO5dV1i@XO2d@~VvzqYNoFvDvcCkjXtUEKe%%tu3C;KHFu5eL<5xqABG0BC%*h<2-2DN=?i`JApa@2L}%~jz*Q)&18G?Cxmqv#6wl&-A_lk$E~Um&E``~svXx5<Q~=>v(8@aZIlE6kD%%w2j%9Zjq-dNM{&&JrmdPC28|dODQ*U0?{(#|kYGn{at=}jhn&>fX{JDfI!W!I)9P(E%h4dAgkiEWJF{^0<rzThl;!~_blG!7P-fclVv0$zpgi(<<!N}m?tVY@Nv3gJp7n1(xtepYS9C_r+V<e2EIQ){USp#l`R%eG1x;Hk{hOs+6_>-*grN6jw6Xkprv~2c6=OW#tXmeJ>bjoRM3VH1W_l(Nb8?40{rPJfUzZYxj$(8MhskM%uqwK1qrbG#a_fHV`?MT=%nKfqoCxRW>2(`liz_P)=IQ}ZW;jBG$YR~f-p7Y2<(a{VUksj>fBEvIk9ggdc+Lou({OS1IPJ!sZB+lSVx+5prU*^iaB-Rw9q{h@U)q?ReJLRRk;iGU5MvzqpU&FwjD;y+td`CNkqgCHrs#`6$)2BX?AO3tf^}6XcE6488vG2Z3Dn$L0<gMdyxM!dYb>JJ0oDFsz|TwvtC~lXN|M;DcJLpIU;KF~&ibD=IP&zk2#@^Nvl|T#0q|ekEampfRq@(y-@6kQJ+*{>(0&&xys@|Oq@P`Dicr+D)37anWEf&0V764N`!P&20Y&$!xb&5a3m>VU29pPVD$83U&UNasTF-ER+mvdh*dTXC&-NcLWJL-AkLtiFd`+QYuA<Y3=qmF50{+T$WmOPc@M$%$gioU6J+<J}6%~|1k_`72{GhouUdrR`jWtGkb_;olk@DeL!7PpQ_^^s}#^$i2*yVw`ySn!GjNpy!#}7jwKDUOPV_(W%tG{A<(W#<~;DKBskO~{I!~&)nykGiZg6GRt|5hN`k%vW?;>fjZl^#yprYeuJDT`4eIVaoLee+`UuIC}{CF#Ipu<Gbm^{ji^SsO3KMz*k1I{0_VO`N@6@2(3~*EujhYx05fP#9K5lA<*!PC$rVePpcOKy*Gsj7yS{*jUaA!?&$uiiFju-E104(8-#B4@`_q$s65C&*tWfmt3p)w0%d;Ij`aTJ6+L1f*+WcWE1`1N0=*>H_vunUXIqs2kTtBf_aVC@cW+RsmTqRFeXCE#N`p)SgrgxY9$<IGl9?{v09BW>T*rd(E~fK>L&YCQe8}z(s=e<TD7!SC=g6!0?{b)IIUllPU7|kMem2o^l*24R&LN(U)iy}Imps1SV*0k3CO%!FHUb|Db{UUUCxO+KkA*dTN8fXZxA>Kq32D5U^KezF%@Q6bs<gpKbwQzHINkD54G^|)_y5R7dr|3|B7vdi6OdDfCP~ia60k_gCFd%lflXDBueHF|K03lfmQ=CI-4xTe!RQC!;-nHb(h6#%pIt4cRmyG^2z63M>V;W<NSePn7+TY^?H7LOpMpICmeme9YY^fZSCQ0BNfZv`)Ya{ByrjKJAc|eZI3?m7IETDt~=x*WA8>&sQ?rK^`Cd84px=~NtY$%F3%2LpojPG7N`B6Q3|$KHXlV$BRD^hTHzgc-c@-OWePn)Q9$0j*;yZU)*Vpqr#i=3q}<UgeTs%@N;Q}qd(s-COxm71*Tu7h#t_t}sOpH2_s=FW(P=kV$0Rd@YpIj5xcEhJpZ%*T`I%h2JO7)j`TpoOi6K_wv46gUH2M1~Ih`>7JvAVbH(sJb$^ncNkPzC2AC0Uk#ZGq-ZO;6oSab|52EFo*d`ac)&bIJGijzo52V7_{$R}+?AOOv~3MMWrf387F42@ORp1w%R-XnncIm(D{uu#)H_f#?l(Jd`4JDJT!3bSYxXM3}a?L@k|0!ruSx3|YETAmLlqDdIB$$eid-wr|}0VI3A{QDY}R?$~x5+eg=I<~Cn!(}rkkt70g-0BRw<?!CSgLbCads|zL_pOu5^88$CmNc$oes*0<!2+fe)SVIJrw6#egjE`qeO|B-xS51#;j=;%YBj4?V<@j%NeX-P`C@eTpxt@!r8CtHld)(@7}Y@zMwi!IS4k*T#&Z1Dv58X?Y|-X)V}JkJoP78y6IV_~w(*(C(8QOeHUCO7&#<oxpj4;znjtQ|u%_o3Ii!gsP?GxhIe_9@@r{!?jcSPtVOpdfiy<@YZ`xf2h?q<K*Ehd6*oVwZvfO1uFMuSO*R&cllH#`;wKC#BP(S}@H-6jO&6ERA@zp?pa{ETwtT^V(X2FLf3pJ-kTPX6`&feDMVDrXr_#$#0!>Yc`X`oS4J4iuhN+5xwwHu+Q+^$tmf$QWrv)eewesuWjjqQm8kkVQhEhf}?z1@9*4a&z<a8ZRw$Dv*5ffc2O8!k_r%(9L%OoRI@u1IMcw!V2J1Q?zNnPJQU{omXU%xb2!YJOtK7!~fEzWVPGPA*#g&tI3KW->gQv8s)YYZcq+l%N+LOWikH&ma0E1<+Gncn>B9rdmGZldcjUzB_!oeq&B7T&=o0r&~KN01gB*G3$9*&GfPT*B~apT;l9#xVrl4RTc!7<yTi=MrxX+^*I9&2*lSpdl{=WR-cwv0@P3AK`XRK65(XZ0wl%~V4clz8<)EiY_Og6U)OozeVs;m9hcts+D<Byrk@YLnZVgMJ5MMydF!NKZ~p^uc@OOlv1P0WHai8jVXDWat>`(;nOw^A1u5YdP%>-o7d|o)Tjc~R!AbKQ>dvk#M0fZ3d@&}OdX&*2ja!>H?yG&}WTbJu7W#L!u?|itape8+@lT<~z&1j(TI*aC!S??$fhz%&3aEnV%+~{mYtmju-M0}{fTd{fZh-X1SC2HXuMhT2Rbcro0gZbeQpqb!mw|Wc$@cGi4%RM5=YIbfg0zZ#aFmK9BRXX6nUJyc3L9DCJI{9a8fO%nt#1iv{J^eUUSOicHtrjc1c|P;E{~$wU!F8lro`4TN@V9@1nU>ysKCpDYGi0)sIahivi&t6$PKpjny*uTKFxh<%*k<@iekyp*~8B{l_tR1{bggtH}&{r!lHi=i-Z%1_PvP9jG%(IzE&T8<Bf@-a$OKF=-AO0Ez1lYfMh_h4x16M0t?kYXNISh<jwxxlLJl!oM`t47zaL66VZgYekDNTb*taLJWrX8fLqJxJsE)%2hMA(dU{c6?|T1Xbce3XY0BR^H(Zy+SOZD0$P$%u{R9P_!*FMBXFW6LJR?wJTq7U+E8A21b$#t`!iojR&N!lD|C}r2m(|ABwZbA)ALnj@=}Zlnr0JTWT)t5>m$LfLNQPr^u)Ve>d@&qNZm=~h=X^>NaVpui&Sd&}F#WLEl)*Ta2P@C&@xE~Fuyf86Hh8dn&rHIw|6Wve8#ArPuu32&f1E&UDD>yb?3Le$vNX#<Ou-#X3w*^m5J*O8TfJYinD}%fZ96YAUFFKB36N?~N#;X1{+p#eclS>3_`aEVhz)*3(hUhI$E%DIX`(*%OHmz3d!R!eH>ERIAjCZYC@hEH-Tg`WXIgo9xz7Lt#Vs|3RX+N`#}=x&{?U~sRxt@-EW@LXkJRDEy*Dc^z%DqKW?P{mg<gC7pG-H+aH1ljbci(=85&Z|CFw;s=PxJBuTGqKJNp#o5-XVm(z{wL<3Fvn2ZMJpBunG#9#g@!07;V3J<I+)>H>wK2O3FH=JV7~P<zxdo#)%#CnRw9Hvb3OsX(g"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

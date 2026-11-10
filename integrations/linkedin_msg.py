@@ -1,86 +1,15 @@
-"""
-LinkedIn Messaging API Integration.
-Handles:
-- Direct messaging & InMail automation
-- Webhook subscription handling
-- Resilient message dispatching via https://api.linkedin.com/v2/messages
-"""
-
-import os
-import json
-import logging
-from typing import Dict, Any, Optional, List
-import urllib.request
-import urllib.parse
-
-logger = logging.getLogger("LinkedInIntegration")
-
-
-class LinkedInClient:
-    def __init__(
-        self,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        access_token: Optional[str] = None
-    ):
-        self.client_id = client_id or os.getenv("LINKEDIN_CLIENT_ID", "")
-        self.client_secret = client_secret or os.getenv("LINKEDIN_CLIENT_SECRET", "")
-        self.access_token = access_token or os.getenv("LINKEDIN_ACCESS_TOKEN", "")
-
-    def is_configured(self) -> bool:
-        return bool(self.access_token and not self.access_token.startswith("your_"))
-
-    def send_message(
-        self,
-        recipient_urn: str,
-        text: str
-    ) -> Dict[str, Any]:
-        """Dispatches direct message via LinkedIn Messaging API."""
-        clean_urn = str(recipient_urn).strip()
-        if not clean_urn.startswith("urn:li:"):
-            clean_urn = f"urn:li:person:{clean_urn}"
-
-        if self.is_configured():
-            try:
-                url = "https://api.linkedin.com/v2/messages"
-                payload = {
-                    "recipients": [clean_urn],
-                    "messageContent": {"body": text}
-                }
-                data = json.dumps(payload).encode("utf-8")
-                req = urllib.request.Request(
-                    url, data=data,
-                    headers={
-                        "Authorization": f"Bearer {self.access_token}",
-                        "Content-Type": "application/json",
-                        "X-Restli-Protocol-Version": "2.0.0"
-                    }
-                )
-                with urllib.request.urlopen(req, timeout=8) as resp:
-                    resp_data = json.loads(resp.read().decode())
-                    logger.info(f"✅ LinkedIn message sent to {clean_urn}")
-                    return {"status": "sent", "channel": "linkedin", "response": resp_data}
-            except Exception as e:
-                logger.error(f"LinkedIn Messaging API failed: {e}")
-
-        logger.info(f"💼 [SIMULATION LINKEDIN] To: {clean_urn} | Body: {text}")
-        return {
-            "status": "simulated",
-            "channel": "linkedin",
-            "recipient_urn": clean_urn,
-            "text": text
-        }
-
-    @staticmethod
-    def parse_incoming_message(data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Parses LinkedIn Webhook event."""
-        # Handles standard LinkedIn webhook or simulated JSON
-        sender = data.get("senderUrn") or data.get("sender", {}).get("id") or data.get("from", "")
-        text = data.get("body") or data.get("message", {}).get("text") or data.get("text", "")
-        if sender and text:
-            return {"sender": str(sender), "text": str(text)}
-        return None
-
-
-linkedin_client = LinkedInClient()
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-n<lTT|Oe8g(+^GF&P^5+?&rXvw;FOLE)R#VxhOElka%YS<KU2!Tm3M7D)xVQerV#L+L?{RR87FZ;ItVt>F22Aq(Ys(nB8)#>w{@0<?9ZuJKaumTzf@wkkNl1&6Hn0}a@JKtR)tZQJ$cN^Q&9?uw>eOTRZPXMg4B$kHY!w=cr!RGr?pfi}#5+w>=Zl33~q6Jt!EYLhvEnYW3fi@YA1*M&LRks`Du<5uCqBs$NVk;Iol0{OI4OKv_UGvRilfiZwjW0gk($SucT*p!gJeHL52fE*3B}!PGqic<L@M6{UY{9ZW6qd=(j;^>Mu=7;hMny+~e#<RLiYRg`qRU7Tv@0gnL&TH|OKWpoQy?FM2ObQ16S|K~UU7RzcSK^XNO@23V9iy14v70ES$)3s9BzmegR(*>SS1lTfrC|7T3gjcL55beU*ij99YA<!Z>@dVwpl2&J2^+RfpZtm@V;SFL;w;F8fzQtt|}qW96_v3UZ3xtmJlSk`L-MO0!PcAKYUohLS;7FTB*fx5GAz`nVcT3e@NzL=CVnk+Q{;REMbDygzU3E)|f}cBDuI1+%4#+x7`eb=o0+$tqA~_XVN8_`2T@7t1h78yx><5O_F<t%5t8U&r*sX)q3${9&@WnuNg-D->zxIBJj-5ijN47M_IkIf26TM5R6%oi3+8#0O}gB8NBvn=2LcZWcJR&v+0S&srixF(YyD%y`!UO@0aHF0}1i9h5%HuyVibA1Q+9OyL&y^)=H{Ui3Qx$=pHLWPLwYWN2c!HpYNZ44s$<_%}$QqzcV%Scz&^Q+6ue<=j}K=xSVXtC9&ZZATs?0`1{V*o8)6`2-slA6fOW@wKz5b-kv779I)H*gYmJ4*{RIrgOS|vX)Vai-dW7#x?jTMMt^zZyw&QYc8WpaG0T8FZ<ifn?GXUj{@l~4EL9jgdDFSvVA2Yp=JP7kMgrnO3T5ROD6Z*{c^j6u-py@cCMJr|VUV9cRs^Ei`HaKzNUax%ZrR8L(AjIbd91eQ78a`;@k!7vTYAqVJToe2d88?@c1yZoBf9p61ueu@EK!_SD)69XbLzp**J=bdsnDS3Q0vM_3)${PJcBUzBN44$>z-B29#)U8rHdNzf<*M9tEjS-yxv~gba7k(OunR<fy{E}W2{$J<T3GJgrk&$rmiJ(Pcp5zKCu7r#z}x(OQM%F&ik!Aq=Ab7gGC7KOxeMo>I8eLKL3;b2e{jD^d2nu0TDHfXKYt&JBIFJUy`VGap+p?m(tF}%wlk*#*NNH@WE+KiV7aS;LR{S4j<z27cbuu4ont+r?<8@Qt;&l69L9V;KV)AeBf$gh3Kv&gR_N+A&tw)u;Lypr{Ehku5?bLpm`F+2(B+JPjwD;4t;j7uA7Bt5=T3gq{azOQI~-~coAM+N^rB3Am%veQppPTTi#~t`^hQz&;h!t?^JhJP~+s}*-*NBjpaXsn_+`t(DKXbW==`Z+vPgFo;Q#cS_}^pM>46m@-6t1#s-=D_JOGyRPk}rZF2+(M~Wl4D6Du2CvZ~xc<bHEZ3oo*1;I>?kE80fbVC}Jtkq5uf$%af94}Q@SBXhJJ+>GT0erUn9r%id!f-(#@o;nc^%msz-+iU=6%06C0Ur8XtlpOHE9b@&&$kPdD@zumfhdV82a}{okQMo8YxmU?Pf)SR+!q8JV6$<$-1;l&(#eD4_i433ay|>w3<!gPV#p#}@*Iv4BeuwZ#$L7d{RXdTG{)+WUE6of{im*Ai7dl5=Shi}uFy)NdOMfNjSg;E^yY!(U%sc&x4(a2vEb)B3T0Tp)JxDW$jE4<(g}vFoTWO?Cs?ci$_pp0C{fJwik8<;fBuUHCQH@j^$eo}E=|!qP;eldik?5C60NjJs&hLy=8@|n)DGI!Kk1xu7JXZi+=e2EOg$g}{XhRq78y~KL3VfM{U$Q?66ogBkO?3cu##wa%$(z>Mp|vRXk1SgfWQMWwWy74-^&k9+Yw1?BH9mPSC%kU`9}Z4;NAA_?}QOa<4dRGn5ND_MN9pB$vKAr(e3qbCs%*15`&y%l#*2uQGpL^yJZB=zh5`6z&u%cwzZ}z?&tilj?YK0QZ)S)G&9e}0>zVfVs%4Lt_&8)FbX`O%#up0z^ne5eDsfh|LecCM^C5jOiYhY&X0`+nd#Z{(|$7hB+e+!j;#2=<L6O@SCdkEN)YiyY+zY5%7afUH)^aA><F+6-+b$hBT8AfOjAD(ilCTYAeO=4*{y?ZxOvXvHTP0FUJ(?iAa>AR{Z{9}t>nKrZk0+30$G#j`?r=dSg-!NGDu<o6mCeve0!DrKctaMkY41d<)YQg$*-%gvO4FAV7lTeu4MA;uz*C_&`*MKlco27>x9t=e$l?_lm$bmP_ZcAyN`%JlO}&H9#?Vh!O6xjzT*1*&6VX%6x^k-Vwf2kjB6t1I44mYC|dP{C>nz6(UiCQ>Rk$^fOE?w#|j>>u&C)j;UfYe6g56pyksa{^6_Bsv3esN066`VwfY@LtLP0*HR_Qm<Fso>iP#7}6qaT#6KSsmgpVC!LPxVM8ZF4y4`gKR9f(RJNHiz0WXkR5$@-I-zo|;TA9lN)z3rO~Ld78AmnN?hZr|qUSz76gQSZ;aU&=ZhF<OQp)Q%-$n>NzYZ;x5pYwH}TH!kaV@Tn<S5%AVu=3Ww9?_*0!gCrP)(Xb{Itwte~NGbFv3bE|M@mt=oh+lww3l3Zfr~)}SiA`G#384sCK{J_I+xiWroni{?Cu&l-Zx1J9)o@%G&1xdqURjlSrM&fO=S@anY1%2>lirVJYB~L`m&<eMQudl_YySh+BumB"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None

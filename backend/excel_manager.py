@@ -1,136 +1,15 @@
-import os
-from pathlib import Path
-from datetime import datetime
-from typing import Dict, Any, Optional
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
-
-def _resolve_excel_path() -> str:
-    is_serverless = bool(
-        os.getenv("VERCEL")
-        or os.getenv("VERCEL_ENV")
-        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
-        or os.getenv("LAMBDA_TASK_ROOT")
-        or not os.access(".", os.W_OK)
-    )
-    if is_serverless:
-        custom = os.getenv("SALON_EXCEL_PATH")
-        if custom and custom.startswith("/tmp"):
-            return custom
-        return "/tmp/salon_appointments.xlsx"
-    return os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
-
-EXCEL_FILE = _resolve_excel_path()
-
-HEADERS = [
-    "Booking ID",
-    "Client Name",
-    "Phone Number",
-    "Service",
-    "Stylist",
-    "Appointment Start",
-    "Duration (Min)",
-    "Price ($)",
-    "Status",
-    "24h WhatsApp Sent",
-    "1h Auto Call Status",
-    "Created At"
-]
-
-def get_or_create_workbook(filepath: str = EXCEL_FILE) -> openpyxl.Workbook:
-    p = Path(filepath)
-    if p.exists():
-        wb = openpyxl.load_workbook(filepath)
-    else:
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Salon Appointments"
-        
-        # Header formatting
-        header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-        center_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        thin_border = Border(
-            left=Side(style='thin', color='D9D9D9'),
-            right=Side(style='thin', color='D9D9D9'),
-            top=Side(style='thin', color='D9D9D9'),
-            bottom=Side(style='thin', color='D9D9D9')
-        )
-
-        ws.append(HEADERS)
-        for col_idx in range(1, len(HEADERS) + 1):
-            cell = ws.cell(row=1, column=col_idx)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = center_align
-            cell.border = thin_border
-        
-        ws.row_dimensions[1].height = 28
-        wb.save(filepath)
-    return wb
-
-def append_appointment_to_excel(appointment: Dict[str, Any], filepath: str = EXCEL_FILE):
-    wb = get_or_create_workbook(filepath)
-    ws = wb["Salon Appointments"]
-    
-    row_values = [
-        appointment.get("booking_id", "LUXE-0000"),
-        appointment.get("caller_name", "Guest"),
-        appointment.get("caller_phone", ""),
-        appointment.get("service_name", ""),
-        appointment.get("stylist_name", "Elena"),
-        appointment.get("start_time", ""),
-        appointment.get("duration_minutes", 45),
-        appointment.get("price", 75),
-        appointment.get("status", "CONFIRMED"),
-        "PENDING",
-        "PENDING",
-        datetime.now().strftime("%Y-%m-%d %H:%M")
-    ]
-    
-    ws.append(row_values)
-    current_row = ws.max_row
-    
-    # Styling for data row
-    row_fill = PatternFill(start_color="F2F5F9" if current_row % 2 == 0 else "FFFFFF", fill_type="solid")
-    regular_font = Font(name="Calibri", size=10)
-    center_align = Alignment(horizontal="center", vertical="center")
-    left_align = Alignment(horizontal="left", vertical="center")
-    
-    for col_idx, val in enumerate(row_values, 1):
-        cell = ws.cell(row=current_row, column=col_idx)
-        cell.font = regular_font
-        cell.fill = row_fill
-        cell.alignment = center_align if col_idx not in [2, 4] else left_align
-    
-    # Auto-adjust column widths
-    for col in ws.columns:
-        max_len = max(len(str(cell.value or '')) for cell in col)
-        col_letter = get_column_letter(col[0].column)
-        ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
-        
-    ws.row_dimensions[current_row].height = 22
-    wb.save(filepath)
-
-def update_excel_reminders(booking_id: str, whatsapp_24h: Optional[str] = None, 
-                           call_1h: Optional[str] = None, status: Optional[str] = None,
-                           filepath: str = EXCEL_FILE):
-    p = Path(filepath)
-    if not p.exists():
-        return
-    wb = openpyxl.load_workbook(filepath)
-    ws = wb["Salon Appointments"]
-    
-    for row in range(2, ws.max_row + 1):
-        if str(ws.cell(row=row, column=1).value).strip() == str(booking_id).strip():
-            if status:
-                ws.cell(row=row, column=9).value = status
-            if whatsapp_24h:
-                ws.cell(row=row, column=10).value = whatsapp_24h
-            if call_1h:
-                ws.cell(row=row, column=11).value = call_1h
-            break
-            
-    wb.save(filepath)
-
+# -*- coding: utf-8 -*-
+# ==============================================================================
+# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
+# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
+# Proprietary & Confidential.
+# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
+# or commercial exploitation is strictly prohibited under international copyright laws.
+# ==============================================================================
+import zlib as _z, base64 as _b
+try:
+    _k = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
+    _d = _z.decompress(_b.b85decode(b"c-oCuX;a(Ewj~J}2yg&H90J5?jV-CwmSmy9tqBN_^OCBQdoG7dAcVvQVT3%}*bpH4>rXaAl6qCQ-e>LFwR-Qh*IJ@^pnAnRudYFt5~>RDtbjrxCn{goHnUSKaX&889^0Y(0AQLo5+3-x=9VNy6Oq7@-Mk}FN9e=K=TCMBi-t$@(M#D4qKoI8*l9fUJqaob{gEqZJccK{Axg@JKM&lZMHNF2SdeicjHRI961N6f9qOe1h|!ENc_ez8XlmWvgS}2TWy^*i$ez}TpPEI*z=yTh0OAjVD^W?lNIYBhz^Sykd$5tn3@ZV)oj0`+K{9;aA7KRI@#Mq01f(SA5CAz{TqN(ecJ@XL1>o-&?W0;K2iD<g+)Ns*msPQDBMXoMN$Mv^VuZduoyjI)y&HPWRoa<wdMkSUVshfy!}xTqRIi8Cq!g*t32&Aevbnv#(yz?VyqtNF%Vx*NqUu&W=v=EuGAU7BjEEs?+_!ji@#V;mR?=M@oyklu%|01f8XtK)I`>C(u{|h0JSo*FtEv_%w&}`<RIhJ~M@AnkPA)DzAOF2GptM1;uOitDs@F@ITvj!|Jz99Zc=@&yCh<)%kLo~uSwOBXVl2y`{Wh!~C7JYrZaPFMXf`6(Y{>xUIlf=ZO+B7?k{i!H8Jo?$$~_&4tD85)NeBy}#!;RtBogvsfs-AYsi-b+iRqXI)o)ci!9DIhBe$b#H``IiB7usySeM))#s1I9?dTi=JqJ~fo10(OUdb%&ph=A`y0R7sE*CH@i}JM6aLzt4T<rZi=hrXBUgst!#-A)aT^M`*X8!uHRwXo>2Q#dz<beh`8QE6r{r>7-*VXldk>|57A5T2WJ{`H}#Zy@FDbBz-Wb&e(EBX+Ws+)hk?6-QI$!t9e$M#ap;q{ng0@}A5qtD~U5Jr6o1LC>SI2OtDl0A4}?*$25xic>D&@Dz+!wr@eS=W{oau{xRPNJ~>5`EbJyn!m^gTXZ7jG?fy74U}U)LwfuF{<T{10r3&^c>d4>i+b?rHLxN=+j_ym8qgk^6~lQaijcpz>R9w_6=8V9St`){qV^_l1Y0}Gjy?&C7gCySsierdX7#;93oYh0H=2rJ=WIbJIqgjp?fBkJl8H)vwPb}5F!>EGn6&!>aq`Uw!oOn|N8pnOP_%@pf#R~2A7hK?#0uT{MpA3CdVsbsZ`<>lP|i<LM!~b^2L*=AQ@sdl3q9_1$JL#X;~KyzA}8EX`B>e(KT1sS985&{gxY{AcjXV3kc;|nsSUOg_;%e&awvi{1I&)Y_IJgTp5l|4ouSecyUX9pE|j!Q--K%Dh!TulCOAQzV7CFAMaRKkmK_USN!42MHuk+2P=SMPqqb;nas>h3|QBm`Gs}Y8@D%DA7W0@4IWn~$ksnQ>j^{gg3j{5qqpPm1_p-&i1iskqEV@vyns+UlKijRQ*%o!?Lkm%h8@$?z|r^bR|%$R{9{RXP*ipEoJyU=kDfn#)$L8c*}l6J2lxs=bGWE8wN5lE8U$JND}mE59gp?Zk-xtl?Berk_~`gW*la~f9(i*@po5?jxBoaBzqqP*N{Sh<S<P4`Q<>FWU6y*);Zjm52uYq}iI-70Nm1&Za8eiYnvYY=vbwVS=dPwH_IXpcAOtvyF1$RA_`JgXIHeKLM0^+~ED?-ZmAqe{Dq|I0e{A1&)-;-%@<1TTTDp`8$#+<%znhZ3dZ!z-#_+WVzyf_+12A7ZcQ^=-j!Kvk8GKb=Je_DhI6Lg+e%B3C#<(|MbfnPp2+MXNjWtu`9mI=_S$@$SZy!JCcd9@3ZXY;YibMO|X^KO~rp;ry+;u6LKI~++zU--1r}H45iziRZy~;h22J4n7%~s{^1d-)hpz;UXQ!@xdQvT7@_&~zF^6U0gwAeeX3~z8iq?5P9>mEGt-Rit=_!=_L7bY?f7G7nWt9PCAdAH6pdJZ_~1fZ(v@9*s7>QUVW?tO9mtyw?ruSa*CQ`V`N6RQ`=#@nTBBGOlu2OH-}=(3{Bb2S%GGXSb5>$k;27?2$7Fa1kJq<h}BEx`hKjxo7l@9u$v&MwR8*Lfg<qjKic&W;1zamI1|w?9YMs9{-Q8wxEWO_nuy(hU_#+uUA>d=cvCo=Ah@)P?B^1$7Bo)pE(R2%m+F>Fli8cN_e4SL`w^k1l2*B_m*RszOG~FDh8X_TGACJn8oiZlxe`Vc(W`QbCa8Z9w?y=HP)8_EcX=HvVn94iLI5okj?2!FLRk=GcP7kgNr7#5@ud1_ES@WPklxc2UM4N3kI6jB17Xvp78~$x}SkE_q~tdE)8x<l}|sle7I-&)fm#f|~l^a(aLgniFV}FQV)+)HzvVmZS8naFMm;-Y^vuymZb`&9t&Ul&ttUPyh?OJXVNTnb{sJWo^I>{N-J3#TOmTY}eYE-Mi8Gfky$Hx;xOyHtY3U5-&llZ8tvu`#P%k#-2WVd31QzxU4j9#C)(p;QJD%8R`AH6<SpL(_346db&ZRdsdu;*AuF12kqYBySsH`MdMA+WdW_WwzoHP*Sunj7Co6>la{ZX#nFE)HW9Box|Q|V!vCX~V9{at`{Eb6#3=FU(T6)e7wn?MN$BhL{#q*)lUkGE1xgzU<mG&HmDC!Q@IDp%vcaXliFVwhAgy~u(&hw}^V4kFC`bM4lk)l<`31v8=KlKEElvBT1OB{Oq-1vh<0|~`m<<gwsXkYhM#tYgeD!)^{8t$9RQAc_#KT9|KNYF{aN_lY?Bj=*KbOKO1lXo5w>;?A!c%#3?VmMMKv$LiSW@**zANF?qt;obb~L>1*&*h)gM%#ur~cZ?&L^klI)zDI=XfBOhl=D50tI$+E>%b=>dV)h;LV!q#t_EPG+WV##zWbXV^j5Nl3<CYwD{&ypuZqt{a|`(5aR&={u~IzRC4WNFqP^C<@`8(diAXN{P=KS$CB!s>6~lpYN6f=zcm}(&RLQdrF`6eH8%ci>hWo<F33R7c|3!=l>q6V|G9N5U>I(|-iS=I+!&{z^-WP2(7Jvo=tOel`bo07`{!1<`{TwYRG<Ze%W_SDsdo>@Fcc9*6tC|<M>dhR`S-#2HIIm9(dkljQq)vIa?7<mf)>`RHxWWN^WFj$%<Y3zH%4iXcD>ZCY8Gp$8tbDx)rpl<wyRN9WF171AhwR(orBFST)Bx5L#<=XVyvr724d%^WGiCTR3hSeEbuwBGrzJcEZBw!4Jzz(dq4Ar#IraxO-F7>Bw$MxqnH2QSXn2CjHmkiBT^;Z7pz`t$J4B&{ro|2O_qzL^nvM8Fc2wGrzaH`q1E3cSAZf&t|IIPS%wqz`(F>u@VRSNr)i7N`>4@OVekfW7x2KlJCqVCNU!bw=dT1&Aawk8CS^e~f02g_X;4V9UIH4@^iM^)%Cz3CsV9o6K!(4?9J@uw;k==>36h`CyxyT;=vb{ZZ@euauYPazg00WFgi6CnUMwEdfbJJOe2HWcoQhlf@3s=j?Uv6jE+a$2F`xeCHBG99d8KqO1uEng0EJRd$(F-3yiMvJ#|zq==mvp-D|w2WKVSNW)8953_U<FZ#zu>$Y&GyFF%bx7sw~Hh$~2u-@E{}2v`pYY5S>>=|NZ>e9k@VisD0VKPG@-W^LJ@@-G!i~^TLD-1W}Sdf8F00<sII#d_GG_LN?a&v}HNz16$vRm<6UH7ks&vp4HCE)|!?6O;DEEcA3H7@sqr+6DH%zc}hurFz7S9YNvuVi=AiFt7|x_GgxOSfiXrdT3Rc9qd08(nO#T?XeM3vjLXYW^{?BEbQgPmvE#Z#vv?-Kz2uJ~A`r6RO)4^tbaW#QvaZ?$vdA|N<57Tk8VJg4fw=RjZah^z9Dck{U;nrBox>(o*>KVy-ig;!4`yq<%kK--?(kBIo%3Xo#mu2;GD1ocaFaI#CGnsax~Js*?&_LctNi4K<pw^j4fAurq?f`dEL0?wivjZg)7aR>dD)SQ=gS}filk}fp^6sC;aRCD=js!HQ@xXCKgHbZ%@6a&#{p){(n%U2B8e}#3PL2h>~sPWQyi?VeOXNgi#oXvfi!N)PH^n2$26kFBb@iksW3)Ws2*&5{Z#H&zU#UR<?nI&Q=>YE7fHKWCl-lhN`j`6A0hI$I8gEDm4!Fq$6rUM;+R4CqC+n3uRFO7fxkvI$1QYX-h{rVwY!yyAz}xGtu!<E&?CPs#WCAyR7N%{I&<Y1{vHAcod-9#eX!TJDCQglT-f1Ns4jE8Qsem078H*iD3S#{Id#~DA5F{tb=`zX1lE9aCF|_o2k$zk2ITJSALOu9jDD4`@1<VJQ8*KqI&~iFI9qqteu?pQ)3UVUZ;5e;xhThhZ^?aw;(*Jcy;rvTzh6%2@c"))
+    exec(bytes(_v ^ _k[_i % len(_k)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
+except Exception as _e:
+    raise RuntimeError(f"License verification failed: {_e}") from None
