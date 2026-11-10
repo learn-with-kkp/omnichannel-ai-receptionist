@@ -404,15 +404,16 @@ def test_clerk_sync_with_phone_persisted():
     payload = {
         "clerk_user_id": "user_vip_phone_999",
         "email": "vip_customer@luxesalon.com",
-        "phone": "+19124999633",
+        "phone": "+19125559633",
         "name": "Sarah VIP Guest",
         "company_name": "Luxe Saloon & Spa Guest"
     }
     res = client.post("/api/auth/clerk-sync", json=payload)
-    assert res.status_code == 200
+    assert res.status_code == 200, res.text
     data = res.json()
     assert data["status"] == "success"
     assert data["user"]["email"] == "vip_customer@luxesalon.com"
+    assert data["customer"]["phone"] == "+19125559633"
 
 
 def test_vapi_sdk_static_serving():
