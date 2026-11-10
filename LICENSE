@@ -1,29 +1,25 @@
-# Learn-With-KKP Source-Available Commercial License
+POLYFORM SOURCE-AVAILABLE & NONCOMMERCIAL ENTERPRISE LICENSE
+Version 1.0.0 (Learn-With-KKP)
+
 Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
 
-TERMS AND CONDITIONS
+TERMS & CONDITIONS:
 
-1. PERMITTED USE:
-   Permission is hereby granted, free of charge, to any person obtaining a copy
-   of this software and associated documentation files (the "Software"), to inspect,
-   study, and execute the Software solely for non-commercial, educational, and evaluation purposes.
+1. Permission is granted to view and inspect this code for educational,
+   demonstrative, and research purposes in connection with the Learn-with-KKP project.
 
-2. COMMERCIAL USE RESTRICTION:
-   Commercial use, including but not limited to selling, sublicensing, white-labeling,
-   or hosting the Software as a paid service or SaaS (Software-as-a-Service), is
-   STRICTLY PROHIBITED without express written permission from the copyright holder.
+2. Redistribution, sale, sublicensing, decompilation, dynamic extraction,
+   or commercial production deployment of the underlying voice-agent,
+   omnichannel orchestrator, or telephony routing software without explicit
+   written authorization from Kishor Kumar Paroi is strictly prohibited.
 
-3. REVERSE ENGINEERING & DECOMPILATION:
-   You may not decompile, disassemble, reverse engineer, decrypt, or attempt to extract
-   the underlying source algorithms or architecture from any encrypted or obfuscated modules
-   contained within this Software.
+3. The cipher runtime layer embedded in this software is protected under
+   intellectual property treaties and proprietary trade-secret provisions.
 
-4. ATTRIBUTION & INTEGRITY:
-   All copyright notices and this permission notice shall be retained in all copies or
-   substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
-ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
