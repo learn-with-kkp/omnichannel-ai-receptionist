@@ -40,6 +40,7 @@ EXCLUDE_NAMES: Set[str] = {
     "__pycache__",
     ".pytest_cache",
     ".DS_Store",
+    "credentials",
     "salon_bookings.db",
     "salon_appointments.xlsx",
     "test_appointments.xlsx",
@@ -48,12 +49,16 @@ EXCLUDE_NAMES: Set[str] = {
 
 EXCLUDE_PATTERNS: List[str] = [
     ".env",
-    ".env.backup",
-    ".env.local",
-    ".env.production",
+    ".env.backup*",
+    ".env.local*",
+    ".env.production*",
+    "*.pem",
+    "*.key",
+    "*service_account*.json",
     "*.pyc",
     "*.sqlite",
     "*.sqlite3",
+    "*.backup*",
 ]
 
 SHIELDED_PYTHON_DIRS: List[str] = [
@@ -209,6 +214,17 @@ def sync_tree(src_dir: Path, dst_dir: Path) -> None:
             dest_file = dst_dir / rel_path
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(file_path, dest_file)
+            
+            # Post-copy secret sanitization for public shielding
+            if dest_file.suffix in (".html", ".js", ".md", ".json", ".txt"):
+                try:
+                    txt = dest_file.read_text(encoding="utf-8")
+                    if "pk_live_" in txt or "clerk.kishor.tech" in txt:
+                        txt = txt.replace("pk_test_sample_placeholder", "pk_test_sample_placeholder")
+                        txt = txt.replace("https://clerk.kishor.tech/npm/@clerk/clerk-js@5/dist/clerk.browser.js", "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js")
+                        dest_file.write_text(txt, encoding="utf-8")
+                except Exception:
+                    pass
             copied_count += 1
             
     print(f"✅ Copied {copied_count} base files.")
