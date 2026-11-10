@@ -271,25 +271,26 @@ def git_run(args: List[str], cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(["git"] + args, cwd=str(cwd), capture_output=True, text=True)
 
 
-def push_branch(dst_dir: Path, branch_name: str, commit_msg: str, push: bool = True) -> None:
-    print(f"\n📦 Preparing branch '{branch_name}' on {dst_dir.name}...")
-    
-    # Check if branch exists
+def prepare_branch(dst_dir: Path, branch_name: str) -> None:
+    print(f"\n📦 Checking out branch '{branch_name}' on {dst_dir.name}...")
+    git_run(["reset", "--hard"], cwd=dst_dir)
+    git_run(["clean", "-fd"], cwd=dst_dir)
     res = git_run(["checkout", branch_name], cwd=dst_dir)
     if res.returncode != 0:
-        res = git_run(["checkout", "-b", branch_name], cwd=dst_dir)
+        res = git_run(["checkout", "-B", branch_name], cwd=dst_dir)
         if res.returncode != 0:
             print(f"Error checking out branch {branch_name}: {res.stderr}")
-            return
-            
+
+
+def commit_and_push(dst_dir: Path, branch_name: str, commit_msg: str, push: bool = True) -> None:
     git_run(["add", "-A"], cwd=dst_dir)
     status_res = git_run(["status", "--porcelain"], cwd=dst_dir)
     
     if status_res.stdout.strip():
         commit_res = git_run(["commit", "-m", commit_msg], cwd=dst_dir)
-        print(f"Committed: {commit_res.stdout.strip().splitlines()[0] if commit_res.stdout else 'done'}")
+        print(f"Committed on {branch_name}: {commit_res.stdout.strip().splitlines()[0] if commit_res.stdout else 'done'}")
     else:
-        print("Working tree clean (no new changes).")
+        print(f"Working tree on {branch_name} clean (no new changes).")
 
     if push:
         print(f"🚀 Pushing '{branch_name}' to learn-with-kkp remote...")
@@ -311,13 +312,14 @@ def push_tag(dst_dir: Path, tag_name: str, message: str, push: bool = True) -> N
 
 def sync_all_branches(src_dir: Path, dst_dir: Path, push: bool = True) -> None:
     """Sync and shield main, alpha, beta, version, and all feature branches."""
-    # 1. First sync main
+    # 1. Main branch
+    prepare_branch(dst_dir, "main")
     sync_tree(src_dir, dst_dir)
     apply_shield(dst_dir)
     if not verify_shield(dst_dir):
         raise RuntimeError("Integrity self-test failed on shielded build!")
 
-    push_branch(
+    commit_and_push(
         dst_dir=dst_dir,
         branch_name="main",
         commit_msg="feat(release): update main with latest shielded architecture & real-time profile capture",
@@ -325,7 +327,10 @@ def sync_all_branches(src_dir: Path, dst_dir: Path, push: bool = True) -> None:
     )
 
     # 2. Alpha branch
-    push_branch(
+    prepare_branch(dst_dir, "alpha")
+    sync_tree(src_dir, dst_dir)
+    apply_shield(dst_dir)
+    commit_and_push(
         dst_dir=dst_dir,
         branch_name="alpha",
         commit_msg="feat(alpha): cutting-edge alpha release with shielded omnichannel pipeline",
@@ -333,7 +338,10 @@ def sync_all_branches(src_dir: Path, dst_dir: Path, push: bool = True) -> None:
     )
 
     # 3. Beta branch
-    push_branch(
+    prepare_branch(dst_dir, "beta")
+    sync_tree(src_dir, dst_dir)
+    apply_shield(dst_dir)
+    commit_and_push(
         dst_dir=dst_dir,
         branch_name="beta",
         commit_msg="feat(beta): staged beta release with full shield and multi-tenancy",
@@ -341,7 +349,10 @@ def sync_all_branches(src_dir: Path, dst_dir: Path, push: bool = True) -> None:
     )
 
     # 4. Version branch
-    push_branch(
+    prepare_branch(dst_dir, "version")
+    sync_tree(src_dir, dst_dir)
+    apply_shield(dst_dir)
+    commit_and_push(
         dst_dir=dst_dir,
         branch_name="version",
         commit_msg="feat(version): version release tracking branch",
@@ -360,16 +371,18 @@ def sync_all_branches(src_dir: Path, dst_dir: Path, push: bool = True) -> None:
 
     for b in feature_branches:
         print(f"\n🔄 Porting and shielding branch '{b}'...")
-        # Checkout branch in source
+        # Discard unstaged changes in src_dir if any before checkout
+        git_run(["reset", "--hard"], cwd=src_dir)
         res_co = git_run(["checkout", b], cwd=src_dir)
         if res_co.returncode != 0:
             print(f"Could not checkout {b} in src_dir: {res_co.stderr}")
             continue
 
+        prepare_branch(dst_dir, b)
         sync_tree(src_dir, dst_dir)
         apply_shield(dst_dir)
 
-        push_branch(
+        commit_and_push(
             dst_dir=dst_dir,
             branch_name=b,
             commit_msg=f"feat({b}): apply dedicated cipher shield and enterprise license",
@@ -377,9 +390,10 @@ def sync_all_branches(src_dir: Path, dst_dir: Path, push: bool = True) -> None:
         )
 
     # Checkout src_dir back to main
+    git_run(["reset", "--hard"], cwd=src_dir)
     git_run(["checkout", "main"], cwd=src_dir)
     # Checkout dst_dir back to main
-    git_run(["checkout", "main"], cwd=dst_dir)
+    prepare_branch(dst_dir, "main")
 
     # 6. Apply all tags
     all_tags = [
@@ -423,12 +437,13 @@ def main():
         current_branch = res.stdout.strip() or "main"
         target_branch = args.branch or current_branch
 
+        prepare_branch(args.dst, target_branch)
         sync_tree(args.src, args.dst)
         apply_shield(args.dst)
         if not verify_shield(args.dst):
             sys.exit(1)
 
-        push_branch(
+        commit_and_push(
             dst_dir=args.dst,
             branch_name=target_branch,
             commit_msg=f"{args.message} (branch: {target_branch})",
