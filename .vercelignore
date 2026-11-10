@@ -1,49 +1,11 @@
-# Dependencies & Virtual Envs
-.venv/
-venv/
-__pycache__/
+.venv
+__pycache__
 *.pyc
-*.pyo
-.pytest_cache/
-
-# Local data & databases
+.pytest_cache
 *.db
-*.sqlite3
 *.xlsx
-salon_bookings.db
-salon_appointments.xlsx
-test_*.db
-test_*.xlsx
+.git
+.backend.pid
+backend.log
+tests
 
-# Git & CI/CD
-.git/
-.github/
-.githooks/
-
-# Test Suites & Development Artifacts
-tests/
-scripts/
-packages/
-nimbus-voice-agent/
-n8n/
-credentials/
-
-# Documentation & Raw Assets
-*.md
-*.pdf
-Dockerfile
-docker-compose.yml
-Makefile
-clear.sh
-deploy.sh
-setup.sh
-start_live_tunnel.sh
-stop_live_tunnel.sh
-test_quick.sh
-run_admin_portal.sh
-
-# Logs & PIDs
-*.log
-*.pid
-.live_tunnel_url
-.env.backup_preserved

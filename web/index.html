@@ -3,36 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Luxe Saloon & Spa — 24/7 AI Voice & Omnichannel Concierge</title>
-  <meta name="description" content="Luxe Saloon & Spa premier AI Voice Receptionist. Ultra-responsive WebRTC voice calls, WhatsApp booking, Instagram & Messenger automation, synchronized with Google Calendar and Neon PostgreSQL.">
-  <link rel="stylesheet" href="/static/style.css?v=6.0">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
-  
-  <!-- Self-Hosted Resilient Vapi Web SDK -->
-  <script src="/vapi-sdk.js"></script>
-
-  <!-- Clerk Production Authentication SDK with Full UI Components Bundle -->
-  <script>
-    window.__clerk_publishable_key = "pk_test_sample_placeholder";
-  </script>
-  <script async crossorigin="anonymous" data-clerk-publishable-key="pk_test_sample_placeholder" src="https://clerk.kishor.tech/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
-  <script async crossorigin="anonymous" src="https://clerk.kishor.tech/npm/@clerk/ui@1/dist/ui.browser.js"></script>
+  <title>Paroi AI — Omnichannel Voice & Chat Receptionist | Enterprise Architecture</title>
+  <meta name="description" content="Autonomous real-time voice and multi-channel messaging platform for salons, clinics, law firms, and real estate. Sub-500ms Nimbus latency, partitioned Qdrant vector memory, and auto-generated websites.">
+  <link rel="stylesheet" href="/static/style.css?v=2.7">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
 </head>
 <body>
 
-  <!-- High-End Luxury Preloader -->
-  <div id="luxePreloader" class="luxe-preloader">
-    <div class="preloader-card">
-      <div class="preloader-monogram">✦</div>
-      <div class="preloader-brand">Luxe Saloon & Spa</div>
-      <div class="preloader-tagline">Initializing Sofia AI Voice & Omnichannel Concierge...</div>
-      <div class="preloader-bar">
-        <div class="preloader-progress"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Drafting Guide Lines -->
+  <!-- Hallmark Architectural Drafting Guides -->
   <div class="guides-layer" aria-hidden="true">
     <div class="guide-line guide-l"></div>
     <div class="guide-line guide-c"></div>
@@ -41,975 +19,653 @@
 
   <div class="app-container">
 
-    <!-- Minimalist Luxury Navbar -->
-    <header class="app-header" style="padding:14px 24px; border-bottom:1px solid rgba(255,255,255,0.08); background:rgba(10,14,24,0.75); backdrop-filter:blur(16px); position:sticky; top:0; z-index:100;">
-      <a class="brand-wrapper" href="#top" style="text-decoration:none; display:flex; align-items:center; gap:10px;">
-        <span class="brand-mark" style="display:flex; align-items:center; gap:6px;">
-          <span class="brand-slash" style="color:#f59e0b; font-size:18px;">✦</span>
-          <span class="brand-name" style="font-size:17px; font-weight:800; letter-spacing:0.5px; background:linear-gradient(135deg, #ffffff, #d1d5db); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Luxe Saloon & Spa</span>
+    <!-- Hallmark Navigation Bar -->
+    <header class="app-header">
+      <a class="brand-wrapper" href="#top">
+        <span class="brand-mark">
+          <span class="brand-slash">/</span>
+          <span class="brand-name">paroi.ai</span>
         </span>
-        <span class="brand-tag" style="font-size:11px; color:#38bdf8; background:rgba(56,189,248,0.1); padding:2px 8px; border-radius:12px; border:1px solid rgba(56,189,248,0.25);">Boston • 120 Newbury</span>
+        <span class="brand-tag">v2.4 Enterprise</span>
       </a>
 
-      <!-- Clean 3-Link Essential Navigation -->
-      <nav class="nav-links" style="display:flex; gap:20px; align-items:center;">
-        <a href="#voice-highlight" class="nav-link" style="font-size:13px; font-weight:600; text-decoration:none; color:var(--text-secondary); transition:color 0.2s;">🌟 Voice AI Showcase</a>
-        <a href="#services-section" class="nav-link" style="font-size:13px; font-weight:600; text-decoration:none; color:var(--text-secondary); transition:color 0.2s;">💇 Services & Menu</a>
-        <a href="#schedule-graph-section" class="nav-link" style="font-size:13px; font-weight:600; text-decoration:none; color:var(--text-secondary); transition:color 0.2s;">📊 Schedule & Graph</a>
+      <nav class="nav-links">
+        <a href="#voice-studio" class="nav-link">Voice Studio</a>
+        <a href="#compare" class="nav-link">Compare</a>
+        <a href="#omnichannelLab" class="nav-link">Social Lab</a>
+        <a href="#calendar-store" class="nav-link">Calendar</a>
+        <a href="#telemetry" class="nav-link">Waterfall</a>
       </nav>
 
-      <!-- Action & Clerk Auth Buttons -->
-      <div class="header-badges" style="display:flex; align-items:center; gap:10px;">
-        <button onclick="openConnectChannelModal()" class="btn-ghost" style="padding:6px 14px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(168,85,247,0.4); color:#c084fc; display:inline-flex; align-items:center; gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-45deg);"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
-          Connect Channel
+      <div class="header-badges">
+        <a id="btnViewTenantSite" href="/site/salon" target="_blank" class="btn-ghost">
+          🌐 Customer Website
+        </a>
+        <button class="btn-primary" id="btnOpenOnboardModal">
+          🏢 + Onboard Tenant
         </button>
-        <div id="clerkAuthHeader" style="display:inline-flex; align-items:center; gap:8px;">
-          <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:6px 14px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.15);">Sign In</button>
-          <button onclick="openClerkSignUp()" class="btn-primary" style="padding:6px 16px; font-size:12px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.35);">✨ Join VIP Free</button>
+        <div class="status-chip" id="gcalStatusBadge">
+          <span class="dot online"></span> Google Calendar
         </div>
-        <button onclick="document.getElementById('instant-call')?.scrollIntoView({behavior:'smooth'})" class="btn-secondary" style="padding:6px 14px; font-size:12px; font-weight:600; border-color:rgba(56,189,248,0.4); color:#38bdf8; display:inline-flex; align-items:center; gap:6px; border-radius:10px;">
-          📞 Call My Phone
-        </button>
       </div>
     </header>
 
-    <!-- Hero Section -->
+    <!-- Hallmark Editorial Hero Section -->
     <section class="hero-section" id="top">
       <div class="hero-kicker">
-        <span>✨</span> Boston's Premier Luxury Hair Salon & Wellness Spa • 120 Newbury St
+        <span>⚡</span> Enterprise AI Architect Blueprint • Anti-Slop Rigor
       </div>
       <h1 class="hero-title">
-        Meet Sofia — <em>Luxe Saloon's</em> 24/7 AI Voice & WhatsApp Receptionist.
+        The Omnichannel <em>AI Voice Receptionist</em> with zero hallucinations.
       </h1>
       <p class="hero-subtitle">
-        Experience ultra-responsive WebRTC voice consultation, atomic Google Calendar booking, and instant WhatsApp confirmations. Speak live in your browser, attach your service menu, or have Sofia call your phone directly.
+        Autonomous voice calling, WhatsApp, Instagram, Messenger, and calendar booking. Sub-500ms Nimbus latency, partitioned Qdrant vector memory, and auto-generated websites for every tenant.
       </p>
 
-      <!-- VIP Club Onboarding Callout -->
-      <div id="clerkAuthBanner" style="max-width:740px; margin:0 auto 28px auto; background:linear-gradient(135deg, rgba(99,102,241,0.12), rgba(168,85,247,0.08)); border:1px solid rgba(168,85,247,0.3); border-radius:16px; padding:16px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; box-shadow:0 8px 30px rgba(99,102,241,0.15);">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div style="width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg, #f59e0b, #d97706); display:flex; align-items:center; justify-content:center; font-size:22px; box-shadow:0 4px 12px rgba(245,158,11,0.3);">👑</div>
-          <div style="text-align:left;">
-            <div style="font-size:14px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
-              <span>Luxe VIP Guest Access</span>
-              <span class="badge" style="background:#10b981; color:#000; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px;">FREE TEST VOICE AI</span>
-            </div>
-            <div style="font-size:12px; color:#cbd5e1; margin-top:2px;">
-              Sign up for FREE to test our <b>Voice AI Assistant</b> & live conversational concierge! Sofia greets you by name and saves your details for 1-click booking.
-            </div>
-          </div>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:8px 16px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.2);">Sign In</button>
-          <button onclick="openClerkSignUp()" class="btn-primary" style="padding:8px 18px; font-size:12px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.4);">✨ Sign Up Free</button>
-        </div>
-      </div>
-
       <div style="display:flex; justify-content:center; gap:12px; margin-bottom:34px; flex-wrap:wrap;">
-        <button class="btn-primary" id="btnHeroTestVoice" onclick="handleHeroVoiceClick()" style="padding:12px 24px; font-size:14px; box-shadow:0 4px 18px rgba(16, 185, 129, 0.4);">
-          🎙️ Free Test Voice AI Assistant
+        <button class="btn-primary" onclick="launchMetaOAuth()" style="padding:12px 24px; font-size:14px; background:#1877f2; color:#fff; box-shadow:0 4px 18px rgba(24, 119, 242, 0.4);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle; margin-right:4px;"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+          Connect with Facebook (1-Click Setup)
         </button>
-        <a href="#services-section" class="btn-secondary" style="padding:12px 20px; font-size:14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-          💎 View Transparent Pricing
-        </a>
-        <a href="https://wa.me/19124999633?text=Hi%20Sofia!%20I'd%20like%20to%20book%20an%20appointment%20at%20Luxe%20Saloon" target="_blank" class="btn-ghost" style="padding:12px 20px; font-size:14px; text-decoration:none; display:inline-flex; align-items:center; gap:6px;">
-          💬 WhatsApp Concierge
-        </a>
+        <button class="btn-ghost" onclick="document.getElementById('btnOpenOnboardModal').click()" style="padding:12px 20px; font-size:14px;">
+          🏢 Manual Business Onboarding
+        </button>
       </div>
 
       <div class="hero-stats-row">
         <div class="stat-card">
           <div class="stat-value">440 <span class="stat-unit">ms</span></div>
-          <div class="stat-label">Cartesia Sonic-3.5 Voice Latency</div>
+          <div class="stat-label">Nimbus Conversational Voice Latency</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">100% <span class="stat-unit">atomic</span></div>
-          <div class="stat-label">Neon PostgreSQL & Calendar Booking</div>
+          <div class="stat-value">7 <span class="stat-unit">channels</span></div>
+          <div class="stat-label">WhatsApp, IG, Messenger, TG, X, TikTok, WebRTC</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">4 <span class="stat-unit">channels</span></div>
-          <div class="stat-label">WhatsApp, Facebook, Instagram, WebRTC</div>
+          <div class="stat-value">0 <span class="stat-unit">conflicts</span></div>
+          <div class="stat-label">Atomic 2-Way Google Calendar Booking</div>
         </div>
         <div class="stat-card">
           <div class="stat-value">&lt;50 <span class="stat-unit">ms</span></div>
-          <div class="stat-label">Neural Vector Memory Engine</div>
+          <div class="stat-label">Qdrant Multi-Tenant RAG Vector Retrieval</div>
         </div>
       </div>
     </section>
 
-    <!-- ⚡ Instant 500ms VIP Phone Callback Card -->
-    <section id="instant-callback-section" style="max-width:860px; margin:-16px auto 36px auto; padding:22px 26px; background:linear-gradient(135deg, rgba(2,132,199,0.12), rgba(99,102,241,0.06)); border:1px solid rgba(56,189,248,0.35); border-radius:18px; box-shadow:0 10px 32px rgba(2,132,199,0.15);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #0284c7, #0369a1); display:flex; align-items:center; justify-content:center; font-size:20px; box-shadow:0 4px 14px rgba(2,132,199,0.4);">⚡</div>
+    <!-- Hallmark Split Comparison (Before vs After) -->
+    <section class="compare-section" id="compare">
+      <div class="section-head">
+        <div>
+          <h2 class="section-title">One Inbound Prompt, Two Realities</h2>
+          <p class="section-sub">On the left, standard toy AI bot wrappers. On the right, Paroi Omnichannel Architecture.</p>
+        </div>
+        <div class="compare-tabs">
+          <button class="compare-tab-pill active" onclick="switchCompareTab('salon')">💇‍♀️ Salon Booking</button>
+          <button class="compare-tab-pill" onclick="switchCompareTab('dental')">🦷 Dental Clinic</button>
+          <button class="compare-tab-pill" onclick="switchCompareTab('real_estate')">🏡 Luxury Real Estate</button>
+        </div>
+      </div>
+
+      <div class="compare-grid">
+        <!-- Without Paroi (Standard AI Slop) -->
+        <div class="compare-card bare">
+          <div class="compare-badge bare">
+            <span>⚠️</span> Standard AI Bot Wrapper • 26 issues
+          </div>
+          <h3 style="font-size:16px; font-weight:600; color:#fff; margin-bottom:8px;">Disconnected & Slow</h3>
+          <p style="font-size:13px; color:var(--text-muted);">Generic system prompts without state management or multi-tenant isolation.</p>
+          <ul class="compare-list">
+            <li class="compare-item">
+              <span class="icon">❌</span>
+              <span><strong>3,400ms Latency:</strong> Callers hang up before the bot starts speaking due to un-streamed audio pipelines.</span>
+            </li>
+            <li class="compare-item">
+              <span class="icon">❌</span>
+              <span><strong>Double-Booking Hallucinations:</strong> Makes appointments without verifying atomic calendar availability.</span>
+            </li>
+            <li class="compare-item">
+              <span class="icon">❌</span>
+              <span><strong>Channel Silos:</strong> WhatsApp context is completely isolated from Instagram and Web voice calls.</span>
+            </li>
+            <li class="compare-item">
+              <span class="icon">❌</span>
+              <span><strong>Zero Data Privacy:</strong> Single vector store leaks private customer notes across different businesses.</span>
+            </li>
+          </ul>
+        </div>
+
+        <!-- With Paroi (Hallmark Quality Architecture) -->
+        <div class="compare-card hallmark">
+          <div class="compare-badge hallmark">
+            <span>✨</span> Paroi Omnichannel Architecture • 0 issues
+          </div>
+          <h3 style="font-size:16px; font-weight:600; color:#fff; margin-bottom:8px;">Deterministic & Architectural</h3>
+          <p style="font-size:13px; color:var(--text-muted);">Production-grade state machine with 2-way Google Calendar synchronization.</p>
+          <ul class="compare-list">
+            <li class="compare-item">
+              <span class="icon">✅</span>
+              <span><strong>440ms Nimbus Latency:</strong> Full duplex WebRTC with barge-in interruption and dynamic speech endpointing.</span>
+            </li>
+            <li class="compare-item">
+              <span class="icon">✅</span>
+              <span><strong>Atomic Calendar Sync:</strong> Synchronized with Google Calendar, Neon Postgres / SQLite, and Excel simultaneously.</span>
+            </li>
+            <li class="compare-item">
+              <span class="icon">✅</span>
+              <span><strong>Unified Omnichannel Memory:</strong> Customer phone number stitches history across WhatsApp, WebRTC, and DMs.</span>
+            </li>
+            <li class="compare-item">
+              <span class="icon">✅</span>
+              <span><strong>Qdrant Payload Isolation:</strong> Hard partition per tenant ensures zero cross-tenant knowledge leakage.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Blueprint Vertical Showcase (Plug & Play Architecture) -->
+    <section class="blueprint-bar">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; flex-wrap:wrap; gap:8px;">
+        <div class="section-label">⚡ Pluggable Industry Blueprint (Zero Code Changes — 1-Click Manifest Switch)</div>
+        <div style="font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">Markets: 🇺🇸 US • 🇨🇦 Canada • 🇪🇺 Europe • 🇬🇧 UK • 🇦🇺 Commonwealth</div>
+      </div>
+      <div class="vertical-grid" id="verticalGrid">
+        <!-- Rendered dynamically by app.js: Real Estate, Legal, Salon, Dental, Auto, Clinic -->
+      </div>
+    </section>
+
+    <!-- Accent & Pronunciation Dialect Selector -->
+    <section class="accent-bar">
+      <div style="flex:1;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span class="section-label">Sofia Female Voice Dialect:</span>
+          <span style="font-size:11px; color:var(--accent-cyan); font-family:var(--font-mono);" id="activeAccentDescription">Neutral North American</span>
+        </div>
+        <div class="accent-buttons" id="accentButtons">
+          <!-- Rendered dynamically: US General, Canada, Southern, British RP, Irish, Euro, Australian, Indian, African -->
+        </div>
+      </div>
+      <div class="rag-toggle-wrapper">
+        <label for="ragToggle" style="font-family:var(--font-mono);">Qdrant Semantic RAG:</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ragToggle">
+          <span class="toggle-slider"></span>
+        </label>
+        <span id="ragModeLabel" style="font-size:11px; color:var(--accent-cyan); font-family:var(--font-mono);">RAGless (&lt;1ms)</span>
+      </div>
+    </section>
+
+    <!-- Main Dual Calling & Chat Grid -->
+    <main class="main-grid" id="voice-studio">
+
+      <!-- Left Column: Voice Interaction Studio -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
-            <h3 style="font-size:16.5px; font-weight:800; color:#fff; margin:0; display:flex; align-items:center; gap:8px;">
-              <span>Instant 500ms VIP Phone Callback</span>
-              <span style="background:rgba(16,185,129,0.2); color:#10b981; border:1px solid rgba(16,185,129,0.4); font-size:10px; font-weight:800; padding:2px 8px; border-radius:12px;">SUB-500MS SLA</span>
+            <h2 class="card-title"><span>🎙️</span> Real-Time Voice Studio</h2>
+            <p class="card-desc">Sub-500ms conversational audio with barge-in interruption & dynamic speech endpointing.</p>
+          </div>
+          <span class="status-chip" style="color:var(--accent-emerald);">
+            ⚡ Barge-In Enabled
+          </span>
+        </div>
+
+        <!-- Channel 1: WebRTC Browser Calling -->
+        <div class="voice-hero">
+          <button class="mic-button" id="micBtn" title="Click to talk with Sofia">
+            <span id="micIcon">🎙️</span>
+          </button>
+          <div class="voice-status-text" id="voiceStatus">Click microphone to speak with Sofia</div>
+          
+          <div class="waveform" id="waveform">
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:12px; margin-top:16px; font-size:11px; color:var(--text-muted); font-family:var(--font-mono);">
+            <span>Speech Endpointing:</span>
+            <input type="range" id="silenceSlider" min="300" max="1000" step="50" value="500" style="width:100px; accent-color:var(--accent-cyan);">
+            <span id="silenceVal">500 ms (Standard)</span>
+          </div>
+        </div>
+
+        <!-- Channel 2: "Call My Phone" Outbound Twilio -->
+        <div style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border-color);">
+          <h3 style="font-size:14px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+            <span>📞</span> Direct Outbound Call to Customer Phone
+          </h3>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+            Sofia dials out via Twilio and conducts the complete booking conversation in the selected dialect.
+          </p>
+          <div style="display:grid; grid-template-columns: 1fr 1.2fr auto; gap:10px;">
+            <input type="text" id="outboundName" class="form-input" placeholder="Your Name" value="Kishor">
+            <input type="tel" id="outboundPhone" class="form-input" placeholder="+1234567890" value="+16673070119">
+            <button class="btn-primary" id="btnCallPhone" style="width:auto; white-space:nowrap;">
+              📞 Call Me
+            </button>
+          </div>
+          <div id="callFeedback" style="font-size:12px; margin-top:8px; color:var(--accent-cyan); font-family:var(--font-mono);"></div>
+        </div>
+
+        <!-- Channel 3: Live Vapi Inbound & Outbound Direct Testing -->
+        <div style="margin-top:16px; padding:14px; background:rgba(6,182,212,0.06); border:1px solid rgba(6,182,212,0.25); border-radius:10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h3 style="font-size:13px; font-weight:600; color:var(--accent-cyan); display:flex; align-items:center; gap:8px;">
+              <span>⚡</span> Live Vapi Telephony Test (Cartesia Sonic-3.5 Lifelike Voice)
             </h3>
-            <p style="font-size:12.5px; color:var(--text-secondary); margin:2px 0 0 0;">
-              Enter your mobile number below — Sophia will automatically dial your phone in under 500ms to consult, check live availability, and book your appointment.
-            </p>
+            <span class="badge" style="background:#10b981; color:#fff; font-size:10px; padding:2px 8px; border-radius:12px;">Active & Synced</span>
           </div>
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns: 1.3fr 1fr auto; gap:10px; align-items:center;">
-        <input type="tel" id="instantPhoneInput" class="form-input" placeholder="Your Phone (+1 617-555-0199 or mobile)" value="+16673070119" style="height:44px; font-size:13.5px; padding:0 14px; background:rgba(18,24,38,0.85); border:1px solid rgba(56,189,248,0.3); border-radius:10px; color:#fff;" onkeydown="if(event.key==='Enter') triggerInstant500msCall()">
-        <input type="text" id="instantNameInput" class="form-input" placeholder="Your Name" value="Kishor Kumar Paroi" style="height:44px; font-size:13.5px; padding:0 14px; background:rgba(18,24,38,0.85); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#fff;" onkeydown="if(event.key==='Enter') triggerInstant500msCall()">
-        <button id="btnInstant500ms" onclick="triggerInstant500msCall()" class="btn-primary" style="height:44px; padding:0 24px; font-size:13.5px; font-weight:800; background:linear-gradient(135deg, #0284c7, #0369a1); border-radius:10px; white-space:nowrap; box-shadow:0 4px 16px rgba(2,132,199,0.35); cursor:pointer;">
-          ⚡ Call Me Now (&lt;500ms)
-        </button>
-      </div>
-      <div id="instantCallFeedback" style="font-size:12.5px; margin-top:10px; display:none; padding:8px 12px; border-radius:8px;"></div>
-    </section>
-
-    <!-- 🌟 Voice AI Agent Testing Showcase & Highlights Banner -->
-    <section class="voice-agent-highlight-banner" id="voice-highlight">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:22px; flex-wrap:wrap; gap:14px;">
-        <div>
-          <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.35); padding:4px 12px; border-radius:12px; font-size:11px; font-weight:800; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
-            <span>👑</span> Live Pitch & Capability Showcase
-          </div>
-          <h2 style="font-size:24px; font-weight:800; color:#fff; display:flex; align-items:center; gap:10px; margin:0 0 6px 0;">
-            <span>🎙️</span> Voice AI Agent Testing Highlights
-          </h2>
-          <p style="font-size:13.5px; color:var(--text-secondary); margin:0; max-width:680px; line-height:1.5;">
-            Enterprise conversational intelligence built for <b>Luxe Saloon & Spa</b>. Autonomous multi-turn booking, natural barge-in interruptions, neural vector memory, and omnichannel synchronization.
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
+            Call Sofia live directly from your phone or click below to have Sofia ring your phone:
           </p>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button id="btnHighlightTestVoice" onclick="openClerkSignUp()" class="btn-primary" style="padding:12px 24px; font-size:13.5px; font-weight:800; background:linear-gradient(135deg, #10b981, #059669); box-shadow:0 6px 20px rgba(16,185,129,0.35); border-radius:12px;">
-            <span>✨</span> FREE TEST VOICE AI ASSISTANT
-          </button>
-        </div>
-      </div>
-
-      <!-- 4 High-Impact Capability Cards -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px;">
-        
-        <!-- Card 1: Sub-500ms Cartesia Voice -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-size:24px;">⚡</span>
-              <span style="font-size:11px; font-weight:800; color:#38bdf8; background:rgba(56,189,248,0.12); padding:3px 8px; border-radius:8px;">Sub-500ms</span>
-            </div>
-            <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:6px;">Ultra-Low Latency Speech</h3>
-            <p style="font-size:12px; color:var(--text-secondary); line-height:1.45; margin-bottom:12px;">
-              Powered by Cartesia Sonic-3.5 and WebRTC streaming. Natural barge-in allows callers to interrupt Sofia at any millisecond without awkward pauses.
-            </p>
-          </div>
-          <div style="font-size:11px; color:#94a3b8; font-family:var(--font-mono); border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
-            Sofia (General American) • Marcus (British RP)
-          </div>
-        </div>
-
-        <!-- Card 2: High-Speed Salon Knowledge Base -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-size:24px;">🧠</span>
-              <span style="font-size:11px; font-weight:800; color:#a78bfa; background:rgba(167,139,250,0.12); padding:3px 8px; border-radius:8px;">Sub-1ms</span>
-            </div>
-            <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:6px;">Instant Salon Knowledge</h3>
-            <p style="font-size:12px; color:var(--text-secondary); line-height:1.45; margin-bottom:12px;">
-              Comprehensive intelligence over Luxe Saloon & Spa treatment menus, pricing tiers, stylist availability, and salon policies for instant answers.
-            </p>
-          </div>
-          <div style="font-size:11px; color:#94a3b8; font-family:var(--font-mono); border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
-            &lt;10ms cache • 100% verified salon data
-          </div>
-        </div>
-
-        <!-- Card 3: Neon PostgreSQL & Google Sync -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-size:24px;">📅</span>
-              <span style="font-size:11px; font-weight:800; color:#10b981; background:rgba(16,185,129,0.12); padding:3px 8px; border-radius:8px;">Atomic Sync</span>
-            </div>
-            <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:6px;">Neon DB & Calendar Sync</h3>
-            <p style="font-size:12px; color:var(--text-secondary); line-height:1.45; margin-bottom:12px;">
-              Every voice booking instantly reserves the slot in Neon PostgreSQL, synchronizes live with Google Calendar, and mirrors to the Google Sheet live ledger.
-            </p>
-          </div>
-          <div style="font-size:11px; color:#94a3b8; font-family:var(--font-mono); border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
-            Row-for-row sync • Zero double-booking
-          </div>
-        </div>
-
-        <!-- Card 4: Automated Email & Omnichannel -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-size:24px;">✉️</span>
-              <span style="font-size:11px; font-weight:800; color:#f59e0b; background:rgba(245,158,11,0.12); padding:3px 8px; border-radius:8px;">Instant Dispatch</span>
-            </div>
-            <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:6px;">Automated Email & WhatsApp</h3>
-            <p style="font-size:12px; color:var(--text-secondary); line-height:1.45; margin-bottom:12px;">
-              Booking notifications with stylist details, address (120 Newbury St), and time are automatically dispatched to the customer's signup email and WhatsApp phone.
-            </p>
-          </div>
-          <div style="font-size:11px; color:#94a3b8; font-family:var(--font-mono); border-top:1px solid rgba(255,255,255,0.06); padding-top:8px;">
-            Clerk user email integration • WhatsApp alerts
-          </div>
-        </div>
-
-      </div>
-    </section>
-<!-- 💇 Detailed Luxe Saloon Services Showcase -->
-    <section class="card" id="services-section" style="margin-top:24px;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
-        <div>
-          <h2 class="section-title" style="font-size:20px; font-weight:800; display:flex; align-items:center; gap:8px;">
-            <span>✨</span> Luxe Saloon Signature Services Menu
-          </h2>
-          <p class="section-sub">Master stylists, bespoke aesthetic treatments, and transparent luxury pricing.</p>
-        </div>
-        <span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; border:1px solid #10b981; padding:5px 14px; border-radius:12px; font-size:12px;">Top Rated Salon • Boston, MA</span>
-      </div>
-
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:18px;">
-        
-        <!-- Service 1: Signature Balayage -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s, border-color 0.2s;" onmouseenter="this.style.borderColor='rgba(56,189,248,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)'">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-              <div>
-                <span style="font-size:11px; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">Hair Artistry</span>
-                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-top:2px;">Signature Balayage & Glaze</h3>
-              </div>
-              <div style="text-align:right;">
-                <span style="font-size:20px; font-weight:800; color:#38bdf8;">$280</span>
-                <div style="font-size:11px; color:var(--text-muted);">150 mins</div>
-              </div>
-            </div>
-            <p style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">
-              Bespoke hand-painted dimensional highlights, bond-building Olaplex conditioning treatment, custom toner gloss, and signature blowout finish.
-            </p>
-            <div style="margin-bottom:16px; font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:4px;">
-              <div>✓ Includes custom multi-tone glaze & toner</div>
-              <div>✓ Olaplex No. 1 & No. 2 bond defense</div>
-              <div>✓ Senior Colorist: <b>Marcus Vance</b></div>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="quickBookService('Signature Balayage & Glaze', 'Marcus Vance', '$280')" style="width:100%; font-size:13px; padding:10px; justify-content:center;">
-            ⚡ Quick Book with Marcus
-          </button>
-        </div>
-
-        <!-- Service 2: Precision Cut & Blowout -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s, border-color 0.2s;" onmouseenter="this.style.borderColor='rgba(56,189,248,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)'">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-              <div>
-                <span style="font-size:11px; font-weight:700; color:#a78bfa; text-transform:uppercase; letter-spacing:0.5px;">Styling</span>
-                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-top:2px;">Precision Haircut & Blowdry</h3>
-              </div>
-              <div style="text-align:right;">
-                <span style="font-size:20px; font-weight:800; color:#38bdf8;">$95</span>
-                <div style="font-size:11px; color:var(--text-muted);">60 mins</div>
-              </div>
-            </div>
-            <p style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">
-              Architectural haircut tailored to your facial symmetry, accompanied by a clarifying scalp detox wash and voluminous thermal blowout styling.
-            </p>
-            <div style="margin-bottom:16px; font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:4px;">
-              <div>✓ Essential oil botanical scalp massage</div>
-              <div>✓ Moisture-infusing peptide hair mask</div>
-              <div>✓ Master Stylist: <b>Sofia Alston</b></div>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="quickBookService('Precision Haircut & Blowdry', 'Sofia Alston', '$95')" style="width:100%; font-size:13px; padding:10px; justify-content:center;">
-            ⚡ Quick Book with Sofia
-          </button>
-        </div>
-
-        <!-- Service 3: Brazilian Keratin -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s, border-color 0.2s;" onmouseenter="this.style.borderColor='rgba(56,189,248,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)'">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-              <div>
-                <span style="font-size:11px; font-weight:700; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px;">Texture & Smooth</span>
-                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-top:2px;">Brazilian Keratin Smoothing</h3>
-              </div>
-              <div style="text-align:right;">
-                <span style="font-size:20px; font-weight:800; color:#38bdf8;">$320</span>
-                <div style="font-size:11px; color:var(--text-muted);">120 mins</div>
-              </div>
-            </div>
-            <p style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">
-              Formaldehyde-free keratin protein treatment eliminating 95% of frizz and humidity curls for up to 5 months of mirror-finish silky locks.
-            </p>
-            <div style="margin-bottom:16px; font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:4px;">
-              <div>✓ Humidity-resistant protective polymer seal</div>
-              <div>✓ Complimentary take-home sulfate-free shampoo</div>
-              <div>✓ Texture Director: <b>Marcus Vance</b></div>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="quickBookService('Brazilian Keratin Smoothing', 'Marcus Vance', '$320')" style="width:100%; font-size:13px; padding:10px; justify-content:center;">
-            ⚡ Quick Book Keratin
-          </button>
-        </div>
-
-        <!-- Service 4: Deluxe HydraFacial -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s, border-color 0.2s;" onmouseenter="this.style.borderColor='rgba(56,189,248,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)'">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-              <div>
-                <span style="font-size:11px; font-weight:700; color:#10b981; text-transform:uppercase; letter-spacing:0.5px;">Clinical Aesthetics</span>
-                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-top:2px;">Deluxe HydraFacial MD Elite</h3>
-              </div>
-              <div style="text-align:right;">
-                <span style="font-size:20px; font-weight:800; color:#38bdf8;">$225</span>
-                <div style="font-size:11px; color:var(--text-muted);">60 mins</div>
-              </div>
-            </div>
-            <p style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">
-              Patented vortex suction deep extraction, gentle glycolic peel, intense hyaluronic hydration, and red-light LED anti-aging collagen therapy.
-            </p>
-            <div style="margin-bottom:16px; font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:4px;">
-              <div>✓ Painless automated blackhead extractions</div>
-              <div>✓ Targeted peptide booster & antioxidant veil</div>
-              <div>✓ Medical Aesthetician: <b>Elena Rostova</b></div>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="quickBookService('Deluxe HydraFacial MD Elite', 'Elena Rostova', '$225')" style="width:100%; font-size:13px; padding:10px; justify-content:center;">
-            ⚡ Quick Book HydraFacial
-          </button>
-        </div>
-
-        <!-- Service 5: 24K Gold Facial -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s, border-color 0.2s;" onmouseenter="this.style.borderColor='rgba(56,189,248,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)'">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-              <div>
-                <span style="font-size:11px; font-weight:700; color:#f59e0b; text-transform:uppercase; letter-spacing:0.5px;">Luxury Spa</span>
-                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-top:2px;">24K Gold Collagen Facial</h3>
-              </div>
-              <div style="text-align:right;">
-                <span style="font-size:20px; font-weight:800; color:#38bdf8;">$295</span>
-                <div style="font-size:11px; color:var(--text-muted);">75 mins</div>
-              </div>
-            </div>
-            <p style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">
-              Opulent pure 24K gold foil application combined with microcurrent cellular contouring for red-carpet luminescence and instant skin tightening.
-            </p>
-            <div style="margin-bottom:16px; font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:4px;">
-              <div>✓ Pure 24K bio-active leaf application</div>
-              <div>✓ Cryo-ice globe lymphatic sculpting</div>
-              <div>✓ Aesthetics Lead: <b>Elena Rostova</b></div>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="quickBookService('24K Gold Collagen Facial', 'Elena Rostova', '$295')" style="width:100%; font-size:13px; padding:10px; justify-content:center;">
-            ⚡ Quick Book Gold Facial
-          </button>
-        </div>
-
-        <!-- Service 6: Japanese Gel Manicure -->
-        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:20px; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s, border-color 0.2s;" onmouseenter="this.style.borderColor='rgba(56,189,248,0.4)'" onmouseleave="this.style.borderColor='rgba(255,255,255,0.08)'">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-              <div>
-                <span style="font-size:11px; font-weight:700; color:#ec4899; text-transform:uppercase; letter-spacing:0.5px;">Nail Couture</span>
-                <h3 style="font-size:18px; font-weight:700; color:#fff; margin-top:2px;">Japanese Gel Luxury Manicure</h3>
-              </div>
-              <div style="text-align:right;">
-                <span style="font-size:20px; font-weight:800; color:#38bdf8;">$85</span>
-                <div style="font-size:11px; color:var(--text-muted);">60 mins</div>
-              </div>
-            </div>
-            <p style="font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px;">
-              Gentle Russian dry cuticle detailing followed by non-damaging organic Japanese leafgel with mirror gloss finish that lasts over 4 weeks.
-            </p>
-            <div style="margin-bottom:16px; font-size:12px; color:var(--text-muted); display:flex; flex-direction:column; gap:4px;">
-              <div>✓ Organic non-toxic builder gel structure</div>
-              <div>✓ Hot towel rose paraffin treatment</div>
-              <div>✓ Nail Artist: <b>Chloe Laurent</b></div>
-            </div>
-          </div>
-          <button class="btn-primary" onclick="quickBookService('Japanese Gel Luxury Manicure', 'Chloe Laurent', '$85')" style="width:100%; font-size:13px; padding:10px; justify-content:center;">
-            ⚡ Quick Book with Chloe
-          </button>
-        </div>
-
-      </div>
-    </section>
-
-    
-    <!-- VIP Gated Interactive Suite -->
-    <div id="vipGatedContainer" class="vip-gated-container">
-      
-      <!-- VIP Locked Overlay (Shown when signed out) -->
-      <div id="vipGateOverlay" class="vip-gate-overlay">
-        <div class="vip-gate-modal">
-          <div class="vip-gate-icon">🔒</div>
-          <h3 class="vip-gate-title">VIP Studio Access Required</h3>
-          <p class="vip-gate-sub">
-            Sign up for <b>FREE</b> to unlock the live interactive <b>Voice AI Studio</b>, test WebRTC real-time voice calls, live concierge chat, instant phone callbacks, and live calendar booking.
-          </p>
-          <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:24px; text-align:left; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); padding:14px 18px; border-radius:12px; font-size:12.5px; color:#cbd5e1;">
-            <div>✓ <b>Free Test Voice AI Assistant</b> (Talk live with Sofia via WebRTC)</div>
-            <div>✓ <b>Direct Phone Callback</b> (Sofia calls your phone in under 500ms)</div>
-            <div>✓ <b>Omnichannel Chat Concierge</b> (Instant WhatsApp, Instagram & Web chat)</div>
-            <div>✓ <b>Instant Email & WhatsApp Confirmations</b> (Auto-synced with Google Sheets & Neon DB)</div>
-          </div>
-          <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
-            <button onclick="openClerkSignUp()" class="btn-primary" style="padding:12px 28px; font-size:14px; font-weight:800; background:linear-gradient(135deg, #f59e0b, #d97706); color:#000; box-shadow:0 6px 20px rgba(245,158,11,0.4);">
-              ✨ Sign Up Free (Instant VIP Access)
-            </button>
-            <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:12px 22px; font-size:14px; font-weight:600;">
-              Already VIP? Sign In
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <a href="tel:+19124999633" class="btn-primary" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none; padding:8px 14px; font-size:12px; width:auto;">
+              📞 Dial +1 (912) 499-9633
+            </a>
+            <button class="btn-secondary" id="btnVapiCall" onclick="triggerVapiOutboundCall()" style="display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:12px; width:auto;">
+              🚀 Call My Phone via Vapi
             </button>
           </div>
+          <div id="vapiFeedback" style="font-size:11px; margin-top:8px; color:var(--accent-cyan); font-family:var(--font-mono);"></div>
         </div>
       </div>
-<!-- 📞 VIP Direct Phone & Instant Callback Concierge -->
-    <main class="main-grid" id="voice-studio" style="grid-template-columns: 1fr;">
-      <div class="card" style="padding: 28px 32px; background: linear-gradient(135deg, rgba(15,23,42,0.88), rgba(24,34,58,0.78)); border: 1px solid rgba(56,189,248,0.25); box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-radius: 16px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:16px;">
+
+      <!-- Right Column: Omnichannel Chat Widget -->
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
-            <div style="display:inline-flex; align-items:center; gap:8px; padding:4px 12px; background:rgba(56,189,248,0.12); border:1px solid rgba(56,189,248,0.3); border-radius:20px; margin-bottom:10px;">
-              <span style="font-size:12px; color:#38bdf8; font-weight:700;">⚡ Sub-500ms Direct Outbound & Inbound VIP Phone System</span>
-            </div>
-            <h2 class="card-title" style="font-size:24px; font-weight:800; color:#fff; display:flex; align-items:center; gap:10px;">
-              <span>📞</span> Luxe VIP Salon Voice Concierge
-            </h2>
-            <p class="card-desc" style="font-size:14px; color:#94a3b8; max-width:650px; margin-top:4px;">
-              Speak directly with <b>Sofia (Receptionist)</b> or <b>Marcus (Salon Director)</b> over high-definition cellular telephony. Experience live intelligent scheduling, calendar sync, and instant confirmation receipts.
-            </p>
+            <h2 class="card-title"><span>💬</span> Omnichannel Chat & Sentiment</h2>
+            <p class="card-desc">Unified chat engine powering Website, WhatsApp, Messenger & Instagram.</p>
           </div>
-
-          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
-            <div style="padding:10px 18px; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.3); border-radius:12px; text-align:right;">
-              <div style="font-size:11px; text-transform:uppercase; color:#10b981; font-weight:700; letter-spacing:0.5px;">Direct Inbound Reception</div>
-              <a href="tel:+16172718180" style="font-size:18px; font-weight:800; color:#fff; text-decoration:none; font-family:var(--font-mono); display:flex; align-items:center; gap:6px; margin-top:2px;">
-                <span>📲</span> +1 (617) 271-8180
-              </a>
-            </div>
-            <span style="font-size:11px; color:#64748b;">120 Newbury Street, Back Bay, Boston, MA</span>
-          </div>
+          <span id="sentimentBadge" class="status-chip" style="font-size:11px;">
+            Mood: Neutral
+          </span>
         </div>
 
-        <!-- 🚀 Instant Outbound Callback Section -->
-        <div style="padding:22px 24px; background:linear-gradient(135deg, rgba(56,189,248,0.06), rgba(99,102,241,0.04)); border:1px solid rgba(56,189,248,0.22); border-radius:14px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-size:18px;">⚡</span>
-              <span style="font-size:15px; font-weight:700; color:#fff;">Trigger Instant Outbound Call to Your Phone</span>
-              <span style="padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700; background:rgba(16,185,129,0.18); color:#34d399;">&lt;500ms Dispatch</span>
-            </div>
-            <span style="font-size:12px; color:#94a3b8;">Sofia will place an immediate high-fidelity phone call to you</span>
-          </div>
-
-          <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; align-items:center;">
-            <div>
-              <label style="font-size:11.5px; font-weight:600; color:#cbd5e1; margin-bottom:6px; display:block;">Your Phone Number (E.164 with Country Code)</label>
-              <input type="tel" id="outboundPhone" class="form-input" placeholder="+1 617-555-0199 or +880 17..." value="+16673070119" style="height:44px; font-size:14px; padding:0 14px; background:rgba(15,23,42,0.9); border:1px solid rgba(255,255,255,0.15); border-radius:8px; width:100%; color:#fff; font-family:var(--font-mono);">
-            </div>
-            <div>
-              <label style="font-size:11.5px; font-weight:600; color:#cbd5e1; margin-bottom:6px; display:block;">Your Full Name</label>
-              <input type="text" id="outboundName" class="form-input" placeholder="e.g. Kishor Kumar Paroi" value="Kishor Kumar Paroi" style="height:44px; font-size:14px; padding:0 14px; background:rgba(15,23,42,0.9); border:1px solid rgba(255,255,255,0.15); border-radius:8px; width:100%; color:#fff;">
-            </div>
-            <div style="padding-top:22px;">
-              <button class="btn-primary" id="btnFastCall" onclick="triggerInstantCall()" style="height:44px; padding:0 24px; font-size:14px; font-weight:700; background:linear-gradient(135deg, #0284c7, #0369a1); border-radius:8px; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 4px 14px rgba(2,132,199,0.35); border:none; color:#fff; white-space:nowrap;">
-                <span>📞</span> Call My Phone Now
-              </button>
+        <div class="chat-window">
+          <div class="chat-messages" id="chatMessages">
+            <div class="chat-bubble bot">
+              Hello! I am Sofia, your virtual receptionist. How can I assist you today? You can ask to book an appointment, check available slots, or modify an existing booking.
+              <div class="bubble-meta">
+                <span>Sofia (AI Concierge)</span>
+                <button class="listen-btn" onclick="playSpeech(this.parentElement.parentElement.childNodes[0].textContent)">🔊 Listen</button>
+              </div>
             </div>
           </div>
 
-          <div id="fastCallResult" style="font-size:13px; margin-top:12px; display:none; padding:10px 14px; border-radius:8px;"></div>
+          <div class="quick-chips" id="quickChips">
+            <!-- Populated dynamically based on active tenant vertical -->
+          </div>
+
+          <div class="chat-input-bar">
+            <input type="text" id="chatInput" class="chat-input" placeholder="Type a message (e.g. 'Can I schedule a private showing tomorrow?')...">
+            <button class="chat-send-btn" id="btnSendChat">Send</button>
+          </div>
         </div>
       </div>
+
     </main>
 
-    <!-- 📊 Google Calendar Booking & Visual Schedule Graph Section -->
-    <section class="card" id="schedule-graph-section" style="margin-top:24px;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+    <!-- Hands-On Omnichannel Testing Suite & Simulator -->
+    <section class="test-lab-card" id="omnichannelLab">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
         <div>
-          <h2 class="section-title" style="font-size:20px; font-weight:800; display:flex; align-items:center; gap:8px;">
-            <span>📊</span> Google Calendar Live Booking & Availability Graph
+          <h2 class="card-title" style="margin-bottom:4px;">
+            <span>🧪</span> Hands-On Omnichannel Test Lab & Payload Inspector
           </h2>
-          <p class="section-sub">Real-time salon capacity, hourly booking distribution, and 1-click slot reservation.</p>
-        </div>
-        <div style="display:flex; gap:10px;">
-          <button class="btn-ghost" onclick="loadScheduleAvailability()" style="font-size:12px; padding:6px 14px;">🔄 Refresh Graph</button>
-        </div>
-      </div>
-
-      <!-- Live Capacity Metric Cards -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; margin-bottom:24px;">
-        <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); border-radius:12px; padding:14px;">
-          <div style="font-size:11px; font-weight:700; color:#10b981; text-transform:uppercase;">Open Prime Slots</div>
-          <div id="statOpenSlots" style="font-size:26px; font-weight:800; color:#fff; margin-top:4px;">14 Available</div>
-          <div style="font-size:11px; color:var(--text-muted);">Today across all stylists</div>
-        </div>
-        <div style="background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.25); border-radius:12px; padding:14px;">
-          <div style="font-size:11px; font-weight:700; color:#a5b4fc; text-transform:uppercase;">Confirmed Bookings</div>
-          <div id="statBookedCount" style="font-size:26px; font-weight:800; color:#fff; margin-top:4px;">26 Confirmed</div>
-          <div style="font-size:11px; color:var(--text-muted);">Synchronized in Neon & Calendar</div>
-        </div>
-        <div style="background:rgba(56,189,248,0.06); border:1px solid rgba(56,189,248,0.25); border-radius:12px; padding:14px;">
-          <div style="font-size:11px; font-weight:700; color:#38bdf8; text-transform:uppercase;">Booking Latency</div>
-          <div style="font-size:26px; font-weight:800; color:#fff; margin-top:4px;">&lt;450 ms</div>
-          <div style="font-size:11px; color:var(--text-muted);">Instant voice / web confirmation</div>
-        </div>
-        <div style="background:rgba(245,158,11,0.06); border:1px solid rgba(245,158,11,0.25); border-radius:12px; padding:14px;">
-          <div style="font-size:11px; font-weight:700; color:#f59e0b; text-transform:uppercase;">Active Specialists</div>
-          <div style="font-size:26px; font-weight:800; color:#fff; margin-top:4px;">4 Master Stylists</div>
-          <div style="font-size:11px; color:var(--text-muted);">Sofia, Marcus, Elena, Chloe</div>
-        </div>
-      </div>
-
-      <!-- Visual Hourly Occupancy & Capacity Graph -->
-      <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:18px; margin-bottom:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-          <h3 style="font-size:14px; font-weight:700; color:#fff;">📈 Daily Hourly Capacity & Booking Load</h3>
-          <span style="font-size:11px; color:var(--text-muted);">Peak Hours: 01:30 PM – 04:30 PM</span>
-        </div>
-        
-        <!-- SVG Visual Load Graph -->
-        <div style="display:flex; flex-direction:column; gap:10px;" id="hourlyCapacityBars">
-          <!-- Dynamically populated or fallback -->
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span style="font-size:11px; font-family:var(--font-mono); width:65px; color:var(--text-muted);">09:00 AM</span>
-            <div style="flex:1; background:rgba(255,255,255,0.05); height:16px; border-radius:8px; overflow:hidden;">
-              <div style="width:50%; height:100%; background:linear-gradient(90deg, #10b981, #059669); border-radius:8px;"></div>
-            </div>
-            <span style="font-size:11px; font-weight:600; color:#34d399; width:45px;">50%</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span style="font-size:11px; font-family:var(--font-mono); width:65px; color:var(--text-muted);">10:30 AM</span>
-            <div style="flex:1; background:rgba(255,255,255,0.05); height:16px; border-radius:8px; overflow:hidden;">
-              <div style="width:75%; height:100%; background:linear-gradient(90deg, #38bdf8, #0284c7); border-radius:8px;"></div>
-            </div>
-            <span style="font-size:11px; font-weight:600; color:#38bdf8; width:45px;">75%</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span style="font-size:11px; font-family:var(--font-mono); width:65px; color:var(--text-muted);">12:00 PM</span>
-            <div style="flex:1; background:rgba(255,255,255,0.05); height:16px; border-radius:8px; overflow:hidden;">
-              <div style="width:100%; height:100%; background:linear-gradient(90deg, #f59e0b, #d97706); border-radius:8px;"></div>
-            </div>
-            <span style="font-size:11px; font-weight:600; color:#fbbf24; width:45px;">100%</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span style="font-size:11px; font-family:var(--font-mono); width:65px; color:var(--text-muted);">01:30 PM</span>
-            <div style="flex:1; background:rgba(255,255,255,0.05); height:16px; border-radius:8px; overflow:hidden;">
-              <div style="width:100%; height:100%; background:linear-gradient(90deg, #ef4444, #dc2626); border-radius:8px;"></div>
-            </div>
-            <span style="font-size:11px; font-weight:600; color:#f87171; width:45px;">100%</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span style="font-size:11px; font-family:var(--font-mono); width:65px; color:var(--text-muted);">03:00 PM</span>
-            <div style="flex:1; background:rgba(255,255,255,0.05); height:16px; border-radius:8px; overflow:hidden;">
-              <div style="width:75%; height:100%; background:linear-gradient(90deg, #8b5cf6, #7c3aed); border-radius:8px;"></div>
-            </div>
-            <span style="font-size:11px; font-weight:600; color:#c084fc; width:45px;">75%</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:12px;">
-            <span style="font-size:11px; font-family:var(--font-mono); width:65px; color:var(--text-muted);">04:30 PM</span>
-            <div style="flex:1; background:rgba(255,255,255,0.05); height:16px; border-radius:8px; overflow:hidden;">
-              <div style="width:50%; height:100%; background:linear-gradient(90deg, #10b981, #059669); border-radius:8px;"></div>
-            </div>
-            <span style="font-size:11px; font-weight:600; color:#34d399; width:45px;">50%</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Interactive Stylist Availability Schedule Matrix -->
-      <div>
-        <h3 style="font-size:15px; font-weight:700; color:#fff; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-          <span>🗓️</span> Interactive Specialist Availability Matrix (Click Any Open Slot to Book)
-        </h3>
-
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:14px;" id="stylistScheduleMatrix">
-          
-          <!-- Sofia's Schedule -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-              <span style="font-size:20px;">💇‍♀️</span>
-              <div>
-                <div style="font-size:14px; font-weight:700; color:#fff;">Sofia Alston</div>
-                <div style="font-size:11px; color:var(--text-muted);">Master Stylist & Director</div>
-              </div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <button onclick="bookMatrixSlot('Precision Haircut & Blowdry', 'Sofia Alston', '10:30 AM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 10:30 AM</span> <span>Book Slot</span>
-              </button>
-              <div style="background:rgba(255,255,255,0.04); padding:6px 10px; border-radius:6px; font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between;">
-                <span>🔒 12:00 PM</span> <span>VIP Reserved</span>
-              </div>
-              <button onclick="bookMatrixSlot('Precision Haircut & Blowdry', 'Sofia Alston', '03:00 PM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 03:00 PM</span> <span>Book Slot</span>
-              </button>
-              <button onclick="bookMatrixSlot('Precision Haircut & Blowdry', 'Sofia Alston', '04:30 PM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 04:30 PM</span> <span>Book Slot</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Marcus's Schedule -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-              <span style="font-size:20px;">🎨</span>
-              <div>
-                <div style="font-size:14px; font-weight:700; color:#fff;">Marcus Vance</div>
-                <div style="font-size:11px; color:var(--text-muted);">Balayage & Color Director</div>
-              </div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <button onclick="bookMatrixSlot('Signature Balayage & Glaze', 'Marcus Vance', '09:00 AM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 09:00 AM</span> <span>Book Slot</span>
-              </button>
-              <div style="background:rgba(255,255,255,0.04); padding:6px 10px; border-radius:6px; font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between;">
-                <span>🔒 01:30 PM</span> <span>VIP Reserved</span>
-              </div>
-              <button onclick="bookMatrixSlot('Brazilian Keratin Smoothing', 'Marcus Vance', '04:00 PM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 04:00 PM</span> <span>Book Slot</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Elena's Schedule -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-              <span style="font-size:20px;">✨</span>
-              <div>
-                <div style="font-size:14px; font-weight:700; color:#fff;">Elena Rostova</div>
-                <div style="font-size:11px; color:var(--text-muted);">Medical Aesthetician</div>
-              </div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <button onclick="bookMatrixSlot('Deluxe HydraFacial MD Elite', 'Elena Rostova', '11:00 AM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 11:00 AM</span> <span>Book Slot</span>
-              </button>
-              <button onclick="bookMatrixSlot('24K Gold Collagen Facial', 'Elena Rostova', '02:00 PM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 02:00 PM</span> <span>Book Slot</span>
-              </button>
-              <div style="background:rgba(255,255,255,0.04); padding:6px 10px; border-radius:6px; font-size:11px; color:var(--text-muted); display:flex; justify-content:space-between;">
-                <span>🔒 04:30 PM</span> <span>VIP Reserved</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Chloe's Schedule -->
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
-              <span style="font-size:20px;">💅</span>
-              <div>
-                <div style="font-size:14px; font-weight:700; color:#fff;">Chloe Laurent</div>
-                <div style="font-size:11px; color:var(--text-muted);">Nail Artist & Spa Specialist</div>
-              </div>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              <button onclick="bookMatrixSlot('Japanese Gel Luxury Manicure', 'Chloe Laurent', '10:00 AM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 10:00 AM</span> <span>Book Slot</span>
-              </button>
-              <button onclick="bookMatrixSlot('Japanese Gel Luxury Manicure', 'Chloe Laurent', '01:00 PM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 01:00 PM</span> <span>Book Slot</span>
-              </button>
-              <button onclick="bookMatrixSlot('Japanese Gel Luxury Manicure', 'Chloe Laurent', '03:30 PM')" class="btn-ghost" style="font-size:11px; padding:6px 10px; justify-content:space-between; border-color:rgba(16,185,129,0.3); color:#34d399;">
-                <span>🟢 03:30 PM</span> <span>Book Slot</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Quick 1-Click Slot Booking Modal -->
-      <div id="bookingModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:9999; align-items:center; justify-content:center;">
-        <div style="background:#0f172a; border:1px solid rgba(255,255,255,0.15); border-radius:16px; padding:24px; max-width:440px; width:90%; box-shadow:0 20px 40px rgba(0,0,0,0.5);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-            <h3 style="font-size:17px; font-weight:800; color:#fff;" id="modalTitle">Confirm VIP Appointment</h3>
-            <button onclick="closeBookingModal()" style="background:none; border:none; color:var(--text-muted); font-size:16px; cursor:pointer;">✕</button>
-          </div>
-          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px; margin-bottom:14px;">
-            <div style="font-size:14px; font-weight:700; color:#38bdf8;" id="modalServiceName">Service Name</div>
-            <div style="font-size:12px; color:var(--text-muted); margin-top:2px;" id="modalStylistName">Stylist • Time</div>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
-            <input type="text" id="modalGuestName" class="form-input" placeholder="Your Full Name">
-            <input type="tel" id="modalGuestPhone" class="form-input" placeholder="Your Phone Number (+1...)">
-            <input type="email" id="modalGuestEmail" class="form-input" placeholder="Confirmation Email Address (Auto-sends receipt & calendar invite)">
-          </div>
-          <button class="btn-primary" id="btnConfirmModalBooking" onclick="submitModalBooking()" style="width:100%; justify-content:center; padding:12px; font-weight:700; background:linear-gradient(135deg, #10b981, #059669);">
-            ✓ Confirm & Sync to Calendar
-          </button>
-          <div id="modalBookingFeedback" style="font-size:12px; margin-top:10px; text-align:center;"></div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- Omnichannel Social & WhatsApp Marketing Hub -->
-    <section class="card" id="omnichannelHub" style="margin-top:24px;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
-        <div>
-          <h2 class="section-title">📱 Luxe Saloon Omnichannel & WhatsApp Marketing</h2>
-          <p class="section-sub">Connect directly with customers across WhatsApp Business, Telnyx, Facebook, Instagram & LinkedIn.</p>
-        </div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <span class="status-chip" style="color:#10b981;">● All Channels Active</span>
-          <button onclick="openConnectChannelModal()" class="btn-primary" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg, #8b5cf6, #6366f1); border-radius:10px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 4px 14px rgba(139,92,246,0.35);">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate(-45deg);"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
-            Connect Channel
-          </button>
-        </div>
-      </div>
-
-      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:18px;">
-        <!-- WhatsApp & Telnyx Messaging Box -->
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:16px;">
-          <h3 style="font-size:14px; font-weight:700; margin-bottom:8px; color:#25d366; display:flex; align-items:center; gap:8px;">
-            <span>💬</span> WhatsApp Business & Telnyx Outbound
-          </h3>
-          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
-            Send direct booking confirmations or updates to customer WhatsApp numbers from Telnyx number (+19124999633):
+          <p class="card-desc">
+            Test live simulated interactions across WhatsApp, Facebook Messenger, Instagram DM, and Voice Telephony.
           </p>
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <input type="tel" id="telnyxToPhone" class="form-input" placeholder="Customer Phone (+1...)" value="+16673070119">
-            <textarea id="telnyxMessageText" class="form-input" style="height:65px; resize:none;" placeholder="Your Luxe Saloon appointment is confirmed for tomorrow at 2 PM with Marcus."></textarea>
-            <button class="btn-primary" onclick="sendTelnyxDirectMessage()" style="background:#25d366; color:#000; font-weight:700; justify-content:center;">
-              🚀 Send via Telnyx / WhatsApp
-            </button>
-          </div>
-          <div id="telnyxStatus" style="font-size:11px; margin-top:8px; color:#a7f3d0; font-family:var(--font-mono);"></div>
         </div>
-
-        <!-- WhatsApp VIP Broadcast Campaign -->
-        <div style="background:rgba(255,255,255,0.02); border:1px solid var(--border-color); border-radius:12px; padding:16px;">
-          <h3 style="font-size:14px; font-weight:700; margin-bottom:8px; color:#a5b4fc; display:flex; align-items:center; gap:8px;">
-            <span>📢</span> Push Marketing Broadcast to VIP Customers
-          </h3>
-          <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
-            Push promotional marketing offers directly from "Luxe Saloon & Spa" WhatsApp Business account:
-          </p>
-          <div style="display:flex; flex-direction:column; gap:8px;">
-            <input type="text" id="waCampaignAudience" class="form-input" value="All VIP Salon Clients" readonly>
-            <textarea id="waCampaignMessage" class="form-input" style="height:65px; resize:none;">✨ Luxe VIP Weekend Flash: Enjoy 20% off all Balayage & Keratin treatments this Saturday! Reply BOOK to reserve your chair.</textarea>
-            <button class="btn-primary" onclick="sendWhatsAppMarketingBroadcast()" style="justify-content:center;">
-              📣 Dispatch VIP WhatsApp Broadcast
-            </button>
-          </div>
-          <div id="waCampaignStatus" style="font-size:11px; margin-top:8px; color:#38bdf8; font-family:var(--font-mono);"></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="status-chip" style="color:var(--accent-emerald);">● 8 Channels Ready</span>
         </div>
       </div>
-    </section>
 
-    <!-- Universal Embeddable Widget Snippet Section -->
-    <section class="card" style="margin-top:24px; background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.25);">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-        <h3 style="font-size:15px; font-weight:700; color:#a5b4fc; display:flex; align-items:center; gap:8px;">
-          <span>🧩</span> Embed Sofia on Facebook, Instagram, or Your Website
-        </h3>
-        <span class="badge" style="background:#6366f1; color:#fff; font-size:10px; padding:3px 10px; border-radius:12px;">Plug & Play</span>
-      </div>
-      <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">
-        Add this single script tag right before <code>&lt;/body&gt;</code> on any webpage to deploy the floating Sofia Voice & Chat widget:
-      </p>
-      <div style="position:relative; background:#0b0f19; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:12px; margin-bottom:12px;">
-        <pre style="margin:0; font-size:12px; color:#38bdf8; font-family:var(--font-mono); overflow-x:auto;" id="embedSnippetCode">&lt;script src="https://ai-voice-receptionist.kishor.tech/widget.js" data-tenant="salon"&gt;&lt;/script&gt;</pre>
-        <button onclick="copyEmbedSnippet()" style="position:absolute; right:10px; top:10px; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:#fff; padding:4px 10px; border-radius:6px; font-size:11px; cursor:pointer;" id="copyEmbedBtn">Copy Code</button>
-      </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <button class="btn-primary" onclick="window.SofiaWidget?.toggle()" style="padding:8px 18px; font-size:13px; width:auto; border-radius:10px;">
-          ✨ Open Floating Widget
+      <!-- Channel Tabs -->
+      <div class="channel-tabs" id="labChannelTabs">
+        <button class="channel-tab-btn active" data-channel="whatsapp" onclick="switchLabChannel('whatsapp')">
+          <span>🟢</span> WhatsApp Cloud API
+        </button>
+        <button class="channel-tab-btn" data-channel="messenger" onclick="switchLabChannel('messenger')">
+          <span>💬</span> Messenger Graph API
+        </button>
+        <button class="channel-tab-btn" data-channel="instagram" onclick="switchLabChannel('instagram')">
+          <span>📸</span> Instagram Direct
+        </button>
+        <button class="channel-tab-btn" data-channel="telegram" onclick="switchLabChannel('telegram')">
+          <span>✈️</span> Telegram Bot
+        </button>
+        <button class="channel-tab-btn" data-channel="twitter" onclick="switchLabChannel('twitter')">
+          <span>🐦</span> Twitter / X DM
+        </button>
+        <button class="channel-tab-btn" data-channel="linkedin" onclick="switchLabChannel('linkedin')">
+          <span>💼</span> LinkedIn Direct
+        </button>
+        <button class="channel-tab-btn" data-channel="tiktok" onclick="switchLabChannel('tiktok')">
+          <span>🎵</span> TikTok Messages
+        </button>
+        <button class="channel-tab-btn" data-channel="voice" onclick="switchLabChannel('voice')">
+          <span>🎙️</span> Voice Telephony Turn
+        </button>
+        <button class="channel-tab-btn" data-channel="telephony" onclick="switchLabChannel('telephony')">
+          <span>📱</span> Telephony Provisioning (Vapi/Twilio)
         </button>
       </div>
+
+      <!-- Interactive Test Grid -->
+      <div class="test-grid" id="standardTestView">
+        <!-- Left: Input Control Form -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+            <div class="form-group">
+              <label class="form-label">Tester Name</label>
+              <input type="text" id="labCallerName" class="form-input" value="Alex Rivera">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Phone / PSID</label>
+              <input type="text" id="labCallerPhone" class="form-input" value="+16673070119">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Test Inbound Message</label>
+            <textarea id="labMessageInput" class="form-input" rows="2" placeholder="e.g. Can I schedule a private tour tomorrow at 2:00 PM?">Can I check your available slots tomorrow?</textarea>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            <button class="chip" style="font-size:11px;" onclick="setLabMessage('Check available slots tomorrow')">🕒 Check Slots</button>
+            <button class="chip" style="font-size:11px;" onclick="setLabMessage('Book tomorrow at 2:00 PM with first available specialist')">📅 Book 2:00 PM</button>
+            <button class="chip" style="font-size:11px;" onclick="setLabMessage('Reschedule my appointment to Friday at 4:00 PM')">🔄 Reschedule</button>
+            <button class="chip" style="font-size:11px;" onclick="setLabMessage('Cancel my existing appointment')">❌ Cancel</button>
+            <button class="chip" style="font-size:11px; border-color:var(--accent-rose); color:var(--accent-rose);" onclick="setLabMessage('I have been waiting for 20 minutes and nobody is responding, this is terrible!')">😡 Frustrated (Escalation)</button>
+          </div>
+
+          <button class="btn-primary" id="btnRunLabTest" onclick="runOmnichannelLabTest()">
+            🚀 Send Simulated Interaction
+          </button>
+        </div>
+
+        <!-- Right: Bot Output & Outbound Meta Payload Inspector -->
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div class="response-card">
+            <div>
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <span style="font-size:11px; text-transform:uppercase; color:var(--text-muted); font-weight:700; font-family:var(--font-mono);">
+                  Sofia Bot Response
+                </span>
+                <span id="labActionBadge" class="badge confirmed">Action: idle</span>
+              </div>
+              <div id="labBotReply" style="font-size:14px; color:var(--text-primary); line-height:1.5;">
+                Select a channel and click "Send Simulated Interaction" to execute an end-to-end turn.
+              </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; padding-top:8px; border-top:1px solid var(--border-color);">
+              <span id="labLatencyTag" style="font-size:11px; color:var(--accent-emerald); font-family:var(--font-mono);">
+                Latency: -- ms
+              </span>
+              <button class="chip" style="font-size:11px;" onclick="playSpeech(document.getElementById('labBotReply').textContent)">
+                🔊 Speak Response
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase; font-family:var(--font-mono);">
+                API Outbound JSON Payload
+              </span>
+              <span id="labChannelLabel" style="font-size:10px; color:var(--accent-cyan); font-family:var(--font-mono);">WhatsApp Cloud API</span>
+            </div>
+            <pre class="json-inspector" id="labJsonInspector">{
+  "status": "ready",
+  "message": "Click 'Send Simulated Interaction' to inspect live Meta/Telephony JSON payloads."
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Telephony Number Provisioning Panel -->
+      <div id="telephonyPanel" style="display:none; padding-top:12px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <div>
+            <h3 style="font-size:15px; font-weight:700; margin-bottom:8px;">📞 Dedicated Telephony Line Provisioning</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+              Choose between an instant cloud-provisioned virtual toll-free / local number (via Vapi / Twilio) or binding the customer's existing business phone.
+            </p>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label class="form-label">Provisioning Mode</label>
+              <select id="provMode" class="form-input" onchange="toggleProvMode(this.value)">
+                <option value="auto">Auto-Provision Dedicated Virtual Number (Twilio / Vapi)</option>
+                <option value="byon">Bring Your Own Number (SIP / Forwarding)</option>
+              </select>
+            </div>
+            <div class="form-group" id="provCountryGroup" style="margin-bottom:12px;">
+              <label class="form-label">Virtual Number Country Region</label>
+              <select id="provCountry" class="form-input">
+                <option value="US">🇺🇸 United States (+1-888)</option>
+                <option value="CA">🇨🇦 Canada (+1-877)</option>
+                <option value="GB">🇬🇧 United Kingdom (+44-800)</option>
+                <option value="AU">🇦🇺 Australia (+61-1800)</option>
+              </select>
+            </div>
+            <div class="form-group" id="provPhoneGroup" style="display:none; margin-bottom:12px;">
+              <label class="form-label">Customer Existing Phone Number</label>
+              <input type="tel" id="provCustomerPhone" class="form-input" placeholder="+16175550199">
+            </div>
+            <button class="btn-primary" onclick="runProvisionTelephony()">
+              ⚡ Provision Phone Line Now
+            </button>
+          </div>
+          <div>
+            <span style="font-size:11px; color:var(--text-muted); font-weight:700; text-transform:uppercase; font-family:var(--font-mono);">Provisioning Output & Telephony Webhook</span>
+            <pre class="json-inspector" id="telephonyInspector" style="margin-top:8px;">{
+  "status": "ready",
+  "instructions": "Select provisioning mode and click 'Provision Phone Line Now' to generate dedicated virtual telephony credentials."
+}</pre>
+          </div>
+        </div>
+      </div>
     </section>
 
-    
-    </div>
-    <!-- /vipGatedContainer -->
-<!-- Luxury Salon Footer -->
-    <footer style="margin-top:48px; padding:32px 20px; text-align:center; border-top:1px solid rgba(255,255,255,0.08); background:rgba(10,14,24,0.6); color:var(--text-muted); font-size:12px; border-radius:16px 16px 0 0;">
-      <div style="display:flex; justify-content:center; align-items:center; gap:8px; margin-bottom:8px;">
-        <span style="color:#f59e0b; font-size:16px;">✦</span>
-        <span style="color:#fff; font-size:15px; font-weight:800; letter-spacing:0.5px;">Luxe Saloon & Spa</span>
+    <!-- Live Appointments & Google Calendar Two-Way Sync Table -->
+    <section class="data-card" id="calendar-store">
+      <div class="table-header-row">
+        <div>
+          <h2 class="card-title" style="margin-bottom:2px;"><span>📅</span> Live Appointments & Google Calendar Sync Store</h2>
+          <p style="font-size:13px; color:var(--text-muted);">Atomic two-way persistence across SQLite / Neon Postgres, Google Calendar, and Excel.</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="chip" onclick="fetchAppointments()">🔄 Refresh</button>
+          <a href="/admin/appointments/excel" class="chip" style="text-decoration:none; color:var(--accent-cyan);" download>
+            📊 Download Excel
+          </a>
+        </div>
       </div>
-      <p style="color:var(--text-secondary); margin-bottom:6px; font-size:12.5px;">
-        120 Newbury Street, Back Bay, Boston, MA 02116 • (617) 555-LUXE • Open Daily 9:00 AM – 7:00 PM
-      </p>
-      <div id="footerLiveTicker" style="margin:12px auto; max-width:620px; padding:8px 16px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); font-size:11.5px; font-family:var(--font-mono); color:var(--text-muted); transition:all 0.3s ease;">
-        <span style="color:#10b981;">● Active</span> • Google Calendar, Google Sheets & Neon PostgreSQL Live Synced
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Ref ID</th>
+              <th>Tenant</th>
+              <th>Client Name</th>
+              <th>Phone</th>
+              <th>Service / Purpose</th>
+              <th>Assigned Specialist</th>
+              <th>Appointment Time</th>
+              <th>Channel</th>
+              <th>G-Cal Sync</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="appointmentsTableBody">
+            <tr><td colspan="11" style="text-align:center; color:var(--text-muted);">Loading bookings...</td></tr>
+          </tbody>
+        </table>
       </div>
-      <p style="font-size:11px; opacity:0.65; margin-top:10px;">
-        © 2026 Luxe Saloon & Spa. All rights reserved.
-      </p>
+    </section>
+
+    <!-- Nimbus-Inspired Telemetry & Latency Waterfall -->
+    <footer class="waterfall-card" id="telemetry">
+      <div class="section-label">⚡ Nimbus Microsecond Latency Waterfall (Human Conversational Budget &lt; 600ms)</div>
+      <div class="telemetry-row">
+        <div class="telemetry-item">
+          <div class="t-label">ASR STT</div>
+          <div class="t-value" id="tAsr">~115 ms</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="t-label">RAG / Context</div>
+          <div class="t-value" id="tRag">0.8 ms</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="t-label">LLM TTFT</div>
+          <div class="t-value" id="tTtft">58 ms</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="t-label">LLM Total</div>
+          <div class="t-value" id="tLlm">142 ms</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="t-label">Tool & G-Cal</div>
+          <div class="t-value" id="tTool">18 ms</div>
+        </div>
+        <div class="telemetry-item">
+          <div class="t-label">TTS Synthesis</div>
+          <div class="t-value" id="tTts">~165 ms</div>
+        </div>
+        <div class="telemetry-item" style="border-color:var(--border-emerald);">
+          <div class="t-label" style="color:var(--accent-emerald);">Total E2E Latency</div>
+          <div class="t-value" id="tTotal" style="color:#10b981;">440 ms</div>
+        </div>
+      </div>
     </footer>
 
   </div>
 
-  <!-- Real-time Floating Notification Toast Container -->
-  <div id="bookingToastContainer" style="position:fixed; bottom:24px; right:24px; z-index:999999; display:flex; flex-direction:column; gap:10px; max-width:420px; width:calc(100vw - 48px); pointer-events:none;"></div>
+  <!-- Client Self-Serve Onboarding Modal -->
+  <div class="modal-overlay" id="onboardModal" style="display:none;">
+    <div class="modal-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <h3 style="font-size:18px; font-weight:600; display:flex; align-items:center; gap:8px;">
+          <span>🏢</span> Onboard New Customer Business Tenant
+        </h3>
+        <button id="btnCloseModal" style="background:none; border:none; color:var(--text-secondary); font-size:20px; cursor:pointer;">✕</button>
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:14px;">
+        Deploy a customized AI voice receptionist in seconds. Generates instant webhook URLs and ready-to-use widget code.
+      </p>
 
-  <!-- Main Application Script -->
-  <script src="/static/app.js?v=6.0"></script>
-  <!-- Universal Floating Widget Script -->
-  <script src="/widget.js" data-tenant="salon"></script>
+      <div style="background:rgba(24, 119, 242, 0.08); border:1px solid rgba(24, 119, 242, 0.3); border-radius:var(--radius-md); padding:12px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:13px; font-weight:600; color:#fff;">✨ 1-Click Meta Auto-Connect</div>
+          <div style="font-size:11px; color:var(--text-muted);">Auto-imports Page ID, Instagram & WhatsApp Business IDs</div>
+        </div>
+        <button type="button" class="btn-primary" onclick="launchMetaOAuth()" style="padding:7px 14px; font-size:12px; background:#1877f2; color:#fff; width:auto; box-shadow:none;">
+          Connect Facebook
+        </button>
+      </div>
 
+      <form id="onboardForm">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">Business Name *</label>
+            <input type="text" id="obBusinessName" class="form-input" placeholder="e.g. Beacon Hill Luxury Real Estate" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Industry Vertical *</label>
+            <select id="obVertical" class="form-input" required>
+              <option value="real_estate">🏡 Real Estate & Property Showings</option>
+              <option value="legal">⚖️ Law Firm & Legal Consultation</option>
+              <option value="salon">💇‍♀️ Salon & Wellness Spa</option>
+              <option value="dental">🦷 Dental Health Clinic</option>
+              <option value="automotive">🚗 Automotive Repair & Tires</option>
+              <option value="clinic">🩺 Family Medical Clinic</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">Business Phone Number *</label>
+            <input type="tel" id="obPhone" class="form-input" placeholder="+16175550199" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Primary Dialect *</label>
+            <select id="obAccent" class="form-input">
+              <option value="general_american">🇺🇸 General American (US / West Coast)</option>
+              <option value="canadian_english">🇨🇦 Canadian English</option>
+              <option value="european_british">🇬🇧 European / British English</option>
+              <option value="irish_english">🇮🇪 Irish English (Dublin)</option>
+              <option value="euro_international">🇪🇺 Euro-International English</option>
+              <option value="australian_english">🇦🇺 Australian English</option>
+              <option value="red_american">🇺🇸 Red American / Southern</option>
+              <option value="indian_english">🇮🇳 Indian English</option>
+              <option value="african_english">🌍 African English</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Physical Address</label>
+          <input type="text" id="obAddress" class="form-input" placeholder="e.g. 100 Main Street, Suite 400, Boston, MA">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label">WhatsApp Phone ID</label>
+            <input type="text" id="obWhatsappId" class="form-input" placeholder="e.g. 1414204225112839">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Meta Page ID</label>
+            <input type="text" id="obMetaPageId" class="form-input" placeholder="e.g. 1429742393555082">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Instagram ID</label>
+            <input type="text" id="obInstagramId" class="form-input" placeholder="e.g. 17841447273400649">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:20px;">
+          <label class="form-label">Google Calendar ID</label>
+          <input type="text" id="obGoogleCalendarId" class="form-input" placeholder="e.g. client@gmail.com or primary" value="primary">
+        </div>
+
+        <button type="submit" class="btn-primary" id="btnSubmitOnboard" style="width:100%; justify-content:center;">
+          🚀 Provision AI Receptionist Now
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/app.js?v=3.5"></script>
   <script>
-    function copyEmbedSnippet() {
-      const code = document.getElementById('embedSnippetCode').innerText;
-      navigator.clipboard.writeText(code).then(() => {
-        const btn = document.getElementById('copyEmbedBtn');
-        if (btn) {
-          btn.textContent = 'Copied!';
-          setTimeout(() => { btn.textContent = 'Copy Code'; }, 2000);
+    function switchCompareTab(vertical) {
+      document.querySelectorAll('.compare-tab-pill').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    async function launchMetaOAuth() {
+      const tenantSlug = prompt("Enter your business name or tenant handle (e.g. 'apex_dental', 'luxe_salon'):", "my_business");
+      if (!tenantSlug) return;
+      const cleanSlug = tenantSlug.toLowerCase().trim().replace(/[^a-z0-9_-]/g, "_");
+      try {
+        const res = await fetch(`/api/oauth/facebook/login?tenant_id=${cleanSlug}`);
+        const data = await res.json();
+        if (data.oauth_url) {
+          window.location.href = data.oauth_url;
+        } else {
+          alert("Could not initialize Meta OAuth. Please check backend settings.");
         }
-      });
+      } catch (err) {
+        window.location.href = `/api/oauth/facebook/login?tenant_id=${cleanSlug}`;
+      }
     }
   </script>
-
-  <!-- ==============================================================================
-       OMNICHANNEL "CONNECT CHANNEL" MODAL (PIXEL PERFECT REPLICA)
-       ============================================================================== -->
-  <div id="connectChannelModal" class="connect-channel-overlay" onclick="handleChannelOverlayClick(event)">
-    <div class="connect-channel-modal">
-      <!-- Modal Header -->
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div style="display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:10px; background:rgba(168,85,247,0.15);">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-45deg);">
-              <path d="M12 22v-5"/>
-              <path d="M9 8V2"/>
-              <path d="M15 8V2"/>
-              <path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/>
-            </svg>
-          </div>
-          <h2 style="font-size:21px; font-weight:700; color:#fff; margin:0; letter-spacing:-0.2px;">Connect Channel</h2>
-        </div>
-        <button onclick="closeConnectChannelModal()" style="background:none; border:none; color:#94a3b8; font-size:24px; cursor:pointer; line-height:1; padding:4px 8px; border-radius:6px; transition:color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">✕</button>
-      </div>
-
-      <!-- Main Channel Selection View -->
-      <div id="channelSelectionView">
-        <!-- Documentation Banner -->
-        <div class="channel-info-banner" style="margin:20px 0 24px 0;">
-          <span>Visit the <a href="https://developers.facebook.com" target="_blank" style="color:#38bdf8; text-decoration:underline; font-weight:600;">Channels documentation</a> to learn more.</span>
-          <span style="font-size:12px; color:rgba(56,189,248,0.7); font-family:var(--font-mono);">9 Active Connectors</span>
-        </div>
-
-        <!-- 3x3 Channel Grid -->
-        <div class="channel-grid">
-          <!-- 1. WhatsApp Business API -->
-          <div class="channel-card" onclick="openChannelConfig('whatsapp')">
-            <div class="channel-card-icon" style="background:#25d366; border-radius:50%; width:46px; height:46px; box-shadow:0 4px 14px rgba(37,211,102,0.35);">
-              <span style="color:#fff; font-size:22px; font-weight:800; font-family:sans-serif;">B</span>
-            </div>
-            <div class="channel-card-title">Whatsapp Business<br>API</div>
-          </div>
-
-          <!-- 2. Twilio SMS -->
-          <div class="channel-card" onclick="openChannelConfig('sms')">
-            <div class="channel-card-icon" style="background:rgba(255,255,255,0.06); border-radius:12px; width:46px; height:46px; border:1px solid rgba(255,255,255,0.15);">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                <circle cx="8" cy="11" r="1.2" fill="#fff"/>
-                <circle cx="12" cy="11" r="1.2" fill="#fff"/>
-                <circle cx="16" cy="11" r="1.2" fill="#fff"/>
-              </svg>
-            </div>
-            <div class="channel-card-title">Twilio SMS</div>
-          </div>
-
-          <!-- 3. Instagram Business -->
-          <div class="channel-card" onclick="openChannelConfig('instagram')">
-            <div class="channel-card-icon" style="background:linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(225,48,108,0.35);">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-              </svg>
-            </div>
-            <div class="channel-card-title">Instagram Business</div>
-          </div>
-
-          <!-- 4. Messenger -->
-          <div class="channel-card" onclick="openChannelConfig('messenger')">
-            <div class="channel-card-icon" style="background:#0084ff; border-radius:50%; width:46px; height:46px; box-shadow:0 4px 14px rgba(0,132,255,0.35);">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
-                <path d="M12 2C6.48 2 2 6.03 2 11c0 2.87 1.48 5.43 3.79 7.04v3.52c0 .35.39.56.68.37l3.87-2.31c.54.12 1.1.18 1.66.18 5.52 0 10-4.03 10-9s-4.48-9-10-9zm1.09 12.09l-2.58-2.75-5.03 2.75 5.53-5.88 2.64 2.75 4.97-2.75-5.53 5.88z"/>
-              </svg>
-            </div>
-            <div class="channel-card-title">Messenger</div>
-          </div>
-
-          <!-- 5. WebChat -->
-          <div class="channel-card" onclick="openChannelConfig('webchat')">
-            <div class="channel-card-icon" style="background:linear-gradient(135deg, #8b5cf6, #a855f7); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(139,92,246,0.35);">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
-              </svg>
-            </div>
-            <div class="channel-card-title">WebChat</div>
-          </div>
-
-          <!-- 6. Telegram Bot -->
-          <div class="channel-card" onclick="openChannelConfig('telegram')">
-            <div class="channel-card-icon" style="background:#229ed9; border-radius:50%; width:46px; height:46px; box-shadow:0 4px 14px rgba(34,158,217,0.35);">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.99 1.27-5.62 3.72-.53.36-1.01.54-1.44.53-.47-.01-1.38-.27-2.06-.49-.83-.27-1.49-.42-1.43-.88.03-.24.38-.49 1.03-.75 4.04-1.76 6.74-2.92 8.09-3.49 3.85-1.6 4.65-1.88 5.17-1.89.11 0 .37.03.54.17.14.12.18.28.2.45-.02.07-.02.14-.04.22z"/>
-              </svg>
-            </div>
-            <div class="channel-card-title">Telegram Bot</div>
-          </div>
-
-          <!-- 7. Messages API -->
-          <div class="channel-card" onclick="openChannelConfig('messages_api')">
-            <div class="channel-card-icon" style="background:linear-gradient(135deg, #a855f7, #6366f1); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(168,85,247,0.35);">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-            </div>
-            <div class="channel-card-title">Messages API</div>
-          </div>
-
-          <!-- 8. TikTok Business -->
-          <div class="channel-card" onclick="openChannelConfig('tiktok')">
-            <div class="channel-card-icon" style="background:#000; border:1px solid rgba(255,255,255,0.2); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(255,255,255,0.1);">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff">
-                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.29 0 .58.04.86.11V9.41a6.33 6.33 0 0 0-.86-.06 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 8.98 5.76V13.8a8.3 8.3 0 0 0 5.47 2.06v-3.45a4.88 4.88 0 0 1-2.99-1.02 4.8 4.8 0 0 1-1.45-2.28 4.79 4.79 0 0 1-.16-1.42h3.45a4.83 4.83 0 0 1 1.76.32v-3.32h-.05z"/>
-              </svg>
-            </div>
-            <div class="channel-card-title">TikTok Business</div>
-          </div>
-
-          <!-- 9. Voice Channel -->
-          <div class="channel-card" onclick="openChannelConfig('voice')">
-            <div class="channel-card-icon" style="background:linear-gradient(135deg, #10b981, #059669); border-radius:14px; width:46px; height:46px; box-shadow:0 4px 14px rgba(16,185,129,0.35);">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-              </svg>
-            </div>
-            <div class="channel-card-title">Voice Channel</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Channel Configuration & Testing Detail Drawer -->
-      <div id="channelConfigView" style="display:none; margin-top:20px;">
-        <!-- Injected dynamically via openChannelConfig() -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Clerk Inline Fallback Modal (Guarantees Sign-In/Up Works Even With Popup/Cookie Blockers) -->
-  <div id="clerkMountModal" class="modal-overlay" style="display:none; z-index:999999; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.75); backdrop-filter:blur(10px); justify-content:center; align-items:center;">
-    <div style="background:#0f172a; border:1px solid rgba(255,255,255,0.15); border-radius:16px; padding:24px; position:relative; max-width:480px; width:92%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.7); max-height:90vh; overflow-y:auto;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <span style="font-size:14px; font-weight:700; color:#fff;">✨ Luxe VIP Member Portal</span>
-        <button onclick="closeClerkMountModal()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer; line-height:1;">✕</button>
-      </div>
-      <div id="clerkMountTarget" style="display:flex; justify-content:center; min-height:280px; align-items:center;">
-        <span style="color:var(--text-muted); font-size:13px;">Loading authentication portal...</span>
-      </div>
-    </div>
-  </div>
 </body>
 </html>

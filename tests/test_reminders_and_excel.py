@@ -102,38 +102,3 @@ def test_24h_and_1h_reminder_detection(monkeypatch):
 
     assert b24_row[9] == "SENT"  # column 10: 24h WhatsApp
     assert b1h_row[10] == "CALLED"  # column 11: 1h Auto Call
-
-
-def test_telnyx_sms_dispatch(monkeypatch):
-    import backend.reminder_service as rs
-    monkeypatch.setenv("TELNYX_API_KEY", "KEY_test_123456789")
-    monkeypatch.setenv("TELNYX_PHONE_NUMBER", "+18885550199")
-    monkeypatch.setattr(rs, "TELNYX_API_KEY", "KEY_test_123456789")
-    monkeypatch.setattr(rs, "TELNYX_PHONE_NUMBER", "+18885550199")
-
-    class MockResponse:
-        status_code = 200
-        text = '{"data": {"id": "msg_test_123"}}'
-
-    class MockClient:
-        def __init__(self, *args, **kwargs): pass
-        def __enter__(self): return self
-        def __exit__(self, *args): pass
-        def post(self, url, headers=None, json=None, data=None, auth=None):
-            assert "telnyx.com" in url
-            assert json["from"] == "+18885550199"
-            assert json["to"] == "+16175550999"
-            return MockResponse()
-
-    monkeypatch.setattr("httpx.Client", MockClient)
-    res = rs.send_telnyx_sms("+16175550999", "Reminder: Your haircut is tomorrow at 2:00 PM!")
-    assert res is True
-
-
-def test_send_sms_fallback_simulation(monkeypatch):
-    import backend.reminder_service as rs
-    monkeypatch.setattr(rs, "TELNYX_API_KEY", None)
-    monkeypatch.setattr(rs, "TWILIO_ACCOUNT_SID", None)
-    res = rs.send_sms_message("+16175550999", "Test simulation reminder")
-    assert res is True
-

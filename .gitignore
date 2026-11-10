@@ -31,8 +31,6 @@ test_*.xlsx
 .backend.pid
 .cloudflared.pid
 .live_tunnel_url
-.vercel/
-nimbus-voice-agent/
 
 # macOS System Files
 .DS_Store

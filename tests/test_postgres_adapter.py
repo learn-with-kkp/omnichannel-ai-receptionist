@@ -32,8 +32,6 @@ from backend.database import (
 
 
 def test_postgres_detection_and_url_normalization(monkeypatch):
-    monkeypatch.setenv("SALON_DB_PATH", "salon_bookings.db")
-    monkeypatch.delenv("NEON_POSTGRES_CONNECTION_URL", raising=False)
     monkeypatch.setenv("DATABASE_URL", "postgres://user:pass@ep-demo.us-east-2.aws.neon.tech/neondb")
     assert is_postgres() is True
     normalized = get_database_url()

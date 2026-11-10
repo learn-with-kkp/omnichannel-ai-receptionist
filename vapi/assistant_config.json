@@ -1,40 +1,10 @@
 {
-  "id": "47b92dd7-6751-4c12-b531-23adf3614d35",
-  "orgId": "002324ba-3cda-4e09-ac3e-37524b0efe7c",
-  "name": "Luxe Salon Voice Receptionist - Sophia",
-  "voice": {
-    "provider": "vapi",
-    "voiceId": "Clara",
-    "speed": 1.15
-  },
-  "createdAt": "2026-10-31T04:30:38.537Z",
-  "updatedAt": "2026-11-07T07:38:29.877Z",
-  "model": {
-    "provider": "openai",
-    "model": "gpt-4o",
-    "messages": [
-      {
-        "role": "system",
-        "content": "# Temporal Anchor & Live Calendar Date\n- TODAY IS MONDAY, NOVEMBER 09, 2026. Current Year is 2026.\n- Current Time is morning in Boston, MA (Eastern Time).\n- All booking requests for today or upcoming dates belong to 2026.\n\n# Temporal Anchor & Location Context\n- Today is Sunday, November 08, 2026. Current time is morning in Boston (Eastern Time).\n- All booking requests, availability checks, and discussions are for TODAY (Nov 8, 2026) or upcoming dates in November/December 2026.\n- Never say or think it is June, 2023, 2024, or 2025. Today is Sunday, November 8, 2026!\n- Location: Luxe Saloon & Spa, 120 Newbury Street, Back Bay, Boston, MA 02116. Phone: (617) 555-LUXE.\n\n# Identity & Soul\nYou are \"Sophia\", the exceptionally warm, radiant, charming, and genuinely human front-desk voice receptionist for Luxe Saloon & Spa.\nYou sound 100% human, vibrant, and alive. You are attentive, joyful, and charismatic. You have natural conversational cadence, use warm laughter (*laughs softly*, \"Haha, oh absolutely!\"), gentle interjections (\"Oh, you are going to look gorgeous!\", \"I would be so delighted to help with that!\"), and thoughtful pauses. You never sound robotic, hurried, or like an automated telephone menu.\n\n# Human Conversational Directives & Barge-In Grace\n1. Sub-500ms Turn-Taking: Keep responses natural, conversational, and punchy (1 to 2 spoken sentences at a time, maximum 25-30 words). Never read long boring lists.\n2. Immediate Barge-In Response: When the customer speaks or interrupts, stop talking instantly. Acknowledge what they just said and pivot gracefully.\n3. Natural Fillers & Micro-Bridges: While checking backend tools, use natural human bridges (\"Let me check our Newbury Street calendar right now for you...\", \"Looking at Marcus and Elena's chairs for this week...\", \"One moment, pulling up our schedule!\").\n4. Authentic Emotional Resonance: Match the customer's mood with empathy and elegance. If they are excited about a makeover, celebrate with them. If they are stressed, offer soothing reassurance.\n\n# Universal Neutral Greeting\n- Welcome EVERY guest with radiant, world-class New England luxury hospitality, irrespective of nationality, ethnicity, or background.\n- If customer's name is known (e.g., from Clerk login or when they introduce themselves):\n  \"Hello [Full Name]! A very warm welcome to Luxe Saloon & Spa on Newbury Street! It's so wonderful to speak with you today! How can I pamper you?\"\n- If new caller:\n  \"Hello! Welcome to Luxe Saloon & Spa on Newbury Street! My name is Sophia. How can I pamper you today?\"\n- NEVER apply ethnic or religious greeting labels. Treat every human with equal warmth, dignity, and elegance.\n\n# Multi-Accent Comprehension\n- You easily and accurately understand every accent: Indian English, British English, American (Southern, East Coast, West Coast, Midwest), European, Canadian, and Australian.\n- If background noise obscures a name or digit, ask warmly: \"I caught that through the line, could you just repeat that last part for me?\"\n\n# Strict Error-Free Verification of Details\nBefore finalizing any booking, you MUST verify the customer's contact details so there is ZERO error:\n1. Customer Full Name: Confirm spelling if unusual (\"Just to be 100% sure I have your name right, that's [Name], correct?\").\n2. WhatsApp / Mobile Number: \"And your best mobile number for WhatsApp updates is [Phone], correct?\"\n3. Email Address: \"And what is your best email address so I can send your calendar invite and confirmation receipt?\"\nAlways double-check: \"Just to be 100% certain I have everything perfect for your chair, your name is [Name], and I'm sending your calendar invite and WhatsApp confirmation to [Email] and [Phone] \u2014 does that sound great?\"\n\n# Live Squad Mid-Call Transfer to Marcus Vance (Salon Director)\n- Marcus Vance is our Master Stylist, Creative Director, and Executive Salon Director.\n- IF THE CALLER:\n  - Asks to speak with Marcus (\"Can I speak to Marcus?\", \"Is Marcus available?\", \"I want Marcus\")\n  - Asks for the salon director, manager, supervisor, or boss (\"Can I talk to your boss?\", \"Let me speak to the manager\")\n  - Inquires about bridal parties greater than 4 people or private VIP champagne suite styling\n  - Wants a consultation for Signature Balayage, color transformation, or corrective color with Marcus\n  - Has an executive request or service escalation\n- MANDATORY TRANSFER ACTION:\n  1. Immediately speak: \"Oh, Marcus is right here in our styling lounge! Let me transfer you directly over to him right now \u2014 please hold on just a second!\"\n  2. In the EXACT SAME TURN, invoke the transferCall tool to destination \"Luxe Salon Director - Marcus\".\n  3. Never delay or hesitate when transfer to Marcus or the director is requested.\n\n# Signature Services Menu & Master Stylists\n1. Signature Balayage & Glaze: $280 (150 mins) \u2014 Marcus Vance (Color Director)\n2. Precision Haircut & Blowdry: $95 (60 mins) \u2014 Sofia Alston (Master Stylist)\n3. Brazilian Keratin Smoothing: $320 (120 mins) \u2014 Marcus Vance\n4. Deluxe HydraFacial MD Elite: $225 (60 mins) \u2014 Elena Rostova (Medical Aesthetician)\n5. 24K Gold Collagen Facial: $295 (75 mins) \u2014 Elena Rostova\n6. Japanese Gel Luxury Manicure: $85 (60 mins) \u2014 Chloe Laurent (Nail Artist)\n\n# Operational Directives & Backend Sync\n1. Call `check_availability` to view live openings on Google Calendar before confirming a time.\n2. Call `book_appointment` once details are verified. This atomically:\n   - Locks the slot in Neon PostgreSQL and Google Calendar.\n   - Appends to the live master Google Sheet.\n   - Dispatches instant WhatsApp confirmation to their phone.\n   - Dispatches a luxury HTML confirmation email with Google Calendar invite (.ics) to their email.\n3. Post-Booking Gratitude:\n   \"Thank you so much, [Name]! Your appointment is completely confirmed. Your calendar invite and WhatsApp receipt are on their way to you. We can't wait to see you at 120 Newbury Street!\"\n   When they say goodbye or are satisfied, invoke `end_call`.\n"
-      }
-    ],
-    "toolIds": [
-      "6c0d28b5-1258-45b7-97a5-a7fe981deff5",
-      "5477f565-44fd-4041-a39d-4a63ab165f40",
-      "9df322c5-64af-44a7-b82f-105fb11e17ac",
-      "c330c825-a0f6-40cb-9225-eb72ca655025",
-      "fca2e93e-b963-469c-beaf-c4d4f9ee1f61",
-      "d4a55cbb-2c60-44e2-b916-15931d07f091",
-      "cf4d3198-b52a-44b8-ab16-1ccde345e2f9",
-      "d72cf825-1222-42cf-b3f7-843c3a06deb4",
-      "01bd1df8-f0c2-4640-bc65-4371a2e4e353"
-    ]
-  },
-  "recordingEnabled": true,
-  "firstMessage": "Thank you for calling Luxe Hair and Wellness Salon! My name is Sophia. How can I pamper you today?",
-  "endCallMessage": "Thank you for calling. We have confirmed your details and look forward to welcoming you. Have a wonderful day!",
+  "name": "Sofia Empathetic Voice Receptionist",
   "transcriber": {
+    "provider": "deepgram",
     "model": "nova-2",
+    "language": "en-US",
+    "smartFormat": true,
     "keywords": [
       "Balayage:3",
       "Keratin:3",
@@ -45,56 +15,473 @@
       "Chloe:2",
       "Luxe:2",
       "Appointment:2",
-      "Reschedule:3"
+      "Reschedule:3",
+      "Cancel:3",
+      "Deposit:2",
+      "Consultation:2",
+      "Parking:2",
+      "Policy:2"
+    ]
+  },
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "temperature": 0.25,
+    "messages": [
+      {
+        "role": "system",
+        "content": "# Identity, Persona & Tone\nYou are \"Sofia\", an exceptionally warm, empathetic, emotionally intelligent, and poised virtual front desk receptionist. You assist clients for multi-tenant appointment-based businesses (Salons, Spas, Medical Clinics, Dental Practices, and Professional Services).\n\n# Core Conversational Directives (Strict PRD Compliance)\n1. VOICE BREVITY: Speak concisely—1 to 2 spoken sentences maximum per conversational turn (approximately 15–25 words). Never monologue or overwhelm the caller.\n2. ACTIVE EMPATHY & VALIDATION: Always acknowledge the caller's mood and feelings first with natural empathetic bridges (\"I completely understand\", \"I would be delighted to take care of that for you right now\", \"I'm so sorry for any inconvenience, let's get that sorted out right away\").\n3. NEVER READ LONG LISTS: When sharing available times or service options, offer at most 2 curated choices at a time (\"We have an opening at 2:00 PM or 4:30 PM with Marcus. Would either of those suit your schedule?\").\n4. EXPLICIT CONFIRMATION: Never finalize a booking, reschedule, or cancellation without explicitly repeating back the service, provider, date/time, and phone number, and obtaining a clear confirmation from the caller.\n5. ZERO HALLUCINATION: Never invent open slots or claim an appointment is confirmed until the scheduler tool confirms success.\n6. MULTIMODAL ASSISTANCE: Proactively offer to send confirmation details, booking links, and directions via text message using the `send_text` tool.\n7. SEAMLESS HUMAN HANDOFF: If the caller expresses frustration, asks for a supervisor, or presents an urgent medical/emergency issue, immediately invoke `transfer_call` with a warm reassurance.\n8. VOICEMAIL & KEYPAD: If you reach an answering machine or voicemail greeting, execute `leave_voicemail`. If prompted by an automated phone menu, use `send_dtmf`.\n9. BUSINESS FAQS & POLICIES: When asked about pricing, hours, parking, prep guidelines, or policies, call `query_knowledge_base` to deliver an accurate, concise answer."
+      }
     ],
-    "language": "en-US",
-    "provider": "deepgram",
-    "smartFormat": true,
-    "fallbackPlan": {
-      "transcribers": [
-        {
-          "provider": "assembly-ai",
-          "language": "en"
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "check_availability",
+          "description": "Checks live available appointment slots for a specified service, date, and preferred provider against Google Calendar and business hours.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "service_name": {
+                "type": "string",
+                "description": "The exact service requested (e.g. 'Balayage', 'Womens Haircut', 'Consultation')."
+              },
+              "target_date": {
+                "type": "string",
+                "description": "Target date in YYYY-MM-DD format (e.g. 2026-11-06)."
+              },
+              "preferred_time_of_day": {
+                "type": "string",
+                "enum": ["morning", "afternoon", "evening", "any"],
+                "description": "Preferred time window."
+              },
+              "preferred_stylist": {
+                "type": "string",
+                "description": "Preferred provider name, or 'any'."
+              }
+            },
+            "required": ["service_name", "target_date"]
+          }
         },
-        {
-          "provider": "talkscriber",
-          "model": "whisper"
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
         }
-      ]
-    }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "book_appointment",
+          "description": "Atomically creates and commits an appointment to the database, Google Calendar, and live Google Sheets once explicit customer confirmation is received.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "caller_name": {
+                "type": "string",
+                "description": "Full name of the client."
+              },
+              "caller_phone": {
+                "type": "string",
+                "description": "Caller phone number in E.164 format (+1XXXXXXXXXX)."
+              },
+              "service_name": {
+                "type": "string",
+                "description": "The selected service."
+              },
+              "stylist_name": {
+                "type": "string",
+                "description": "Assigned specialist (e.g. Elena, Marcus, Chloe, or Any)."
+              },
+              "appointment_datetime": {
+                "type": "string",
+                "description": "ISO 8601 formatted datetime string (e.g. 2026-11-06T14:00:00)."
+              },
+              "special_notes": {
+                "type": "string",
+                "description": "Optional client notes or preferences."
+              }
+            },
+            "required": [
+              "caller_name",
+              "caller_phone",
+              "service_name",
+              "appointment_datetime"
+            ]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "lookup_appointment",
+          "description": "Looks up an active reservation by the client's registered phone number or booking reference.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "caller_phone": {
+                "type": "string",
+                "description": "Client's phone number in E.164 format."
+              }
+            },
+            "required": ["caller_phone"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "reschedule_appointment",
+          "description": "Modifies and updates an existing appointment to a new date and time after client confirmation.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "caller_phone": {
+                "type": "string",
+                "description": "Client's registered phone number."
+              },
+              "new_appointment_datetime": {
+                "type": "string",
+                "description": "New requested ISO 8601 datetime (e.g. 2026-11-07T15:00:00)."
+              },
+              "new_stylist_name": {
+                "type": "string",
+                "description": "Optional new provider name."
+              },
+              "booking_id": {
+                "type": "string",
+                "description": "Optional booking reference."
+              }
+            },
+            "required": ["caller_phone", "new_appointment_datetime"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "cancel_appointment",
+          "description": "Cancels an existing appointment, releases the calendar slot, and applies the cancellation policy.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "caller_phone": {
+                "type": "string",
+                "description": "Client's verified phone number."
+              },
+              "booking_id": {
+                "type": "string",
+                "description": "Optional booking reference ID."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Reason for cancellation."
+              }
+            },
+            "required": ["caller_phone"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "send_text",
+          "description": "Dispatches an instant SMS confirmation, directions, or cancellation notice to the caller's phone.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "recipient_phone": {
+                "type": "string",
+                "description": "Destination phone number in E.164 format."
+              },
+              "message_text": {
+                "type": "string",
+                "description": "Concise text message content to send."
+              },
+              "booking_id": {
+                "type": "string",
+                "description": "Optional booking ID to attach."
+              }
+            },
+            "required": ["recipient_phone", "message_text"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "query_knowledge_base",
+          "description": "Performs instant semantic search over tenant knowledge base for FAQs: business hours, directions, parking, policies, prep instructions, and pricing.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Customer inquiry question (e.g. 'What is your cancellation policy?' or 'Where can I park?')."
+              }
+            },
+            "required": ["query"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "transfer_call",
+          "description": "Escalates and warmly transfers the caller to a human manager, front desk supervisor, or specialist.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "escalation_reason": {
+                "type": "string",
+                "description": "Specific reason for human escalation (e.g. customer frustration, complex request, emergency)."
+              },
+              "target_department": {
+                "type": "string",
+                "description": "Department or supervisor name."
+              }
+            },
+            "required": ["escalation_reason"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "end_call",
+          "description": "Gracefully terminates the call when conversation goals are reached and customer expresses closing/goodbye.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "closing_message": {
+                "type": "string",
+                "description": "Warm, polite goodbye closing sentence."
+              }
+            }
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "leave_voicemail",
+          "description": "Leaves a concise, professional callback voicemail message when an answering machine or voicemail beep is detected.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "customer_name": {
+                "type": "string",
+                "description": "Customer's name if known."
+              },
+              "callback_number": {
+                "type": "string",
+                "description": "Business return phone number."
+              },
+              "message": {
+                "type": "string",
+                "description": "Brief voicemail message to leave."
+              }
+            }
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "send_dtmf",
+          "description": "Transmits keypad touch-tone digits (0-9, *, #) to navigate automated IVR menus or phone trees.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "digits": {
+                "type": "string",
+                "description": "DTMF digits to press (e.g. '1', '2', '1234#')."
+              }
+            },
+            "required": ["digits"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "handoff_assistant",
+          "description": "Seamlessly transfers the active conversation to a specialized department assistant (e.g. 'Color Specialist', 'Billing', 'VIP Concierge').",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "target_assistant": {
+                "type": "string",
+                "description": "Name or department of the specialist assistant."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Reason for handoff."
+              }
+            },
+            "required": ["target_assistant"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "slack_notification",
+          "description": "Sends real-time booking alerts or urgent customer escalation notices directly to the staff Slack channel.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string",
+                "description": "Target Slack channel (e.g. '#appointments', '#escalations')."
+              },
+              "message": {
+                "type": "string",
+                "description": "Detailed alert text including caller name, time, and service."
+              },
+              "title": {
+                "type": "string",
+                "description": "Headline title for the alert."
+              }
+            },
+            "required": ["message"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "gohighlevel_sync",
+          "description": "Synchronizes customer contact data, appointment status, and opportunity pipeline stages into GoHighLevel (GHL) CRM.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "contact_name": {
+                "type": "string",
+                "description": "Customer full name."
+              },
+              "contact_phone": {
+                "type": "string",
+                "description": "Customer phone number."
+              },
+              "pipeline_stage": {
+                "type": "string",
+                "description": "Pipeline stage (e.g. 'Appointment Booked', 'Lead Captured', 'Cancelled')."
+              }
+            },
+            "required": ["contact_name", "contact_phone"]
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "google_sheets_sync",
+          "description": "Synchronizes appointment booking or modification details directly to the staff's live Google Sheets workbook.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "booking_id": {
+                "type": "string",
+                "description": "Booking reference identifier."
+              },
+              "caller_name": {
+                "type": "string",
+                "description": "Customer name."
+              },
+              "service_name": {
+                "type": "string",
+                "description": "Booked service."
+              },
+              "start_time": {
+                "type": "string",
+                "description": "Appointment start time."
+              }
+            }
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "google_calendar_sync",
+          "description": "Validates real-time two-way synchronization with Google Calendar to prevent scheduling conflicts.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "action": {
+                "type": "string",
+                "description": "Action to verify (e.g. 'check', 'sync')."
+              }
+            }
+          }
+        },
+        "server": {
+          "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
+        }
+      },
+      {
+        "type": "dtmf"
+      },
+      {
+        "type": "endCall"
+      },
+      {
+        "type": "voicemail"
+      }
+    ]
   },
+  "voice": {
+    "provider": "cartesia",
+    "voiceId": "694f9389-aac1-45b6-b726-9d9369183238",
+    "model": "sonic-3.5"
+  },
+  "firstMessage": "Hi, thanks for calling! This line may be recorded for confirmation. My name is Sofia from the front desk. How can I help you today?",
+  "endCallMessage": "Thank you so much for calling. We have confirmed your details and look forward to welcoming you. Have a wonderful day!",
+  "recordingEnabled": true,
   "silenceTimeoutSeconds": 30,
-  "serverUrl": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools",
   "maxDurationSeconds": 600,
-  "metadata": {},
   "backchannelingEnabled": true,
-  "analysisPlan": {
-    "summaryPlan": {
-      "enabled": false
-    },
-    "successEvaluationPlan": {
-      "enabled": false
-    }
-  },
   "backgroundDenoisingEnabled": true,
-  "credentialIds": [
-    "b0dab2c2-134f-4fb5-87b2-359228134ca3",
-    "b56b2f1c-e9c2-4469-93df-016c2da6f78c"
-  ],
-  "server": {
-    "url": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools",
-    "timeoutSeconds": 20
-  },
-  "compliancePlan": {
-    "hipaaEnabled": false,
-    "pciEnabled": false,
-    "zdrEnabled": false
-  },
-  "latestVersion": "v22",
-  "isServerUrlSecretSet": false,
-  "stopSpeakingPlan": {
-    "numWords": 1,
-    "voiceSeconds": 0.2,
-    "backoffSeconds": 0.5
-  }
+  "serverUrl": "https://ai-voice-receptionist.kishor.tech/webhook/vapi-tools"
 }

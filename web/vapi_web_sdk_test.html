@@ -581,13 +581,8 @@
         statusBadge.className = "status-badge connecting";
         statusText.textContent = "Connecting WebRTC...";
         btnStart.disabled = true;
-        if (squadId) {
-          appendLog("CALL_CONNECTING", `Initiating WebRTC call with Squad ID: ${squadId}...`);
-          await vapi.start(undefined, undefined, squadId);
-        } else {
-          appendLog("CALL_CONNECTING", `Initiating WebRTC call with Assistant ID: ${asstId}...`);
-          await vapi.start(asstId);
-        }
+        appendLog("CALL_CONNECTING", `Initiating WebRTC call with Assistant ID: ${asstId}...`);
+        await vapi.start(asstId);
       } catch (err) {
         appendLog("START_FAILED", err.message, true);
         statusBadge.className = "status-badge error";

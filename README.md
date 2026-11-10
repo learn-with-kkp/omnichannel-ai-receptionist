@@ -1,40 +1,6 @@
-# 🎙️ Omnichannel AI Voice & Chat Receptionist
+# 💇‍♀️ Luxe Salon AI Voice Receptionist (Vapi + n8n)
 
-> **Production-grade, sub-500ms conversational voice receptionist and appointment scheduling engine. Handles inbound PSTN calls, WebRTC in-browser audio, calendar bookings, and multi-channel confirmations 24/7 with zero hallucinations.**
-
----
-
-[![Production Status](https://img.shields.io/badge/Production-Live-success?style=for-the-badge&logo=vercel)](https://ai-voice-receptionist.kishor.tech/)
-[![Test Suite](https://img.shields.io/badge/Tests-78%2F78%20Passed%20(100%25)-brightgreen?style=for-the-badge&logo=pytest)](https://github.com/KishorKumarParoi/omnichannel-voice-chat-ai-receptionist)
-[![Database](https://img.shields.io/badge/Database-Neon%20PostgreSQL-336791?style=for-the-badge&logo=postgresql)](https://neon.tech/)
-[![Voice Engine](https://img.shields.io/badge/Voice-Vapi%20%7C%20Cartesia%20Sonic--3.5-7952b3?style=for-the-badge)](https://vapi.ai/)
-[![Python Version](https://img.shields.io/badge/Python-3.12%2B-blue?style=for-the-badge&logo=python)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
-
----
-
-## 🌐 Live Touchpoints & Interactive Demos
-
-> 🚀 **Live Demo URL**: [https://ai-voice-receptionist.kishor.tech](https://ai-voice-receptionist.kishor.tech/)  
-> ⚡ **Vercel Edge Mirror**: [https://ai-voice-receptionist-chi.vercel.app](https://ai-voice-receptionist-chi.vercel.app/)
-
-| Channel | Access / Endpoint | Experience |
-| :--- | :--- | :--- |
-| **Production Web App** | [ai-voice-receptionist.kishor.tech](https://ai-voice-receptionist.kishor.tech/) | Full multi-tenant dashboard, appointment manager & voice studio |
-| **Vercel Edge Mirror** | [ai-voice-receptionist-chi.vercel.app](https://ai-voice-receptionist-chi.vercel.app/) | High-availability global CDN edge deployment |
-| **In-Browser WebRTC Studio** | [/vapi-call](https://ai-voice-receptionist.kishor.tech/vapi-call) | Direct real-time browser calling powered by `@vapi-ai/web` & Cartesia Sonic-3.5 |
-| **PSTN Telephony Line** | `+1 (667) 307-0119` | Dedicated Vapi SIP/PSTN line with sub-500ms turnaround |
-| **Outbound Voice Callback** | Web Studio $\rightarrow$ *Call Me* | Triggers Sofia to dial client phone directly via Twilio / Vapi REST API |
-
----
-
-## ⚡ Core Capabilities
-
-- **Sub-500ms Conversational Latency**: Deepgram Nova-2 speech-to-text (<180ms), FastAPI mid-call tool execution (<40ms), and Cartesia Sonic-3.5 text-to-speech (<110ms) provide instant, human-like voice conversations without awkward pauses.
-- **Atomic Two-Way Calendar Booking**: Queries real-time open windows against Google Calendar and internal database, blocks conflicts, books appointments, and supports conversational rescheduling or cancellations.
-- **Enterprise Multi-Tenancy**: Isolated business profiles, custom service menus, stylist schedules, and dedicated phone routing supported out of the box.
-- **Neon Cloud PostgreSQL + SQLite Fallback**: Production runs on high-performance pooled Neon Serverless PostgreSQL with automatic query translation; local testing seamlessly runs isolated in SQLite.
-- **Automated Omnichannel Confirmations**: Immediately dispatches SMS and WhatsApp appointment confirmations with cancellation/reschedule links, alongside automated 24-hour and 1-hour reminders.
+> A production-grade, low-latency conversational AI Voice Receptionist tailored for Hair Salons, Spas, and Wellness Studios. Powered by **Vapi** (orchestration, Deepgram Nova-2 STT, Cartesia TTS) and **n8n** (workflow automation, calendar slot calculation, SMS confirmation, and CRM sync).
 
 ---
 
@@ -43,126 +9,202 @@
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Caller as Client / Caller
+    actor Client as Caller / Client
+    participant Tel as Telephony (Twilio / SIP)
     participant Vapi as Vapi Voice Platform
-    participant STT as Deepgram Nova-2 (<180ms)
-    participant API as FastAPI Backend Engine
-    participant DB as Neon PostgreSQL / Google Calendar
-    participant TTS as Cartesia Sonic-3.5 (<110ms)
-    participant SMS as Twilio / WhatsApp Engine
+    participant LLM as LLM (GPT-4o-mini / Claude 3.5 Sonnet)
+    participant N8N as n8n Webhook Engine
+    participant App as Salon DB / Calendar Engine
+    participant SMS as Twilio SMS
 
-    Caller->>Vapi: Audio Stream (PSTN or WebRTC)
-    Vapi->>STT: Stream 16kHz PCM
-    STT-->>Vapi: Live Interim & Final Transcript
-    Vapi->>API: POST /webhook/vapi-tools (Mid-Call Tool Calling)
-    
-    rect rgb(240, 248, 255)
-        API->>DB: Query Availability / Reserve Time Slot
-        DB-->>API: Confirmed Slot & Booking Ref
-    end
+    Client->>Tel: Inbound Call
+    Tel->>Vapi: Audio Stream (WebRTC / SIP)
+    Vapi-->>Client: Plays Greeting: "Thank you for calling Luxe Salon..." (Cartesia <120ms)
+    Client->>Vapi: "Can I book a Balayage with Elena this Saturday afternoon?"
+    Vapi->>Vapi: Deepgram Nova-2 Speech-to-Text (<200ms)
+    Vapi->>LLM: Ingest User Utterance + Conversation History + Tools
+    LLM-->>Vapi: Trigger Tool: check_availability(service="Balayage", target_date="2026-10-31", stylist="Elena")
+    Vapi->>N8N: POST /webhook/vapi-salon-tools
+    N8N->>App: Calculate Open 150-min Windows for Elena
+    App-->>N8N: Available: ["11:15 AM", "2:00 PM"]
+    N8N-->>Vapi: JSON: { results: [{ toolCallId: "...", result: "Elena has openings at 11:15 AM and 2:00 PM..." }] }
+    Vapi->>LLM: Tool Result Injection
+    LLM-->>Vapi: "Elena has openings at 11:15 AM and 2:00 PM. Which time suits you?"
+    Vapi-->>Client: Natural Voice Output (<600ms total turnaround)
 
-    API-->>Vapi: JSON Response { results: [...] }
-    Vapi->>TTS: Stream Synthesis Text
-    TTS-->>Vapi: 24kHz High-Fidelity Audio Buffer
-    Vapi-->>Caller: Natural Voice Response (<500ms Turnaround)
-
-    API->>SMS: Dispatch Instant SMS Confirmation + Reschedule Link
-    SMS-->>Caller: Delivery Receipt
+    Note over Client,SMS: Booking Confirmation Phase
+    Client->>Vapi: "2:00 PM works! My name is Maya Lin, phone 617-555-0199"
+    Vapi->>LLM: Formulate book_appointment payload
+    LLM-->>Vapi: Trigger Tool: book_appointment(...)
+    Vapi->>N8N: POST /webhook/vapi-salon-tools
+    N8N->>App: Write Booking ID: LUXE-1031-102
+    N8N->>SMS: Dispatch SMS Confirmation with Reschedule Link
+    N8N-->>Vapi: "Booking confirmed! Ref: LUXE-1031-102. SMS sent."
+    Vapi-->>Client: "You're all set, Maya! We'll see you Saturday at 2:00 PM."
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## ⚖️ Trade-Off Analysis
 
-- **Voice & Telephony**: [Vapi](https://vapi.ai/) (Orchestration & WebRTC), [Cartesia](https://cartesia.ai/) (Sonic-3.5 Voice), [Deepgram](https://deepgram.com/) (Nova-2 STT), [Twilio](https://www.twilio.com/) (PSTN & SMS).
-- **Backend & API**: Python 3.12, [FastAPI](https://fastapi.tiangolo.com/), Uvicorn, Pydantic v2.
-- **Database & Storage**: [Neon PostgreSQL](https://neon.tech/) (Serverless pooled driver) with fallback SQLite.
-- **Calendar & Sync**: Google Calendar API (v3 OAuth2 & Service Accounts).
-- **Frontend & Web SDK**: Modern responsive HTML5/Vanilla JS, `@vapi-ai/web` audio SDK.
-- **Deployment**: Vercel Serverless (`λ api/index`), Docker, Cloudflare Tunnels.
-
----
-
-## 🚀 Quick Start
-
-### 1. Clone & Set Up Environment
-
-```bash
-git clone https://github.com/KishorKumarParoi/omnichannel-voice-chat-ai-receptionist.git
-cd omnichannel-voice-chat-ai-receptionist
-
-# Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Configure Environment Variables
-
-Create `.env` in the root directory:
-
-```env
-# Database
-NEON_POSTGRES_CONNECTION_URL=postgresql://user:pass@ep-xyz-pooler.us-east-1.aws.neon.tech/neondb?sslmode=require
-
-# Vapi Credentials
-VAPI_PRIVATE_API_KEY=your_vapi_private_key
-VAPI_PUBLIC_API_KEY=your_vapi_public_key
-VAPI_ASSISTANT_ID=your_vapi_assistant_id
-
-# Google Calendar & Twilio (Optional)
-GOOGLE_CALENDAR_ID=primary
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
-TWILIO_PHONE_NUMBER=your_twilio_number
-```
-
-### 3. Run Locally
-
-```bash
-# Start FastAPI application
-uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Visit `http://localhost:8000` to open the web portal, or `http://localhost:8000/vapi-call` to test in-browser voice calling.
+| Dimension | Standard IVR / Phone Tree | Raw Webhook Script | Vapi + n8n Architecture (This Project) |
+| :--- | :--- | :--- | :--- |
+| **User Experience** | Robotic "Press 1 for Haircut" | Rigid, fragile parsing | **Human-grade, warm conversational voice (<600ms latency)** |
+| **Service Duration Handling** | Cannot calculate block times | Hardcoded intervals | **Dynamic 30m–180m duration conflict resolution** |
+| **Development Velocity** | Months of telephony code | Weeks of custom backend | **Hours via visual n8n pipelines & JSON schemas** |
+| **Extensibility** | Low | High maintenance | **500+ n8n connectors (Google Calendar, Twilio, HubSpot)** |
+| **Operating Cost** | $0.05/min (dumb IVR) | $0.08/min | **~$0.11/min (Deepgram + Cartesia + GPT-4o-mini)** |
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## 💇 Salon Domain Nuances Handled
 
-The codebase includes comprehensive test suites covering multi-tenancy, mid-call tool execution, PostgreSQL connection pooling, and calendar synchronizations.
+1. **Service Duration Awareness**:
+   - *Haircut*: 45 mins.
+   - *Balayage*: 150 mins (2.5 hours).
+   - The engine automatically checks for contiguous free blocks rather than simple 30-min slots to prevent double-booking.
+2. **Stylist Selection**:
+   - Clients can ask for specific stylists (*Elena, Marcus, Chloe*) or choose "Any available".
+3. **Rescheduling & Cancellation Safeguards**:
+   - Identifies appointments by caller phone number.
+   - Respects 24-hour notice policy before waiving fees.
+4. **Human Manager Escalation**:
+   - If a caller mentions dissatisfaction, color corrections, or wedding parties, the `transfer_to_manager` tool connects them directly to front-desk staff.
 
+---
+
+## 🏢 Multi-Tenant SaaS & White-Label Architecture
+
+### 1. Inbound Phone Number Dynamic Routing
+Each salon is assigned their own local phone number (e.g. via Twilio/Vapi). When an inbound call arrives, the system detects the dialed number and dynamically isolates:
+- **Salon Identity**: Uses their exact salon name, address, and cancellation policy in the voice prompt.
+- **Stylist Roster**: Queries only the stylists employed by that specific tenant.
+- **Services & Pricing**: Checks durations and prices configured by that salon.
+
+### 2. White-Label Admin Portal (`admin_portal.py`)
+Launch the web command center:
 ```bash
-# Run full test suite
-pytest tests/
+./run_admin_portal.sh
 ```
+- **Salon Tenant Switcher**: View metrics and appointments across all your onboarded salons.
+- **Live KPI Dashboard**: Total bookings, estimated revenue captured, 24h WhatsApp reminders sent, and 1h voice calls completed.
+- **1-Click Master Excel Download**: Download the auto-formatted Excel workbook.
+- **60-Second Onboarding Form**: Provision a new salon customer without writing any code.
+
+### 3. Rapid CLI Client Onboarding (For Live Demos)
+Onboard a new salon in 30 seconds straight from your terminal:
+```bash
+python3 scripts/onboard_new_salon.py \
+  --name "SoHo Cuts NYC" \
+  --phone "+12125550199" \
+  --address "128 Prince St, New York, NY" \
+  --stylists "Leo,Maya,Jordan"
+```
+This automatically creates their database record and generates a tailored Vapi Assistant JSON in `vapi/tenants/soho_cuts_nyc_assistant.json`.
+
+---
+
+## 📊 Excel Sheet & Automated Reminder Workflows
+
+### 1. Real-Time Excel Spreadsheet Sync (`salon_appointments.xlsx`)
+Every appointment booked by the voice agent is saved both to the database and directly to a styled, auto-formatted Excel workbook:
+- **Columns**: `Booking ID`, `Client Name`, `Phone Number`, `Service`, `Stylist`, `Appointment Start`, `Duration (Min)`, `Price ($)`, `Status`, `24h WhatsApp Sent`, `1h Auto Call Status`, `Created At`.
+- **Live Download**: Access anytime via `GET http://localhost:8000/admin/appointments/excel`.
+
+### 2. WhatsApp Notification (24 Hours Prior)
+24 hours before the appointment, the background reminder daemon automatically scans the bookings and delivers a personalized WhatsApp message:
+> *"✨ Luxe Salon Reminder ✨: Hi [Name], you have a Balayage with Elena scheduled tomorrow at 2:00 PM. Address: 450 Newbury St, Boston. Reply CONFIRM or reply to reschedule."*
+- Marks `24h WhatsApp Sent = SENT` in the Excel spreadsheet and database.
+
+### 3. Automated Voice Courtesy Call & Alert (1 Hour Prior)
+60 minutes before the scheduled service, the system triggers an automated outbound voice call via **Vapi** (`POST https://api.vapi.ai/call/phone`) with assistant persona Sophia:
+> *"Hi [Name]! This is Sophia from Luxe Salon. Just giving you a quick courtesy call to remind you that your appointment with [Stylist] starts in one hour! We have your station ready. See you soon!"*
+- Also dispatches an urgent 1-hour WhatsApp reminder with parking instructions.
+- Marks `1h Auto Call Status = CALLED` in Excel.
+
+---
+
+## 📁 Repository Structure
 
 ```text
-============================== 78 passed in 41.82s ==============================
-```
-
-> **🛡️ Branch Protection**: The `main` branch is safeguarded with an automated Git pre-push hook (`.githooks/pre-push`) that blocks direct force-pushes and automatically enforces passing tests before any code can be published.
-
----
-
-## 🚢 Deployment
-
-### Vercel Serverless
-The project includes a root `vercel.json` and `api/index.py` configured for zero-downtime serverless deployment:
-```bash
-vercel --prod
-```
-
-### Docker
-```bash
-docker build -t ai-voice-receptionist .
-docker run -p 8000:8000 --env-file .env ai-voice-receptionist
+Salon_Voice_AI_Receptionist/
+├── vapi/
+│   └── assistant_config.json      # Full Vapi assistant persona, prompts, and tools
+├── n8n/
+│   └── workflows/
+│       └── salon_voice_receptionist_workflow.json  # Importable 1-click n8n workflow
+├── backend/
+│   ├── app.py                     # High-performance FastAPI tool-router
+│   ├── models.py                  # Pydantic validation schemas
+│   └── database.py                # Duration-aware slot calculator & SQLite store
+├── tests/
+│   └── test_webhook.py            # Pytest test suite for Vapi tool-calling
+├── docker-compose.yml             # Local multi-service orchestrator
+├── Dockerfile                     # Container definition
+├── deploy.sh                      # Single-command start script
+└── clear.sh                       # Single-command $0.00 teardown script
 ```
 
 ---
 
-## 📄 License
+## 🚀 Quick Start Guide (End-to-End Live)
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
+### 1. Launch FastAPI Backend + Live Cloudflare Tunnel (One Command)
+```bash
+./start_live_tunnel.sh
+```
+This automatically:
+- Spawns the high-throughput FastAPI webhook engine.
+- Creates an HTTPS Cloudflare Tunnel (`https://<domain>.trycloudflare.com`).
+- Updates [`vapi/assistant_config.json`](vapi/assistant_config.json) with your live webhook URL.
+- Runs self-diagnostics and prints your public URL.
+
+### 2. Stop Stack & Clean Teardown
+```bash
+./stop_live_tunnel.sh
+```
+Or for full $0.00 teardown:
+```bash
+./clear.sh
+```
+
+### 2. Configure Vapi
+1. Go to [Vapi Dashboard](https://dashboard.vapi.ai) -> **Assistants** -> **Create Assistant**.
+2. Select **Model**: `gpt-4o-mini`, **Transcriber**: `Deepgram nova-2`, **Voice**: `Cartesia (Sonic English)`.
+3. In **Assistant Settings**, copy and paste the JSON from [`vapi/assistant_config.json`](vapi/assistant_config.json).
+4. Set the **Server URL** to your public n8n or FastAPI webhook URL (e.g., using `ngrok http 8000` or Cloudflare Tunnel: `https://<your-subdomain>.ngrok-free.app/webhook/vapi-tools`).
+
+### 3. Test Mid-Call Tool Calls via cURL
+Test checking availability for a 150-minute Balayage:
+```bash
+curl -X POST http://localhost:8000/webhook/vapi-tools \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": {
+      "toolCalls": [
+        {
+          "id": "call_sample_001",
+          "function": {
+            "name": "check_availability",
+            "arguments": {
+              "service_name": "Balayage",
+              "target_date": "2026-11-02",
+              "preferred_stylist": "Elena"
+            }
+          }
+        }
+      ]
+    }
+  }'
+```
+
+### 4. Run the Test Suite
+```bash
+make test
+```
+
+### 5. Teardown ($0.00 State)
+```bash
+./clear.sh
+```
+

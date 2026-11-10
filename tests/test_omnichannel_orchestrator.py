@@ -194,11 +194,7 @@ def test_vapi_outbound_call_endpoint(monkeypatch):
     monkeypatch.setenv("VAPI_API_KEY", "mock_key")
     monkeypatch.setenv("VAPI_ASSISTANT_ID", "47b92dd7-6751-4c12-b531-23adf3614d35")
     monkeypatch.setenv("VAPI_PHONE_NUMBER_ID", "mock_phone_id")
-    
-    import httpx
-    async def mock_async_post(*args, **kwargs):
-        return mock_resp
-    monkeypatch.setattr(httpx.AsyncClient, "post", mock_async_post)
+    monkeypatch.setattr(requests, "post", lambda url, **kwargs: mock_resp)
 
     payload = {
         "phone_number": "+16673070119",
@@ -210,4 +206,4 @@ def test_vapi_outbound_call_endpoint(monkeypatch):
     data = response.json()
     assert data["status"] == "success"
     assert data["call_id"] == "vapi-call-test-999"
-    assert any(w in data["message"].lower() for w in ["calling", "placed", "dialing"])
+    assert "Calling" in data["message"] or "placed" in data["message"]
