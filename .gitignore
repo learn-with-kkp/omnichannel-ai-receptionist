@@ -36,3 +36,5 @@ test_*.xlsx
 .DS_Store
 .AppleDouble
 .LSOverride
+nimbus-voice-agent
+.vercel

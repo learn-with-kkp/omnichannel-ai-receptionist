@@ -1,0 +1,29 @@
+{
+  "name": "@kishor/vapi-voice-widget",
+  "version": "2.2.0",
+  "description": "Drop-in WebRTC Audio Voice Calling Widget powered by the Vapi Web SDK for Web, React, and Next.js applications.",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "echo 'Build complete'"
+  },
+  "keywords": [
+    "vapi",
+    "voice-ai",
+    "webrtc",
+    "react-voice-widget",
+    "ai-receptionist",
+    "cartesia",
+    "deepgram"
+  ],
+  "author": "Kishor Kumar Paroi <kishor@kishor.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@vapi-ai/web": "^2.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KishorKumarParoi/omnichannel-voice-chat-ai-receptionist.git"
+  }
+}

@@ -1,32 +1,34 @@
-.PHONY: help install run test lint docker-up docker-down clean
-
-PYTHON ?= python3
+.PHONY: help install test lint run deploy clean docker-up docker-down
 
 help:
 	@echo "Available commands:"
-	@echo "  make install     - Install Python dependencies"
-	@echo "  make run         - Run FastAPI webhook server locally"
-	@echo "  make test        - Run test suite"
-	@echo "  make docker-up   - Start FastAPI + n8n via Docker Compose"
-	@echo "  make docker-down - Stop containers"
-	@echo "  make clean       - Remove SQLite database and cache artifacts"
+	@echo "  make install     Install all dependencies and local packages"
+	@echo "  make test        Run all 78 pytest unit and integration tests"
+	@echo "  make run         Run local development server on port 8000"
+	@echo "  make deploy      Execute pre-flight tests and deploy to Vercel"
+	@echo "  make clean       Execute \$0.00 teardown and wipe temp files"
+	@echo "  make docker-up   Spin up Docker compose services"
+	@echo "  make docker-down Teardown Docker compose services"
 
 install:
-	$(PYTHON) -m pip install -r requirements.txt
-
-run:
-	$(PYTHON) -m uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+	pip install --upgrade pip
+	pip install -r requirements.txt
+	pip install -e .
 
 test:
-	$(PYTHON) -m pytest tests/ -v
+	PYTHONPATH=. pytest tests/ -v --durations=10
 
-docker-up:
-	docker compose up -d --build
+run:
+	uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
 
-docker-down:
-	docker compose down
+deploy:
+	./deploy.sh
 
 clean:
-	rm -f *.db test_salon.db
-	find . -type d -name "__pycache__" -exec rm -rf {} +
+	./clear.sh
 
+docker-up:
+	docker-compose up -d
+
+docker-down:
+	docker-compose down -v

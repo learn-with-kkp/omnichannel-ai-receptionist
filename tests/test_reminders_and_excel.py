@@ -54,7 +54,10 @@ def test_booking_creates_excel_record():
     assert "Balayage" in last_row
     assert "PENDING" in last_row  # reminder pending
 
-def test_24h_and_1h_reminder_detection():
+def test_24h_and_1h_reminder_detection(monkeypatch):
+    import backend.reminder_service as rs
+    monkeypatch.setattr(rs, "send_whatsapp_message", lambda to_num, msg: True)
+    monkeypatch.setattr(rs, "trigger_vapi_outbound_reminder_call", lambda p, n, s, st, stt: True)
     now = datetime.now()
     
     # 1. Appointment in 24 hours

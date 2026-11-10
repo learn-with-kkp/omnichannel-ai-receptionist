@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "social-webhook-connectors"
+version = "2.2.0"
+description = "Unified webhook ingestion and dispatch engine for WhatsApp, Messenger, Instagram, LinkedIn, and Twitter"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Kishor Kumar Paroi", email = "kishor@kishor.tech"}
+]
+keywords = ["whatsapp-api", "meta-graph-api", "instagram-api", "linkedin-api", "webhooks"]
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+    "fastapi>=0.100.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/KishorKumarParoi/omnichannel-voice-chat-ai-receptionist"
