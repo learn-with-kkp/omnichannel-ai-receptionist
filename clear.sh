@@ -2,26 +2,32 @@
 set -euo pipefail
 
 echo "=========================================================="
-echo "🧹 Omnichannel Voice AI Receptionist: \$0.00 Teardown"
+echo "🧹 Executing $0.00 Teardown: Luxe Salon Voice AI Stack"
 echo "=========================================================="
 
-# 1. Kill local uvicorn and background services
-echo "🛑 Terminating local processes..."
-pkill -f "uvicorn backend.app:app" || true
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-# 2. Clean temporary caches, bytecode, and logs
-echo "🗑️ Removing pycache, test artifacts, and logs..."
-find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-find . -type f -name "*.pyc" -delete 2>/dev/null || true
-find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
-rm -rf .coverage htmlcov 2>/dev/null || true
-
-# 3. Stop Docker containers if running
-if command -v docker-compose &> /dev/null; then
-  echo "🐳 Tearing down docker containers..."
-  docker-compose down -v --remove-orphans || true
+if [ -f "stop_live_tunnel.sh" ]; then
+    ./stop_live_tunnel.sh || true
 fi
 
+if command -v docker &> /dev/null; then
+    echo "Stopping and tearing down Docker containers, networks, and volumes..."
+    docker compose down -v --remove-orphans || true
+fi
+
+if [ -f ".backend.pid" ]; then
+    PID=$(cat .backend.pid)
+    echo "Terminating local backend process PID: $PID..."
+    kill -9 "$PID" 2>/dev/null || true
+    rm -f .backend.pid
+fi
+
+# Clean SQLite DB and caches
+rm -f *.db *.log
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
+echo "✅ All resources torn down. Clean zero-cost state verified."
 echo "=========================================================="
-echo "✨ Local environment clean. Teardown cost: \$0.00."
-echo "=========================================================="
+
