@@ -1,0 +1,20 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# RAG artifacts (rebuilt from docs on first run / startup)
+backend/data/rag/
+
+# deploy / tooling
+.vercel/
+node_modules/
+
+# os
+.DS_Store
