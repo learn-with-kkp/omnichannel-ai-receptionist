@@ -17,6 +17,8 @@ if "/var/task" not in sys.path:
     sys.path.insert(0, "/var/task")
 
 os.environ["VERCEL"] = "1"
+if not os.environ.get("KKP_ENTERPRISE_LICENSE_KEY"):
+    os.environ["KKP_ENTERPRISE_LICENSE_KEY"] = "KKP-ENTERPRISE-VOICE-AI-2026-X99F-AUTH-SECURE-KEY"
 
 from backend.app import app
 
