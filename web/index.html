@@ -11,12 +11,16 @@
   <!-- Self-Hosted Resilient Vapi Web SDK -->
   <script src="/vapi-sdk.js"></script>
 
-  <!-- Clerk Production Authentication SDK with Full UI Components Bundle -->
+  <!-- Clerk Production Authentication SDK (Bound to clerk.kishor.tech) -->
   <script>
-    window.__clerk_publishable_key = window.__clerk_publishable_key || "";
+    window.__clerk_publishable_key = "pk_live_Y2xlcmsua2lzaG9yLnRlY2gk";
   </script>
-  <script async crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"></script>
-  <script async crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@clerk/ui@1/dist/ui.browser.js"></script>
+  <script 
+    async 
+    crossorigin="anonymous" 
+    data-clerk-publishable-key="pk_live_Y2xlcmsua2lzaG9yLnRlY2gk"
+    src="https://clerk.kishor.tech/npm/@clerk/clerk-js@5/dist/clerk.browser.js">
+  </script>
 </head>
 <body data-theme="dark" class="dark">
 
@@ -51,8 +55,8 @@
 
   <div class="app-container">
 
-    <!-- 🌌 Ultra-Clean Minimal Luxury Navbar -->
-    <header class="cosmic-navbar">
+    <!-- 🌌 Mobbin-Inspired Minimal Luxury Navbar -->
+    <header class="cosmic-navbar mobbin-navbar">
       <a class="brand-wrapper" href="#top" style="text-decoration:none; display:flex; align-items:center; gap:10px;">
         <span class="brand-mark" style="display:flex; align-items:center; gap:7px;">
           <span class="brand-slash" style="color:#fbbf24; font-size:20px; filter:drop-shadow(0 0 10px rgba(251,191,36,0.65));">✦</span>
@@ -64,19 +68,30 @@
         </div>
       </a>
 
+      <!-- Mobbin-Style Global Search Bar -->
+      <div class="mobbin-nav-search">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="mobbinGlobalSearch" placeholder="Search voice flows, balayage, phone, WhatsApp..." oninput="handleMobbinSearch(this.value)">
+        <span class="search-kbd">⌘K</span>
+      </div>
+
       <!-- Streamlined Minimal Nav Links -->
       <nav class="nav-links" style="display:flex; gap:6px; align-items:center;">
+        <a href="#mobbin-gallery" class="nav-pill-link">Directory</a>
         <a href="#voice-highlight" class="nav-pill-link">Voice Studio</a>
         <a href="#instant-callback-section" class="nav-pill-link">WhatsApp &amp; Telnyx</a>
-        <a href="#services-section" class="nav-pill-link">Services &amp; ROI</a>
-        <a href="#reviews-section" class="nav-pill-link">Client Reviews</a>
+        <a href="#services-section" class="nav-pill-link">Services</a>
+        <a href="#reviews-section" class="nav-pill-link">Reviews</a>
       </nav>
 
       <!-- Action & VIP Auth Header -->
       <div class="header-badges" style="display:flex; align-items:center; gap:8px;">
-        <div id="clerkAuthHeader" style="display:inline-flex; align-items:center;">
-          <button onclick="openVipAuthModal('signin')" class="vip-minimal-btn" title="VIP Guest Access">
-            <span style="font-size:13px;">👑</span> <span>VIP Access</span>
+        <div id="clerkAuthHeader" style="display:inline-flex; align-items:center; gap:6px;">
+          <button onclick="openClerkSignIn()" class="mobbin-btn-login" title="Sign in with Clerk">
+            Log in
+          </button>
+          <button onclick="openClerkSignUp()" class="mobbin-btn-signup" title="Create free account">
+            Sign up free
           </button>
         </div>
         <button onclick="document.getElementById('instant-callback-section')?.scrollIntoView({behavior:'smooth'})" class="btn-primary call-nav-btn" style="padding:6px 15px; font-size:12px; font-weight:700; border-radius:9999px; background:linear-gradient(135deg, #0284c7, #38bdf8); border:none; color:#fff; display:inline-flex; align-items:center; gap:6px; cursor:pointer; box-shadow:0 0 16px rgba(2,132,199,0.4); transition:all 0.2s ease;">
@@ -204,6 +219,245 @@
           <div class="stat-value">100% <span class="stat-unit">atomic</span></div>
           <div class="stat-label">Neon DB &amp; Google Calendar Sync</div>
         </div>
+      </div>
+    </section>
+
+    <!-- 🧭 Mobbin-Style Segmented Channel & Workflow Discovery Bar -->
+    <div class="mobbin-sticky-bar" id="mobbin-bar">
+      <div class="mobbin-category-tabs">
+        <button class="mobbin-tab-btn active" data-filter="all" onclick="filterMobbinCategory('all', this)">
+          <span>✦</span> All Flows
+        </button>
+        <button class="mobbin-tab-btn" data-filter="voice" onclick="filterMobbinCategory('voice', this)">
+          <span>🎙️</span> WebRTC Voice
+        </button>
+        <button class="mobbin-tab-btn" data-filter="whatsapp" onclick="filterMobbinCategory('whatsapp', this)">
+          <span>💬</span> WhatsApp Concierge
+        </button>
+        <button class="mobbin-tab-btn" data-filter="telnyx" onclick="filterMobbinCategory('telnyx', this)">
+          <span>📞</span> Telnyx Phone (+1 617)
+        </button>
+        <button class="mobbin-tab-btn" data-filter="squad" onclick="filterMobbinCategory('squad', this)">
+          <span>🤖</span> 5-Agent Squad
+        </button>
+        <button class="mobbin-tab-btn" data-filter="services" onclick="filterMobbinCategory('services', this)">
+          <span>💇</span> Salon Services
+        </button>
+      </div>
+      <div class="mobbin-meta-tags">
+        <span class="mobbin-tag-pill">⚡ &lt;450ms Latency</span>
+        <span class="mobbin-tag-pill">🔒 Atomic Neon Lock</span>
+        <span class="mobbin-tag-pill">🟢 Live In Production</span>
+      </div>
+    </div>
+
+    <!-- 📱 Mobbin-Style AI Screen & Flow Gallery -->
+    <section class="mobbin-gallery-section" id="mobbin-gallery">
+      <div class="mobbin-gallery-header">
+        <div style="font-size:11px; font-weight:800; color:#38bdf8; letter-spacing:0.1em; text-transform:uppercase;">
+          ✦ MOBBIN-STYLE AI INTERACTIVE DIRECTORY
+        </div>
+        <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0;">
+          Explore Autonomous Voice &amp; Omnichannel Flows
+        </h2>
+        <p style="font-size:13.5px; color:#94a3b8; max-width:620px;">
+          Curated reference flows demonstrating live conversational AI, zero-wait telephony, and atomic calendar booking.
+        </p>
+      </div>
+
+      <div class="mobbin-grid">
+        <!-- Flow Card 1: WebRTC Voice Studio -->
+        <div class="mobbin-card" data-category="voice" onclick="handleHeroVoiceClick()">
+          <div class="mobbin-card-device">
+            <div class="device-pill-top">
+              <span class="pill-dot"></span> WebRTC Live Audio Stream
+            </div>
+            <div class="device-visual">
+              <div class="device-orb-mini">🎙️</div>
+              <div class="device-wave-stream">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+            </div>
+            <div class="device-metric">&lt;120ms Glass-to-Glass</div>
+          </div>
+          <div class="mobbin-card-body">
+            <div class="mobbin-app-info">
+              <div class="app-icon voice-icon">🎙️</div>
+              <div>
+                <div class="app-title">Sofia WebRTC Voice Studio</div>
+                <div class="app-sub">Cartesia Sonic-3.5 + Deepgram Nova-2</div>
+              </div>
+            </div>
+            <div class="mobbin-card-tags">
+              <span class="m-tag m-tag-cyan">WebRTC</span>
+              <span class="m-tag">Natural Barge-In</span>
+              <span class="m-tag">Zero Hallucination</span>
+            </div>
+            <div class="mobbin-card-action">
+              <button class="mobbin-action-btn">▶ Launch Live Voice</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flow Card 2: WhatsApp Concierge -->
+        <div class="mobbin-card" data-category="whatsapp" onclick="document.getElementById('instant-callback-section')?.scrollIntoView({behavior:'smooth'})">
+          <div class="mobbin-card-device">
+            <div class="device-pill-top" style="color:#34d399; border-color:rgba(16,185,129,0.3);">
+              <span class="pill-dot" style="background:#10b981;"></span> WhatsApp Business Cloud
+            </div>
+            <div class="device-visual chat-bubble-visual">
+              <div class="mock-bubble user">"Hi Sofia, book balayage for Friday 2pm"</div>
+              <div class="mock-bubble bot">"Confirmed with Marcus! Calendar invite sent ✨"</div>
+            </div>
+            <div class="device-metric" style="color:#6ee7b7;">100% Calendar Sync</div>
+          </div>
+          <div class="mobbin-card-body">
+            <div class="mobbin-app-info">
+              <div class="app-icon wa-icon">💬</div>
+              <div>
+                <div class="app-title">WhatsApp Voice &amp; Chat Concierge</div>
+                <div class="app-sub">Meta Graph API + Neon DB Sync</div>
+              </div>
+            </div>
+            <div class="mobbin-card-tags">
+              <span class="m-tag m-tag-emerald">WhatsApp</span>
+              <span class="m-tag">Google Cal v3</span>
+              <span class="m-tag">Auto-Receipt</span>
+            </div>
+            <div class="mobbin-card-action">
+              <button class="mobbin-action-btn" style="background:rgba(16,185,129,0.15); color:#34d399; border-color:rgba(16,185,129,0.35);">💬 Test WhatsApp</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flow Card 3: Telnyx PSTN Dial Engine -->
+        <div class="mobbin-card" data-category="telnyx" onclick="document.getElementById('instant-callback-section')?.scrollIntoView({behavior:'smooth'})">
+          <div class="mobbin-card-device">
+            <div class="device-pill-top" style="color:#38bdf8; border-color:rgba(56,189,248,0.3);">
+              <span class="pill-dot" style="background:#38bdf8;"></span> Telnyx Voice API v2
+            </div>
+            <div class="device-visual phone-dial-visual">
+              <div style="font-size:20px; font-weight:800; color:#fff; letter-spacing:1px;">+1 (617) 271-8180</div>
+              <div style="font-size:11px; color:#38bdf8;">Inbound &bull; Outbound &bull; WhatsApp Failover</div>
+            </div>
+            <div class="device-metric" style="color:#7dd3fc;">500ms Callback</div>
+          </div>
+          <div class="mobbin-card-body">
+            <div class="mobbin-app-info">
+              <div class="app-icon tel-icon">📞</div>
+              <div>
+                <div class="app-title">Telnyx PSTN Phone Engine</div>
+                <div class="app-sub">Carrier-Grade Telephony &amp; Failover</div>
+              </div>
+            </div>
+            <div class="mobbin-card-tags">
+              <span class="m-tag m-tag-cyan">Telnyx</span>
+              <span class="m-tag">PSTN Phone</span>
+              <span class="m-tag">Zero Wait</span>
+            </div>
+            <div class="mobbin-card-action">
+              <button class="mobbin-action-btn" style="background:rgba(56,189,248,0.15); color:#38bdf8; border-color:rgba(56,189,248,0.35);">📞 Call My Phone</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flow Card 4: Marcus Autonomous Squad -->
+        <div class="mobbin-card" data-category="squad" onclick="document.getElementById('voice-highlight')?.scrollIntoView({behavior:'smooth'})">
+          <div class="mobbin-card-device">
+            <div class="device-pill-top" style="color:#c084fc; border-color:rgba(168,85,247,0.3);">
+              <span class="pill-dot" style="background:#a855f7;"></span> Autonomous Squad Handoff
+            </div>
+            <div class="device-visual">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <div class="agent-avatar-mini">S</div>
+                <span style="color:#38bdf8; font-size:16px;">⮂</span>
+                <div class="agent-avatar-mini" style="background:#a855f7;">M</div>
+              </div>
+              <div style="font-size:11px; color:#c084fc; margin-top:8px;">Zero Context Loss Transfer</div>
+            </div>
+            <div class="device-metric" style="color:#d8b4fe;">99.4% Task Completion</div>
+          </div>
+          <div class="mobbin-card-body">
+            <div class="mobbin-app-info">
+              <div class="app-icon squad-icon">🤖</div>
+              <div>
+                <div class="app-title">Marcus &bull; Color Director Handoff</div>
+                <div class="app-sub">Multi-Agent Swarm with Redis Intent</div>
+              </div>
+            </div>
+            <div class="mobbin-card-tags">
+              <span class="m-tag m-tag-violet">LangGraph</span>
+              <span class="m-tag">FastMCP HITL</span>
+              <span class="m-tag">Color Expert</span>
+            </div>
+            <div class="mobbin-card-action">
+              <button class="mobbin-action-btn" style="background:rgba(168,85,247,0.15); color:#c084fc; border-color:rgba(168,85,247,0.35);">⚡ Consult Marcus</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flow Card 5: Elena HydraFacial MD -->
+        <div class="mobbin-card" data-category="services" onclick="document.getElementById('services-section')?.scrollIntoView({behavior:'smooth'})">
+          <div class="mobbin-card-device">
+            <div class="device-pill-top" style="color:#fbbf24; border-color:rgba(251,191,36,0.3);">
+              <span class="pill-dot" style="background:#f59e0b;"></span> Med-Spa Treatment Flow
+            </div>
+            <div class="device-visual">
+              <div style="font-size:16px; font-weight:800; color:#fff;">HydraFacial MD &bull; $225</div>
+              <div style="font-size:11px; color:#fbbf24; margin-top:4px;">Elena Rostova &bull; 60 Minutes</div>
+            </div>
+            <div class="device-metric" style="color:#fcd34d;">Atomic Slot Reservation</div>
+          </div>
+          <div class="mobbin-card-body">
+            <div class="mobbin-app-info">
+              <div class="app-icon spa-icon">💆</div>
+              <div>
+                <div class="app-title">Elena &bull; Aesthetic Skin Lead</div>
+                <div class="app-sub">HydraFacial, Lymphatic &amp; LED Therapy</div>
+              </div>
+            </div>
+            <div class="mobbin-card-tags">
+              <span class="m-tag m-tag-amber">Medical Spa</span>
+              <span class="m-tag">Instant Lock</span>
+              <span class="m-tag">VIP Gold</span>
+            </div>
+            <div class="mobbin-card-action">
+              <button class="mobbin-action-btn" style="background:rgba(245,158,11,0.15); color:#fbbf24; border-color:rgba(245,158,11,0.35);">✨ Book Treatment</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flow Card 6: Chloe Japanese Nail Art -->
+        <div class="mobbin-card" data-category="services" onclick="document.getElementById('services-section')?.scrollIntoView({behavior:'smooth'})">
+          <div class="mobbin-card-device">
+            <div class="device-pill-top" style="color:#f43f5e; border-color:rgba(244,63,94,0.3);">
+              <span class="pill-dot" style="background:#f43f5e;"></span> Luxury Nail Studio
+            </div>
+            <div class="device-visual">
+              <div style="font-size:16px; font-weight:800; color:#fff;">Japanese Gel Manicure &bull; $85</div>
+              <div style="font-size:11px; color:#fca5a5; margin-top:4px;">Chloe Laurent &bull; 45 Minutes</div>
+            </div>
+            <div class="device-metric" style="color:#fda4af;">Organic Non-Toxic Gel</div>
+          </div>
+          <div class="mobbin-card-body">
+            <div class="mobbin-app-info">
+              <div class="app-icon nail-icon">💅</div>
+              <div>
+                <div class="app-title">Chloe &bull; Japanese Nail Art</div>
+                <div class="app-sub">Structure Builder Gel &amp; Rose Paraffin</div>
+              </div>
+            </div>
+            <div class="mobbin-card-tags">
+              <span class="m-tag m-tag-rose">Nail Art</span>
+              <span class="m-tag">Hot Towel</span>
+              <span class="m-tag">Fast Booking</span>
+            </div>
+            <div class="mobbin-card-action">
+              <button class="mobbin-action-btn" style="background:rgba(244,63,94,0.15); color:#f43f5e; border-color:rgba(244,63,94,0.35);">💅 Book Chloe</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
 

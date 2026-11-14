@@ -1453,23 +1453,30 @@ function getClerkUiBundleUrl(pubKey) {
 }
 
 async function ensureClerkReady(pubKey) {
-  const key = pubKey || window.__clerk_publishable_key || CLERK_FALLBACK_PK;
+  const key = pubKey || window.__clerk_publishable_key || "pk_live_Y2xlcmsua2lzaG9yLnRlY2gk";
   window.__clerk_publishable_key = key;
-  const scriptUrl = getClerkBundleUrl(key);
-  const uiScriptUrl = getClerkUiBundleUrl(key);
 
-  // 1. Load Clerk core bundle if not present
+  // 1. Wait for window.Clerk to be attached if script is loading from <head>
+  if (!window.Clerk) {
+    let attempts = 0;
+    while (!window.Clerk && attempts < 25) {
+      await new Promise(r => setTimeout(r, 80));
+      attempts++;
+    }
+  }
+
+  // 2. If still not present, dynamically inject script
   if (!window.Clerk) {
     await new Promise((resolve) => {
-      const existing = document.querySelector(`script[src*="clerk-js"]`);
+      const existing = document.querySelector(`script[src*="clerk"]`);
       if (existing) {
-        if (window.Clerk) return resolve();
         existing.addEventListener("load", resolve);
         existing.addEventListener("error", resolve);
+        setTimeout(resolve, 2500);
         return;
       }
       const s = document.createElement("script");
-      s.src = scriptUrl;
+      s.src = "https://clerk.kishor.tech/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
       s.crossOrigin = "anonymous";
       s.setAttribute("data-clerk-publishable-key", key);
       s.onload = resolve;
@@ -1478,35 +1485,23 @@ async function ensureClerkReady(pubKey) {
     });
   }
 
-  // 2. Load Clerk UI components bundle if not present
-  if (!window.__internal_ClerkUICtor) {
-    await new Promise((resolve) => {
-      const existing = document.querySelector(`script[src*="@clerk/ui"]`);
-      if (existing) {
-        if (window.__internal_ClerkUICtor) return resolve();
-        existing.addEventListener("load", resolve);
-        existing.addEventListener("error", resolve);
-        return;
-      }
-      const s = document.createElement("script");
-      s.src = uiScriptUrl;
-      s.crossOrigin = "anonymous";
-      s.onload = resolve;
-      s.onerror = resolve;
-      document.head.appendChild(s);
-    });
-  }
-
-  // 3. Initialize Clerk with UI constructor enabled
+  // 3. Initialize Clerk if not loaded
   if (window.Clerk && !window.Clerk.loaded) {
     try {
-      const loadOpts = { publishableKey: key };
-      if (window.__internal_ClerkUICtor) {
-        loadOpts.ui = { ClerkUI: window.__internal_ClerkUICtor };
-      }
-      await window.Clerk.load(loadOpts);
+      await window.Clerk.load({
+        publishableKey: key,
+        appearance: {
+          variables: {
+            colorPrimary: "#0284c7",
+            colorBackground: "#0f172a",
+            colorText: "#f8fafc",
+            colorInputBackground: "#1e293b",
+            colorInputText: "#ffffff"
+          }
+        }
+      });
     } catch (e) {
-      console.warn("Clerk.load note:", e);
+      console.warn("Clerk.load notice:", e);
     }
   }
   return window.Clerk;
@@ -1699,6 +1694,34 @@ function submitCustomVipSignIn() {
   fastSignIn(name, phone, "", "VIP Guest");
 }
 
+async function openClerkSignIn() {
+  try {
+    const clerk = await ensureClerkReady();
+    if (clerk && typeof clerk.openSignIn === "function") {
+      closeVipAuthModal();
+      clerk.openSignIn();
+      return;
+    }
+  } catch (err) {
+    console.warn("Clerk openSignIn notice:", err);
+  }
+  openVipAuthModal('signin');
+}
+
+async function openClerkSignUp() {
+  try {
+    const clerk = await ensureClerkReady();
+    if (clerk && typeof clerk.openSignUp === "function") {
+      closeVipAuthModal();
+      clerk.openSignUp();
+      return;
+    }
+  } catch (err) {
+    console.warn("Clerk openSignUp notice:", err);
+  }
+  openVipAuthModal('signup');
+}
+
 async function triggerClerkOAuthPortal() {
   const target = document.getElementById("clerkMountTarget");
   if (target) {
@@ -1724,10 +1747,59 @@ async function triggerClerkOAuthPortal() {
 }
 
 // Global Aliases for backwards compatibility
-window.openClerkSignIn = () => openVipAuthModal('signin');
-window.openClerkSignUp = () => openVipAuthModal('signup');
+window.openClerkSignIn = openClerkSignIn;
+window.openClerkSignUp = openClerkSignUp;
 window.openClerkMountModal = (m) => openVipAuthModal(m);
 window.closeClerkMountModal = closeVipAuthModal;
+
+// ==============================================================================
+// 🧭 MOBBIN-STYLE DIRECTORY SEARCH, FILTERING & NAVIGATION ENGINE
+// ==============================================================================
+function handleMobbinSearch(query) {
+  const q = (query || "").toLowerCase().trim();
+  const cards = document.querySelectorAll(".mobbin-card, .service-card, .review-card");
+
+  cards.forEach(card => {
+    const text = card.textContent.toLowerCase();
+    if (!q || text.includes(q)) {
+      card.style.display = "";
+    } else {
+      card.style.display = "none";
+    }
+  });
+}
+
+function focusMobbinSearch() {
+  const input = document.getElementById("mobbinGlobalSearch");
+  if (input) input.focus();
+}
+
+function filterMobbinCategory(cat, btn) {
+  document.querySelectorAll(".mobbin-tab-btn").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+
+  const cards = document.querySelectorAll(".mobbin-card");
+  cards.forEach(card => {
+    const c = card.getAttribute("data-category");
+    if (cat === "all" || c === cat) {
+      card.style.display = "";
+    } else {
+      card.style.display = "none";
+    }
+  });
+
+  if (cat === "voice") document.getElementById("voice-highlight")?.scrollIntoView({ behavior: "smooth" });
+  if (cat === "whatsapp" || cat === "telnyx") document.getElementById("instant-callback-section")?.scrollIntoView({ behavior: "smooth" });
+  if (cat === "services") document.getElementById("services-section")?.scrollIntoView({ behavior: "smooth" });
+}
+
+// Global keyboard shortcut: Cmd+K or Ctrl+K focuses on Mobbin Search
+document.addEventListener("keydown", (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    focusMobbinSearch();
+  }
+});
 
 async function handleClerkUserSignedIn(user) {
   if (!user) return;
@@ -1956,8 +2028,11 @@ function renderClerkSignedOutState() {
   const container = document.getElementById("clerkAuthHeader");
   if (container) {
     container.innerHTML = `
-      <button onclick="openVipAuthModal('signin')" class="vip-minimal-btn" title="VIP Guest Access">
-        <span style="font-size:13px;">👑</span> <span>VIP Access</span>
+      <button onclick="openClerkSignIn()" class="mobbin-btn-login" title="Sign in with Clerk">
+        Log in
+      </button>
+      <button onclick="openClerkSignUp()" class="mobbin-btn-signup" title="Create free account">
+        Sign up free
       </button>
     `;
   }
