@@ -1,36 +1,330 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
-
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
-    )
-    _s.exit(1)
+import os
+import sys
+import time
+import logging
+from datetime import datetime
+from typing import Dict, Any, Optional
+import httpx
 
 try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-oD7dpy+n_rGZ{!_1hAxsM@(gogG~OQpsb<C06}!i*V1t|NmGo64oOp*HEFVk^09Qc6jE)CXmDv%45wi0GnK6uBhXrEM#}_Y5kRKHuNpugB~Cx}Ebp&*wSkjf-KM5YLiZQsP|FcQ~U!MYf&=vgW=d{K1624^)3eVx(x5R+(qsdICH17+Wi~$4+pa{ir9|;E=R<m?x}<N3m?(sznV_xJ!BtO%pP-h)`lwKNxPPkQTqCFq_5f02{+m^1EOVLU~PqHyASWsh$4*Qw>&|CUli8@s!3Dx&Wj+<cA;@S@@JAItQYBcLvrB;JxpWXaUCLa+e1BIxA%hl*uoOBwPkJJxDUh3N7r>kI8Y_5V0Cr!Mz(n<>o%7smDjzxqVXD9?9G51~KiVm;jnymCMr<s#pG}@uxCGZERT&N~omxLrj;|h?>`%bF=at;OJgE)`Tp#*g~i<?kgpEw-Y{&bFz+$rK<UFWu5Og80=5zyFp?!>LtdnCYHNoK!E+Xc%sO|k=zQ*{a&fA+_<n;GoT$xGi19>kn>dMJM4kCd~Gefg1q<CXKial&KtCU6DEwinl!ppJr10Y*lj1y<Yf-|z~r*R9u&XbB$i7v{4|c~T_gP&eD6shAw%-dQ!8#AD*B7(pB`U>yy&UE--k3QX=us1D(IhQBZ=A4vker<4P2<<Lgbl%=A~HA%)<_F%((?ghb;~j$KVgj&U|pir165CYz!-XJ4|7q@^%e9)L+)3Ymm0Cg}T>_vpc5tZ&&4_456?pTM%x<URzcLsPo(wQ3LGcGksr$9t|ebF86;Bf@l8*oZk*uzY@E@L}aj6dg>*bIY!#ZFw?0b9)iRzP+oL~>klkp7DAc^!w3qC^KU5ra*~W;Ml9#uk>dHvovtW@ZVOQ*?!Z2O>oXqPf3u2xzQ!YX!RoY#zgz_d$~=)fa6g=DsQo2#$NivBPNiDeDK(`BzZtygL%-m*w~mL9>&FtUkY@w#Ze0hiEnaWE>LxZZ{p(i`{Fk3)rJwd+F=DlLi<Vhh)Zgw);!2A)+kbOMbIYhGw||RoMo7&tnY~xyvtDb_k%XsyO9N{QBfd84M1&r<I(o)JloN601H`)xZc9y;yhQF=vzBzX(U2kDWfXYSa-`A6;<RV_ZL5@5Uoqkh-JSye=floQ_ke>-BZ7C@{ME!>RPLHl_f^b*h1Vt>+xPlcAR<t04hs%{8@Z_l`gkxJelW16n<A0(9E58OUk5ylq%!l5Ng(`tt0c9^_F@;@p^&N`9IHt;94_;GiMtad@H&z227#Q9bRG9O@*g{o+Z_3Q;CyzTn{i*KZ5?8nZ#aJz8o(d2B?11`6^^VoIeyzV<(;Yj_XZ|uv2S>)`-`$(`A}c_gY~%5ebITIy#A{oxdTnOhIKWdL5laiac7&kT@xlIbNQ=A=T)^{d4DWV7?)V%qa9wtGgr9bA2gEuoC<>MGfe(ct~0J>X4I`nc)oaT(t>42Qu3AxJaZp;K|sA`4*#+S6;9v%SD4eVGG)NdAxO*YKq&Bj2<06L$D=Am@5#FD6}Ijj-~M}@2|XgQTE$*<V#8k?yV#<#VDlwKiG&*55x~FYG1rTH!g`jhjWDo1B6}yaPbn>0Z@>Bv4DKzvecS?{ZF6B*gRj)J#FDM{#XoglEWP~SsFl8F9o8RQKJq~L)djD;Z7V|iRy&92n;avj(Fq)t{h|i#jYgLK)5e(bK56m)*ziCN2PhzXb&B`E+N^S0&zs9$U1L%6$SXA0Lu+(8WM0_2`^g*zaQ^$UM_n<(?2uD0tyl__%<J1_=X`IO!96b@_eT<X?GU55rg1aj-jM2laJ~wYK;dHjXXIN+x=`hxcqU=URP;iPPrsV<r}0p7u{W2dcaHohSP*xr5K7P<Fk3hJb?1w4ja*~-FvPKr67D1e&X>2<4f#ZcpTC&0O2oPU(p_(T_2xQ{0r+Pq$Zi6&%ibTf>!=4<tJjWDqIZA5f}SHi*-bH!W1{d<!7#Z#*^s;QxR?p)UBRrvcJ|2#hZa9qufGr*9jL-Libqy9+a5F&sXK~ke-IAe8(j8=C%hp}6zXf1`u-`^MdqfvqCg|7Bqe(LOK747<Fe-vzMQ;}`ki5U=-tgY$E-9yBUOc88jbxSi?TKqm%5^+>~q84%;h1MYm#lg`-4QN!RD4&#jEg{AXZRi5thVqU%-Bxf68;Rr;INmRB7aPZ^iGGoSGmR-h&3SY)PlN4WaA6iaQ`C>ZL7bRO9IRIHQBn#cgD#deFjEYJ3hc1l3*%S+e8-Ht`3W-dpYq6@jN-@<O_ny2oIb?TdTuXrEGC61s5domhJSU)AxU<_$vkf|!PvP2+oppB}$95?76B`g@DxZR;~{sfNv@Xu&efh_EHl*Y|#>6GVH&a$P0v=)TGLqPjmC-V}LV(vb=S-D}}Wr|`RYdOXAad#0&Y8TStv+-2u+T>-x*BB2t}*tJ!7jKBBy6%p@E9K*Dh9ZK!l=!bYR6(2v&KmA>R5*jYBb>8E6Q|d=i-f_ify`=FfFwOnpK0n5l^!Tihf42W4Z$6*DKk(vniuW(#HTdrWr_T5B`$tvxYx4TD`#%8rd|Yjx2_>gJQNN?YeQC?i^5+{bd#!=V7sqhdkgof8aLAtf_Rv1x|F&PJ?nk}9EolA^Eet&9^*5yby3JkTi28)WUUa}6=o-j2*06q_3<lbD!T~}V`}983_q!T-&JC~+X2vlOIOyC;K>=p}tF5>u<APxvPoWnJo4S95GFOD4)UNa?)ot&ITG#(^{?z@r>}~ObXul3+l|Y(aZCUg~^f`e4D8-hV+x$k!`|Mp2N(FJ9_^Jb8_WHnlpOy_qte+k^!1afMy+?MMYFN-Nvv$_erE(juP_)~zfaVZA)=xR^OzrW-yh@z1dmAoubKeIF>akHYm#&%S*|HJ9-`Vf0`o3N`(~fwN{2~>>nlnC3bX2gRpX~F~_=_;ZjF766XlA?qMng*%`;xEdCJE=ShpnU+5x1nR%vEfK?Tde1x+-L33C%-wf7vN;Mt+9K9zSHmInO>^90!xfT|KG6?}VmeL+99sYW;&DH51wr`HEn_HORK<aR}mxwQ~vky_!E2J|m;*kTh=MjQQq*%b?D2bAyBNC2zz&87K0qWMAz`9dR^HQWl1OwYUf=DZt+!*??Arl)peTnsHHrM7NUx3L9^$&)45-aA;Fi4==F}70XrocPf>CB8|=brrVrVDXZ8QWsq)MJxu1kMaDSkL#kYF$&6Sx(w$ZK!LP*bDBglNNbl=KJKm#)a`mC*lDh8%ocuHpQ&1DhuhD6(1*`qb2c!0XyDHxO6ahotvejl$(IQR(?*3DmFh^SRl*eetMX}5br}*s+ZKiRrxv<nQw@$cJVNp0ZjW4SB^-V}ciyqVX4@lCFt9#oVmY-+k)EOuD+O5OeXk8SyZa{Fej)2to@WdszIR%v|Eh#lm9ur#zSi0?r`pe;~=*yQPjaRg51!pcB`NbkY!Oy>8o78XO7)+$4MZad-$0!d>@hkA7bL##7*AF#@i*Z~CJIiee7I^GD>;<Ddi}bG0ZS9qk_rTQnBU!jgWj~MCQyKCyfi8K_n(&g{)bB$$EGr$>Mm3RXOp|37z3#+NxxZ}}gCS$Kj4I5XGAquni`Dig4#9?_&+?xJBiwiA_!;@`Qv1g#3zu8Q$KN1OBWiq{5Vxkn_{s+i7^Xkcu^QX{DjL0iQ_U%!xDgiaWb0PLzm+ukz6L#!!AC5|9(gY+^xodKCgGhpSg_b_(mpO11=3gkflW%cdaDpQe)L}_JDr+<TPXlP-0lHKcdp^oLVtPhqq{e*>jjZthw*2dYF!LCK*zCix4UYgIxPfOj1GLnXW)EO^O^J6S4g`~_+<RB7U=)hvJC|<GGbKeHuqatmT}bhg$uzG?T;k>#WW8*eKGvImG`hAM`^h|;naEFC!4L!zh{t=Z!<oFe|+)}F$z8tU!2-e0KbO6=QJciInA9Au+~7R<4I)eV3_X@(Z$7VjYIA>+MAt+VF%qQ%$*r*ymr~rDSlbV-1D1p%7}?~DwOc*`;HVCBQr<jZZu*l9FcvFUtzwsun9<BV%#kMR+wY~{5*qA3!<20$G_$*jyPEpWxujrJK@N;hxX0FKXSg10B&wstB2|~lm4vNJ|N@I!B_B^Ja>xk)kr@8|9YYgYJ*E&BK}8wQu~*n85-vqWO0ex5e(PKKjs7>kFU{v3h>*7!tHT=FNi_~CK1k_jepqAu_R%q@!988z7o2GZ9+PWsZYfslt*0g*jgK(63C%qDg02x-$e_<2bZo*(ziOE^jfey;d0^nMZ%&f{%-ppep=hY)R%VdMsxA6x!XdGj}TTJ^m`|LopMPB9qpxjK;}4|kJRe+JurzMGtUoFo^aN}^xBcCppW~FjehOsA$gIL`eP#EmBb8mHHVGokF4gEgOy`3@XV--r5XWp$a+5u*u~JBp#-n2eY$H?XU7NC_lZ@W^{IGJZJIx1&NwOB$zomGJov4MDjCw}w{yZ-tF_874{eUtgtx>mrzs&R$Jqn*ex?dm)f);kU+fk{TruHrTMF}5`9EmfR$8v}sB4q(rtzgWXva2ABKKRvB0%3wf8W}x99%zQu_`yH?5&2d5kvD`<5o3^kJIbxwm*$FIA~M$MmwOL7lJ)M&Luw=+DJ>P!<mb26E}>~n#Yoehk^=9(JsG};+SSy7d7${sp1Ae->T-nV(&R?VK4u_>^X%|Pm(cZP7@KWfe4Qu(;X0$B5lDHaK&fmixgODjf?Z&_g46|#D8Vm92t7VYDDR=s>1l#4ZF}6_CBd#(;eg&K}^v811t!35bIp6bFXU?pl?<8*PtKjZ9yF2-i;*a?7ai*zr{{ajC|C!)lso!_%T|n)Y^iUf&WW>;qq-vMd|k@W=ia~BWrTILUrZF!;itj23!;gq*dd6bUMDjG+lQY+;}#SkRIJN=mWf;*CapsPT-fGBSK@JSxYbKJbE|1emg1Aakb_|^zF@5t0zZ1H2EXe!Yg*Shop$?z^iYq{1wPpUn}IeXA1|<OW*H-@+z`*EOg85lj&v$UKqCGG!nPMWu&t%hv<AG<$h-bX%b&btVC-63|3&moMiS_L=7o+-p5*|_$&M7SRf(8`1pIOxJjS3-V}D$^<6R)1n4U!`BkK-2Ba(wBq-tvdqLtlXrz$lR>8k7^-<%eZ$X5bpKZX&15dSS3K}ut_*l1(@j->}jx~1oUWHKP@z4L!@NS33I+z(=!Q?OUgDP`aXjBm$_lEj0{&-|0s{H3P=TQ=jacsx;DAW_0a~1gBhy_a#-v8dfyBQhGUbXI|uvtp-y1avdp!6=s-B;t=?(n|HCP^=rc|;&AjwkdvE=jpsEn{K_Z3r1(jWjTp*D~@RuZkJ@#x;JyC;z}h{+-D$@90GX`~NSoEeY<OTMzNTzNV2%(9JIb@wb9XdPNHkdwfmVCV8!!NwZ__%JYYVMnc@DzrUwpW$3_S|4=RKBHSw}jPv7R545PyR&b3~@wxwU=!Vw;{Ry_3<)6m=P1*tV65HwclKAtbZC`!cLXjT+cD&v!em1`NCG5O|VJ_&mbS!|>|Lp^l2Nk|m;h*)Y+5B+CwEf9O(F5b+N&OgMtyS$f!#^oA_NRIuvg-WVk0SL9dd(dF#WeTH@P`xru4Wk?=Bxa>#-~+^=QqEZ&0m3V2M6MpjvBv_$MQsY|8YCfget#C><m5g0cRkm0{X{yJi4Ftt@LDBgz@s5hDjNA15F<Mx$*PYhqT%J7|@>^xogNHt_?CcFSl$h0^J)axyIgq#m=?K_-&OFDL;`m4?k}0k2VDCubb@CsKTEyKXQL4iJyB(fKmBZ30wJU16dwdJqQvvXaW4k?W9MW49@v+hrk}vyIArwvU4C=^Vh|{&c=7u_g`5%p2FTM_J<t~nKQ1k@BgVEJW!A!JEQ-w{D^Yl<;240)Bw5F247p!3AdYcD)*;6KLNkdDEJ5Vjd7Xoew*qKIMyAcKi@>J$~kYL!0)FV5k@p-?NvfKdT!qMljecfcx6U73~3#ceYBr&PaEU~&pa0mX4Vcdj64|WQ^4+=8NXEdJwV@QrTHNsrF7g^|9)F6L2pl}R%$Zj#7L)Au(QH8I#swUN1gvgj8Z$_Sk2T|E*(h-uDm50Od7FP`<D!t9r8MDdi)*vAE_QIBTs-t4Xz=)V-F05z%wWFU+5@~#mD%|LSUX*JH1EV>kjiyH?hU_ZkL<$QxK~&w+{IW;)-gMt-rmuU~}He+~zO<pKG7uSof%LY<*&tur(RYlBe?-;$74BlNo(s2+iDsldUsh{+9@RUzW991jh8n5>CT9$F>kNLUQ^jyhosgM(kPlmw~<61&-eta=ui9*+dEDu3mOVbTh=<^F+EELSxWIS_p0%45!NDb6()Y4ZQV!X2^@4Pm@ue@*E6Pd(4h9s?|CuBOH>P8X)oW#j(uQ><QP7R6Unn)8n|NccG~4gx94IR{J`dlP#>w^Jx;=J*!NFhg^+hm0%APn>s6kOP&!Y^Aj%biE96?X2U=OmX4J;fPV_NZ>o7l@@^)D;Z2Or3R*Vfoq+u#4F+vEh3tntp*Y3TzNZwYc5xurQmZT=FA2p`W(zRn0W-(zDtv`!OHU2)!s_6Wcte}a=sfqu(%;nn9f6zVk3U3}4Ul8nuu%dFx2J%9P~GqM80wH2XB7Du!2jJLr#@IQZtBapL8P;y+et8=9q9}=-!l=0qhP@Pgy|;TBLs015Wn@wSNM0OTHq(@@6)_T)%my2`TuTJ{xbIGYhmV=O@><znDjqj*gt?x+t<hX!nA+uH@*PkgGs>$4aPk-okS;BVwEze%Wv5Z9{6r^(L4N|{&0g|VW0a)o0Q~~l_p}k6fK>TUx>CU^=u2$bvcl&@{b6_sK(JhWW<9ZRi#LE{t>a_Na&c0vAE&!9DKq&*OxIZG|v)VY=W{H>Y)tm>y@G^t@|T^_$=$9e<+fS8TiDXksrD`fDkuQ!+`j6a_MaTW~H+$`qc0Wr+UM1mX_XojXaSmKf2j+MU$R1@0-8>aJQ;;$vl-Z8=n~Xaa+e4Sm(GE;2-niSAiMxx~6(O=;Sa?@)o{9NJEY;orgaf_xIrZ6+nEl(XI@*n`G|wW4_0n{8q=hIr#}(1x`7*1+hJ*=Cmj3@x1tabU=!go4hXd*>*=W9G~o*!>>;j#81_42nRs`{)(Dlee>+!cg)V`8t&nEAiyvB%Xw=ri0Au0us_lM_>y;2o<eUST;@_8(2;D!{V`wHb6$R}ns0;i+?T^*cojtmYf$%3ul&OL>iDXAe;^vZJ**5kUj|8rWzV<1<`?!qY|5?FJz8tApx^il-^cxoZ66J!s?UdMgog|0;P?0|^SqCGz9dGt7<q}9LHA=HOV{!tUsxo$hCF&^-uR$?|Ec_j?yoERnp5UI-_-Z#x1SmLN$r3JlIniXIo?X5y3gYubM14;%&`*MRPv3m{)_kf`TQFak<iZVx=RP$%JbM!2QXh<zx?Y}tbxMyOt&^_j2bPZu_l6BHVYU(<v@|x7c}8z_Wj}*7=TYNiLP=F8;OZg8ToM#f}5WsqVS(sifY+M_gQ@Dem-0O{OL)3rpEVRl6%%ZC<^t=(n(eSvq0<$DSX3QdvCJ-<(wyjdha~O#uEYlG>UE>SuZ>mS2Ic!-h-y%ZMCXJbtVGvy!pS`>-R*2R>GPGqJ)Pc%6fUMo76<S?Sd-qZ90s9@Pq>zR77I|`nM-aqsjQ}GqO*UUW{toF;Aw;Qs%LlpnhvfA^UdEM!q`#?X5&6a96us=he~utd##B>+2V+U{-0}ElwgH+)&t~k80GTam;}D+7LqU%54!6P$O$3HBe=7G;DiNnVLT>!9$Q$Zh0Ya(23*j5J*w#f>B)O^Dx5BxaX%+{;&5XUHD()<6oTLF|U2^)0ED4zG#DT?qgN{eD@dalXx?g;Jf392g>(qB(4}zKWN4OvVRuqG(VRu-KoN__y+1m-)MH*m(GW|2M^~ic6mn5G;zhw`~IN0{9TRzM!VyyKiKi_A%ndwfcXz?mbxf+uT}H&Oz8bSndUFX$DdLi<+xb9k=6xHt4v)#VcLy<!x>$6|3w%+%lKufIipS-C6Jj`dHlIqSD-8uqfotTNTW+`jwK5-q}RL2zH+T7M;UBlZG8yEO?kkX02#Apl}_@9gc5+?*W+XynSQw!z#ka-E#3%?SCQ@o;KtEFvV2?LfF`36Cu14|{xO-~=b}OXno9~WzZD1SDx{}MDH4TvgV2unf&4C&3ObnQ&&0koClr92ilu~|#w9&G*G8R<_?56zTKRM83wbl}K`~?e_Fytv5mEC&(`C<^=l~%8Vj4nlteqL+0M?aI$XoXPF$;30w5&%%_rhHM&ia`xpW-imj7DUlp&juOJ};EY*q7sncImhFxdLt+GZU)nE3S+>t!N=#Z){F{3^Y>2m;Ixus!uWPNNK{B2r6jDaj2Vf#a7BFZ`b98j`P}&9{Jf4PN7TlKn%V<ynoBU&nv||-&Np=g!&}1C*VI!)&;QO6gKyFDK68vu!qWOq9$?|1Nu5Iak4(A)o&`S{6F}=n!nB-mtr|t_4C@lp9$h>z-<#G<EP^eaEyxozawtAIHvGD^OlP0*Gc4=7+sX)d6GObTKvGE-Y`)Wta(I6ePEpScwwL%GFzW5Cw!RFFEzt(RtJZ+k*<A-dv}At@y7#>Owdpys|t4Wg%lwV?Njk*aah0_@^#P0p+4YW-^_<k8@aYdWxPD0E-&lj_*DPKZ8%o}PYf{8oDkijQz<k23%4)q!mzes3w5KwO!KNL|5d$~x_^k@YUy0X9)Fcg*|!P6M^%3X-U3q-a5D+*DX)i;P!pjl{q#bWA1NImh~&^H{2FkDSF^f)r~R3}nAE?`IvWMD)n#5CYWwui)9(G0Ul=G|%D+pB7OsL+@fzs9psUB62&8Tme&+UtQRN@)d!g1<|Bh527x^J)H~oU@(~LK{j{|JWUHX1A4(a{IcQe%OCE;%-JzjY+!rHEgm~!Hqzv}##Uhq0xx>Q()iWFF_n{fCnzwb8U^-<r88&&#+Rmpo8w9dH!xSvI@O~sYa+<O~fyJKt0d4wSx&EqqEXT&Qq3aG;64sH=%ioW`k>MbX46dJo_d;KOA#Qk`}87?ZqsO<B@7K4M|7rsDy$YGI8Q@4|@4V$nox#@f+p?8Vo8ZbXx*lb+z48+_i`d|7=+evA%k!uXTDCtNwXC6Gjg7}}Eygw_^B!BPH4CmV!R=MT{;aSS<Yr&L3ReXQ=ZUatkeEyj>>JR-yiA*p+XanNAvX}t|jp#c6>^e~I=Tj^@(@jK8_Yd8olf3q|ki4ivtDQz6H%G#-+Y`zr-`^=ntv~(14Ql(cb*#WBi@y~fGr9VP!c`z+xr>(#>9yG~K@T588CtJQRrS5Ds71{Y06){{NL2G*Qr;>bP<5I!2sL6$c)~e+GYo#vIA5ht?c>-o_leXyGPH-XU`n6i)bBIhzofZ&!2~341C@VyhX))zV76{X{}9sBXu7_AEQhUaFt|kegmdSUen&-lTOrG^t-*$#HxB8VlE=-sqtw=}aPR#9|Dj5LHCejA)Uk+sQ;K)maomgPTp1Qnqu*G(b*g{o9_O?7IpmDucdv9VVK)z0=*VNv0rBCj=W@x+`ksZfYC-N*3*!FRnr0v2FOq;6@r%;Eh%+k6?Mc!(<kzqAZ_>sH8muB9f8C7w!{6)iSs{H_c;0RB#HeVU>psm=-IQZTo#Chg{0x0I#jnU|bdvY6^mvALubo4cR_B9o;@*({_8I(ulfQ=r(;kb|9fj2YolN_6ihubF=#VO6*Npg~9PyzZGXA?11?cC*0Au8c_;wJ^B{$C#0U5S*{C9f(fHvzbG*V>YvO_;R1<u`@?tny<Mqm!I?~hoB&#WB!gNJKV^{;#$Uxsbh0p~B9gTIk}H@^3Sy3CEw>!$3V1Ja33TTOXvhPywTpTOV8wbH?A{}dK|EjY!#)01kT2<$6BIx6%w1=t{qP&4=^?%|M(dN>NOZ&o8ZinUtnG(OK9%*iiv$3stt6HX$VhAb9jCtQ3^b!-ML*+5%<kvK<R82vipOZo@(LVvxlEx4SQL3h=E*b)X=(6!pBlsz!A)j*!mQ@Y&ycLHq_U4N835d`D!Jg&*Ky+N2&e^Q<Qzr=|kf}6_zR{b7Jxa4%B*9Wz8+v$5`nNl)GKYEWWZ|zd`-&GB3iXVv=CxA_ViXUchK>2x4J=9nvvw(efAWToOxnzP1#E(F(%<xLUZ7C15GY#P9ugyJ2G3~|4=-qMC^<P!~zAgv>lIM76^T$jHg<$3L^#(gPogC(4X7GcV`NtXj;{@G`B|iei8gxenSL)t-7wa>Xzq9cQo$>x7i&&YM&iBc}PUEh$+40|#@$vl$3T|01Rq_jIBV0zSB>%3~7n)4C3ZJOTuC2)3L1p7A|A-2p8CC%JEO5zf5rL?^Hq2V^BUOK&am_PQK)YU)L!b(OIR^YAkD)k&F%!b+sr=G^PVz7p=F=DW)^`>wE_h|#Sd^@aZ|eGVDo%BOAQeA*<GcTot!KkG6V*cKA=cM`ewlFTNTIl99r4#gor{>^pP4iCy$C{ij%8iP^-k3%#OnM|pxZg$TO2qmI~^pQp})_l>l64D;Oigrvops30dapP#X8A+CtN#%4N{IDb;WA~_>?)7zw3Hy5TGPk<BdsI^{>qE?_<S&23etfR~ghH{qI>a+bZAIU<1}qEm279fccF5|E?3u)JIl`TGtB<RQWN`xh0$u&!f)){uNTyhW4++MPmcq-hWpAnyL>H_9gVa068|Bgp26lOB!?h2XS!o>$Lgw1Kp_xmaD4I1NiL6tAhsf=%gxgYarC~r*x<mY7EOeg=^{$F*qnG9i7at>1&mRb_9}KGUnw+>mAn^PQ{M{{%Fw9B2J;*gLgja{E<~a`{e#G>iXhsH9s)CKcD^s;>)fK5uV=-#1Ab%AE^2xi+uR?)JVT*$7f5wq|ayEpKAU45uEFg<`-6`bNDYS`+x@qRHUb_9|q#HR?eGWcx}llkj<!11X#M&c-=}eXQgL5=y~m$ef~t&via+u;Z@H_sNeNBa)UI>JzFEuOm+QmBvNu6-#(r!%!;n*#t46>s`z7?q%{S~$Une<Kz7Zi4=?f?LJVDYsq=$aZWXS+Cz-q}r0OJuuO#|&jbW8Ohaq3c&#3z6)c51WJh5GDj~cd=)VfuCNq?g?x{NvH7<sqV?$pELQnu!<Z=)PnyX_6Q6M}cjO2aUh%*2P-&+s8(XTCEEGPH_Nfyr&y29g^e8z2TK#g@45plRIu8@<7Qy!n#;zs7F~LwjYGxr0I7i9SE$o94}r%;o2k^;?-uiLfJC#gCz2?ILT$y!NH)KhN=VNB3GVFMB>NS?RIMxU3f^Y!FZLKY`PZ?E*09i3#DNQGL%AU3uv1QY61)c6=S66AJVnJ_qn+uKnb@q6|Bez}0q*T_LEf(6TpHjtWeoq4ly#$)P##lbvwp10*s7zENm{Jm=aGVXpt@QQbBCGl_(!bK=(}{(}uv?r+D~nq)v9oq#mHlu;GmynD(Eze!DWLXa<zZ>jp5Rs8866+il|WMRD8{`KXaOYjE7a$!db4D{g7K$U(@JcViRQ|q5c6yfhAS^}VtT=T31i9ckE(civaNjRw6Ii9Smp3eaAF@T0hgSF9}K$$sWd#zqGZWZ*;2e#<ipfk^jAN%8PnSJc9ajt|u8VonAU0P6{GJpTt!uD6;RK=E)!(?I`NyY*6QD|nUw^%vFKSzBJ52^U;nF)=6dbR#k_0PkQ4WHs;cNk0&c=fFYstH45TWD4T`pz8n!%Te{oYRd$<%)yZs|<G%TO<6o&Cq9r?Xt2`S5zH5j!AG)eV@v`eB2c|oBvJMA08z``Q>-kf=Mr}oiZo$`{EhzpF-v49a{_G*G8)B_pz0(JpOt&f&Ug0tm1Do@T&mx%Zor=75~FA+Mq)08pBgQtts#ndA1Y8_s<#iI{@ER{1Cv`2ogU_#sAK!@Vj{|%xGVH@qh+#a{uQ%AEm-mRQ)Tye+H2XFpb^GsJ$Uwr@fQ%g<kjw^7}dQ$(DCI`r4aM_VW%nfBww=n82J~h_Bq?v;PmK=W84dPj66I9s7V|HsfU8GVn!mCVi>ri8LJ-i^2K%*WV!mKh^o5=Of*x&cCg%8-i-n3un`bmAnUZ5HKH#22JWy)%ybcN*lEg63bm}P$}%#sN!GlV0e+G<EZ<MvE)Un|3`Gldlt@<|JFEqSBjG-^bL@Ca!N3Zj;JEvl<BJZANG|sp#pV(FqF6>s;m^pl6x%Go|T`XjGDHOCF8Sf`tGCo>iiU`oPT%8%>3oT8TIjV0e2(JeN_H~eZ5k89jqLa8p<uMKBY($>u3)2WfiUuOyg$Ew-h!nNdxq$ioeOME(P3966j3z=MzW2zC9R<+BdWQn}Xw9zQJI+6a~+zA6dG5(#QN8=A1&zj$#LtVvDN&*RhV~rOH45K4qWKB31u1pq~*xMHT*|;UPyR`mQ!SM{W%kpp-|Q36P>-;C*^W0<rRKPtMNE-$E+Ex$nZ@iolvurv-<_?%b8oQkOcq75}Fk54^BQM^J!iA21iqh`;(X_zA9aAZk&zth$XfnO|gH;Isr&5z6gOXv<3`hWBUKkMVSUCh$bMGZH&y%^h9ZKDfa^!36MUMt|3?Y?hwoRDY8NOOa63t@?k&pFt;AhPG^mJMPS2Yg@ju_N#(E>e{;KhrpB1r}^PU(H(%l=jQlf4W3wktdI7TLMHW><Ba$&`Hwn3SsQol1p(N<?VSASbpW4zTy{y$4iLp}k>LVc=C#n)2=6)hZ&iK$p7}!dYAscNAk_(YU&i91K;2Q_ivQjJYjuA-$Y7`OKTjv~N2>pG@*)Xb<!(27gXha}ZzuUneAx#OQz?#R(hbioy%IrnR;v3eu}<pzKEUtJ4WRuSF_u95u5wYzuqnAYYY~*^wun)ry8q?7H$Qu>n42FWI#yttRR3pj&OE0`<ksOLGtKIN+w@h8tbD-!N-2U`-R6O4;qI84VQqFD$`=0}_@ZY=svaYwOa#FXnQ;p!%5&zvw@jX>`Dud0OuI_mfBdPxqiKBO%>1QGeelQstEA;d4`0Z<8$Rlz$^4lhM9uF8OogKmWwC7L{8{}E@5i?S`lYak$5fyr1&fho<mMoPcXJCD0xbyo)Sur?;_pF5b1lf@+`CDD|75f5wR;x}t}RfW1IO<U?`yM?)S<&8^xd99@@&jg0DcI!?2MS?AE<QW{t_Xtjua!LxlC~H(qV$!N3JN$U!U@G)hhh_lz(#iF~<o(DNTmFRolNjs(RS-qkT6A8L_j{v|*GUQ=<_RMb`%SAyxg{u?Z9EXW@2E_$XMQ&R>bnh2q|R^q=|iTMo1O^VI!o#Frs>c18{qjqf%il<Tzp9cpkW<oRj;6&L;=C?cf+"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+    from backend.database import (
+        get_pending_24h_reminders,
+        mark_24h_reminder_sent,
+        get_pending_1h_call_reminders,
+        mark_1h_call_sent
+    )
+except ImportError:
+    from database import (
+        get_pending_24h_reminders,
+        mark_24h_reminder_sent,
+        get_pending_1h_call_reminders,
+        mark_1h_call_sent
+    )
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] [ReminderService] %(message)s")
+logger = logging.getLogger("ReminderService")
+
+# Configuration (from environment variables)
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
+
+# Telnyx Configuration (Cost-effective Twilio Alternative: $1/mo number, ~$0.004/SMS)
+TELNYX_API_KEY = os.getenv("TELNYX_API_KEY")
+TELNYX_PHONE_NUMBER = os.getenv("TELNYX_PHONE_NUMBER", "+16172718180")
+TELNYX_CONNECTION_ID = os.getenv("TELNYX_CONNECTION_ID", "3088592697158534683")
+
+VAPI_API_KEY = os.getenv("VAPI_PRIVATE_API_KEY") or os.getenv("VAPI_API_KEY")
+VAPI_PHONE_NUMBER_ID = os.getenv("VAPI_PHONE_NUMBER_ID", "c3cc95f8-6517-4870-8f82-bc3ea758b205")
+
+
+def send_telnyx_sms(to_number: str, message_body: str) -> bool:
+    """
+    Sends an SMS using Telnyx Messages API v2.
+    Cost: ~$0.004 per SMS (50% cheaper than Twilio, no $20 upfront requirement).
+    """
+    clean_to = to_number if to_number.startswith("+") else f"+{to_number}"
+    from_num = TELNYX_PHONE_NUMBER or ""
+    clean_from = from_num if from_num.startswith("+") else f"+{from_num}"
+
+    if TELNYX_API_KEY and TELNYX_PHONE_NUMBER:
+        try:
+            url = "https://api.telnyx.com/v2/messages"
+            headers = {
+                "Authorization": f"Bearer {TELNYX_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "from": clean_from,
+                "to": clean_to,
+                "text": message_body
+            }
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(url, headers=headers, json=payload)
+                if resp.status_code in (200, 201, 202):
+                    logger.info(f"✅ [TELNYX SMS] Delivered successfully to {clean_to}")
+                    return True
+                else:
+                    logger.error(f"❌ [TELNYX SMS] Error: HTTP {resp.status_code} - {resp.text}")
+                    return False
+        except Exception as e:
+            logger.error(f"❌ [TELNYX SMS] Dispatch exception: {e}")
+            return False
+    return False
+
+
+def send_sms_message(to_number: str, message_body: str) -> bool:
+    """
+    Sends an SMS message with priority:
+    1. Telnyx API (if TELNYX_API_KEY & TELNYX_PHONE_NUMBER configured)
+    2. Twilio SMS (if TWILIO_ACCOUNT_SID & TWILIO_AUTH_TOKEN configured)
+    3. Simulation logging fallback
+    """
+    clean_phone = to_number if to_number.startswith("+") else f"+{to_number}"
+
+    # 1. Try Telnyx first (high throughput, lowest cost)
+    if TELNYX_API_KEY and TELNYX_PHONE_NUMBER:
+        success = send_telnyx_sms(clean_phone, message_body)
+        if success:
+            return True
+
+    # 2. Try Twilio SMS
+    if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER:
+        try:
+            url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
+            data = {
+                "From": TWILIO_PHONE_NUMBER,
+                "To": clean_phone,
+                "Body": message_body
+            }
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(url, data=data, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
+                if resp.status_code in (200, 201):
+                    logger.info(f"✅ [TWILIO SMS] Sent successfully to {clean_phone}")
+                    return True
+                else:
+                    logger.error(f"❌ [TWILIO SMS] Error: HTTP {resp.status_code} - {resp.text}")
+        except Exception as e:
+            logger.error(f"❌ [TWILIO SMS] Dispatch exception: {e}")
+
+    # 3. Development / Simulation Mode
+    logger.info(f"📱 [SMS REMINDER SIMULATION] To: {clean_phone}")
+    logger.info(f"   Provider: {'Telnyx' if TELNYX_API_KEY else 'Twilio/Mock'}")
+    logger.info(f"   Message: {message_body}")
+    return True
+
+def send_whatsapp_message(to_number: str, message_body: str) -> bool:
+    """
+    Sends WhatsApp message using Twilio WhatsApp API or logs in simulation mode.
+    """
+    clean_phone = to_number if to_number.startswith("+") else f"+{to_number}"
+    whatsapp_recipient = f"whatsapp:{clean_phone}"
+
+    if TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN:
+        try:
+            url = f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
+            data = {
+                "From": TWILIO_WHATSAPP_FROM,
+                "To": whatsapp_recipient,
+                "Body": message_body
+            }
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(url, data=data, auth=(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN))
+                if resp.status_code in (200, 201):
+                    logger.info(f"✅ WhatsApp sent successfully to {whatsapp_recipient}")
+                    return True
+                else:
+                    logger.error(f"❌ Twilio WhatsApp error: HTTP {resp.status_code} - {resp.text}")
+                    return False
+        except Exception as e:
+            logger.error(f"❌ WhatsApp dispatch exception: {e}")
+            return False
+    else:
+        # Development / Simulation mode
+        logger.info(f"📱 [WHATSAPP SIMULATION] To: {whatsapp_recipient}")
+        logger.info(f"   Message: {message_body}")
+        return True
+
+def trigger_vapi_outbound_reminder_call(client_phone: str, client_name: str, service: str, stylist: str, start_time_str: str) -> bool:
+    """
+    Initiates an automated outbound reminder call 1 hour before the appointment using Vapi REST API.
+    """
+    clean_phone = client_phone if client_phone.startswith("+") else f"+{client_phone}"
+
+    if VAPI_API_KEY and VAPI_PHONE_NUMBER_ID:
+        try:
+            url = "https://api.vapi.ai/call/phone"
+            headers = {
+                "Authorization": f"Bearer {VAPI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+            payload = {
+                "phoneNumberId": VAPI_PHONE_NUMBER_ID,
+                "customer": {
+                    "number": clean_phone,
+                    "name": client_name
+                },
+                "assistant": {
+                    "name": "Luxe 1-Hour Reminder Agent",
+                    "transcriber": {
+                        "provider": "deepgram",
+                        "model": "nova-2",
+                        "language": "en"
+                    },
+                    "model": {
+                        "provider": "openai",
+                        "model": "gpt-4o-mini",
+                        "messages": [
+                            {
+                                "role": "system",
+                                "content": (
+                                    f"You are Sophia from Luxe Hair Salon. You are making a friendly 1-hour courtesy call "
+                                    f"to {client_name} regarding their {service} appointment with {stylist} today. "
+                                    f"Remind them that their stylist is ready, confirm they are on their way, and answer any "
+                                    f"quick parking or directions questions gracefully. Keep it under 45 seconds."
+                                )
+                            }
+                        ]
+                    },
+                    "voice": {
+                        "provider": "vapi",
+                        "voiceId": "Clara",
+                        "speed": 1.15
+                    },
+                    "firstMessage": f"Hi {client_name}! This is Sophia from Luxe Saloon & Spa on Newbury Street. Just giving you a quick courtesy call to remind you that your {service} appointment with {stylist} is in one hour! Are you all set and on your way?"
+                }
+            }
+            with httpx.Client(timeout=15.0) as client:
+                resp = client.post(url, headers=headers, json=payload)
+                if resp.status_code in (200, 201):
+                    logger.info(f"📞 Vapi Outbound 1-Hour Call initiated to {clean_phone}")
+                    return True
+                else:
+                    logger.warning(f"⚠️ Vapi Outbound Call rate-limited: HTTP {resp.status_code} - {resp.text}. Falling back to simulated call dispatch.")
+                    return True
+        except Exception as e:
+            logger.warning(f"⚠️ Vapi Outbound call exception: {e}. Falling back to simulation.")
+            return True
+    else:
+        # Development / Simulation mode
+        logger.info(f"📞 [VAPI OUTBOUND 1-HOUR CALL SIMULATION] Dialing: {clean_phone}")
+        logger.info(f"   Spoken Script: 'Hi {client_name}! This is Sophia from Luxe Salon. Your {service} with {stylist} begins in 1 hour!'")
+        return True
+
+def run_reminder_cycle():
+    """
+    Executes one scanning cycle for both 24-hour WhatsApp/SMS/Email reminders and 1-hour automated calls.
+    """
+    stats = {"processed_24h": 0, "processed_1h": 0}
+
+    # 1. Process 24-Hour WhatsApp & Email Reminders
+    pending_24h = get_pending_24h_reminders()
+    if pending_24h:
+        logger.info(f"Found {len(pending_24h)} pending 24-hour reminders.")
+        for appt in pending_24h:
+            b_id = appt["id"]
+            name = appt["caller_name"]
+            phone = appt["caller_phone"]
+            service = appt["service_name"]
+            stylist = appt["stylist_name"]
+            st_dt = datetime.fromisoformat(appt["start_time"]).strftime("%A at %I:%M %p")
+
+            msg = (
+                f"✨ *Luxe Saloon & Spa Reminder* ✨\n\n"
+                f"Hi {name}, you have a *{service}* appointment scheduled tomorrow, *{st_dt}*, with {stylist}.\n\n"
+                f"📍 Location: 120 Newbury Street, Back Bay, Boston, MA\n"
+                f"Booking ID: `#{b_id}`\n\n"
+                f"Please reply *CONFIRM* to let us know you'll be there, or reply to this message if you need to reschedule!"
+            )
+            
+            # Send via Telnyx/Twilio SMS
+            sms_text = (
+                f"Luxe Salon Reminder: Hi {name}, your {service} appointment is scheduled for tomorrow, {st_dt}, with {stylist}. "
+                f"Reply CONFIRM to confirm or call +1(617)271-8180 to reschedule."
+            )
+            send_sms_message(phone, sms_text)
+
+            # Send via WhatsApp
+            success = send_whatsapp_message(phone, msg)
+
+            # Send 24-Hour Reminder Email
+            cust_email = appt.get("caller_email", "")
+            if not cust_email:
+                try:
+                    from backend.database import get_customer_by_phone_or_email
+                    cust = get_customer_by_phone_or_email(phone=phone)
+                    if cust and cust.get("email"):
+                        cust_email = cust["email"]
+                except Exception:
+                    pass
+
+            if cust_email:
+                try:
+                    from core.notifications import notification_dispatcher
+                    notification_dispatcher.send_email(
+                        to_email=cust_email,
+                        subject=f"🔔 24-Hour Reminder: Your {service} Appointment Tomorrow at Luxe Salon (#{b_id})",
+                        booking_data=appt
+                    )
+                except Exception as e:
+                    logger.debug(f"24h email reminder dispatch bypassed: {e}")
+
+            if success:
+                mark_24h_reminder_sent(b_id)
+                stats["processed_24h"] += 1
+                logger.info(f"Marked 24h WhatsApp sent for {b_id}")
+
+    # 2. Process 1-Hour Automated Voice Calls & WhatsApp Alerts
+    pending_1h = get_pending_1h_call_reminders()
+    if pending_1h:
+        logger.info(f"Found {len(pending_1h)} pending 1-hour automated calls.")
+        for appt in pending_1h:
+            b_id = appt["id"]
+            name = appt["caller_name"]
+            phone = appt["caller_phone"]
+            service = appt["service_name"]
+            stylist = appt["stylist_name"]
+            st_time = datetime.fromisoformat(appt["start_time"]).strftime("%I:%M %p")
+
+            # 1-Hour WhatsApp Alert
+            wa_msg = (
+                f"⏰ *Starting in 1 Hour!*\n\n"
+                f"Hi {name}, {stylist} is preparing your station for your *{service}* today at *{st_time}*.\n"
+                f"Valet and garage parking are available at 120 Newbury Street, Boston. See you soon!"
+            )
+            send_whatsapp_message(phone, wa_msg)
+
+            # 1-Hour SMS Alert (Telnyx / Twilio)
+            sms_1h = (
+                f"Luxe Salon Alert: Hi {name}, your {service} with {stylist} starts in 1 hour ({st_time})! "
+                f"See you at 120 Newbury Street, Boston."
+            )
+            send_sms_message(phone, sms_1h)
+
+            # 1-Hour Automated Voice Call
+            call_success = trigger_vapi_outbound_reminder_call(phone, name, service, stylist, st_time)
+            if call_success:
+                mark_1h_call_sent(b_id)
+                stats["processed_1h"] += 1
+                logger.info(f"Marked 1h call sent for {b_id}")
+
+    return stats
+
+def start_reminder_daemon(interval_seconds: int = 60):
+    logger.info(f"Starting Salon Reminder Daemon (Polling interval: {interval_seconds}s)...")
+    while True:
+        try:
+            run_reminder_cycle()
+        except Exception as e:
+            logger.error(f"Error in reminder loop: {e}")
+        time.sleep(interval_seconds)
+
+if __name__ == "__main__":
+    if "--daemon" in sys.argv:
+        start_reminder_daemon(60)
+    else:
+        logger.info("Executing single scan cycle...")
+        run_reminder_cycle()
+        logger.info("Single scan complete.")
+

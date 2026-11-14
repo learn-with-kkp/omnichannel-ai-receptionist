@@ -1,36 +1,347 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+"""
+Categorized Tool Manifest & Schema Registry.
+Organizes all conversational AI voice tools into enterprise operational categories:
+1. Scheduling & Calendar Operations
+2. Omnichannel Communications & Notifications
+3. Knowledge Base & Salon Intelligence
+4. Team Routing, Handoffs & Escalation
+5. Synchronization & Data Lakehouse Integrations
+"""
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
-    )
-    _s.exit(1)
+from typing import Dict, Any, List, Optional
+from pydantic import BaseModel, Field
 
-try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-qZ-d012D);%#mViL$n$UJ}qDMky_-fIiB3Wh@j6p##%keGlB2@*iDQn4b61kkHsiwbHHwN(_QDq6Gwl&V!B)Cvls1&cBdij)?IR{5P1hh8;@-|h2#e$V~;JZE^{cki{=T6-VWB#MxKI;dqaU7V2<Xf17?EIT9oy;B2ZMOQwR(Dd$+Dn8~kYe?(hSC|#fR^(Xvp1?E@F5~1o9_(fS7wmN2e8yo#Z8SZ2!!E4T$9reV3|4LX(r9@Jm8D!&gB?%Ivp4wtm`)PqHqIpj_ow<8CN_7*$k#<w4cV!$Q#HOR5%(xXDz<;_wuQEw!FTDu3;*bh;pD~~d?-n8VlD~uKp&M{#sm<J)xHGIZKu#`Y+E1yqdeWdF_!!SH%0Aad6>1+^@E_|ok4h7hnK1fYs~v7tR`T87g|}vh!N|ioc3>VRiRGhgEs8F6XYf6Ykd*+`lLfct1bVf3>CX##<Yzq2!8slmV#Lw&f+SITcdn+4OrPnRi4Mj%Xty~(D$K&b9RK=um`4xmJqKGK-YZ_KBWSE+&J-Mt5WFs(}Rl(f&t1XPgYGWFPWz3$A9yXy-<(+Oz3QRighgl8?-$O`wr)}7kk8|`A=v0VQuA88PHFFzyEaT$#`5)R-=qf>TvckSQQRNPt03ZRr*0lGc#B|g?OA+G>-&kZ{umxZ@Yx<rWQ8D(l+{*4RTfW@b?Ld6qmI#g7ON$dBHjH^buimXEf)gW93upkMv3&%^iP8eRB~`*3hV+VNBOs+gGx_(4KnARU3soUk^qTtH@OrwjpEAEYu$}MSVi!@MrQi$NoW->H_?HKht$EzhE96H85Gek=)R$qitPY(1XG0sXBo!Y|M7kEWc^SMy!C=F-2YBSw9@}PJZ;EE|#QO$W!y|$1p{+l2OogJgMiMxmD!0fi$0*sFE%QP^bjMCNT}~LC;6+%nwI1db~t?s2TeLfpyFCA6W?2D}7`$J~X{woV#uz9@FD)GcvVdG>w<P+;DyMM@PJT7EN^Bto<!)R?Lb08duK-$|qmE|EN|t`=;Z@4m$Xhm;y!w?2?>cAmbR<^90hp@zj0jy3q()uG6ojp%eZU_^x%L(DZzCPQDUDzU!%~pzb)s=k+`GmP!C<{{n>pWAJtO`vub7Jn^uyuw*4GC;IRhLvCa*4CC3Zk+(*2gY)vkz2&C;E!@YK*Fg7&s?L)%l$3xcakpZ)zPonKA&~bb&^KeQwQIO*m-YT&DZTzIei@%*o<DyteE*KyI^4QtdmdZJ>&TM`I=@Zo)<~%|qc~9T{@uw7&Y%k~XsP<7!voepGms$A*;e@9T4W1u|CgnJ^6N~Q0bAdzqi=C6?P4qH$uTS)!{Gn&{ollgR!=DG*3#ESf89+5>+N*3ndn2JqSZD&7cMeHjNy1iIdndYEiOBCt}(5jrZcTST$)(~lEO~K>u$VU-}CFFroZ-Q@5}W&?H^!DvxPj0`vil$S;P$6uoFbn2V7Jo4m%E_|NZ_K`+H?R#`?CW>ML?XzeaJ>vA>ohy+B_|n@v0&x;d3J--I87@u6SQt`BN#Hbw7$D)FhcOYzm=PbscN;iblJ=h~3(x&5`j11yQ2m=Zh*eK@FS^)q|{hGVE>y4Sw{+4^3_KYYGPgxp0{9c)$h0_<Pk_t*MLbSV9zYB+zKQq+#bqrtTzs;Kr7HpI95Gxi(%1K;n?_RiT6I14rEqTP-DxnIN0hvILp#rhPUndk2qOyF!<TJn^nYEXI57>rW&tMTzNzP!)dMk)9ZzFu}0pf*2z{rZddKk;u#xAn^@_>@2ya-;SM&*kyW?f>)V50k(DT?g+!lz&kCP$DA6%$@J^`zML`%qqWYX#~H_FL5&IZieU#`sZOCw<h^uH(RAAYQT@sRq7&VE^%Wkb~>laIkd#CuAM(~ZNkA3YFNzzUhHgQmH0ALKa9r~(&T%IqBC|i?fmK6V+;fDhg_gWg~xzT-a~qSi}~|0#owuiq|h4MCE_VFDiyU_f?rkv^nH)!nAx9~_j|uM|CKghX!qX@<s4D+ke=_@djOC&J1kLuY+oV03hjSw<!7!^LmK9eu&#XtL7!YT1OVT2Q^ZmB6=5x|3&0<?S_|fur=p&Qtv}%5f8xDAkAfD(^WS$^<ky6>zk%lC1HOJXxoU(VZ^kZ^xnc~AY*+L&^XK#I{^C?rNbVJ~AZ*yn*MR+{#CaL=`M-%j8-vbAl0?OgG63jw^R2-C+|Cavi!k(|eDqVJWbVWf*1bjcej6I&Y^_Hp%g2OI`gHWQjyt+AU>z=srQ@FrZPdyVHe`om*rOVH6{YaJ#-i4}e+|<6e=r-L+ivm9t&cLB_)YM&bgnOyf1Y8(Zod17Keva{*Xqg+@IQL}`PgsXIR97i{l)VYxe@z@LUDRkgxm?WM)6}B-A|w83w?haLVk0=!q3C;R&f0XGxkk``ALU`kDjZexw4K(uSF5&=YFXakOn+ON6FXz<lE#q=5?{dYMH#{uGR+04IR$LSQQBI6SizO`IiT}smB6)?@__?_EElk;aKRk&$y_=MRTo~J@L_%=(gdN(wd0<_au^fVse<r#FOgFuB70?EPn!OuZ!T2UEQC2&ZdYx-I5R^gBLj&f5`vOG%PBoNNCBq|Bi{jtdtjMtL{i7SGb9^)vA-M)+i3@<_;_X4DsYAq59~esK=X&kFejS&NX<}|C!1;JG1uy+1Ka**RLnElV<aS<X7YHsleIlSWIm+70k?5&SDJ5*^G#CzV(#$o6WyB_ydH0tAyt3%bt6rg-v!T5Wjq4Q8bSkSXf}GH5dPhtkZt25nO5R8ijZ8-uGr9<$vwx{<h2>Pi-}(sePJH&C0Wg`2okrmKCQ=@v&4e8+~kHv12l7ocv?l(BcK#cgkp-yUq~)?l`xKy3rA?k9xakn#TkK>*flssJIoUMathA<mXe|@yA13(p^H<6$vp=eV%^<8Q&oO;uZ828saw!h(C3(!m^R^6TYAPJ#(paHu^}=wM8^^LnF?Sa?eGyN7&RK4{VI?Y2$=65PgIn2OJSKMsZR4Y+noDe!Qw0;*VN-W`yCML~g`tKpy^(xG{<uXxuUvV03uV|3GiM<03b{_q5W-YP0|QnC0Rz=})dS@8X?v36y*BAyt&7&a?%Woe=k*y#=v;h25U2ID@XcsiUmbetjSaxRo*vewT)VtppQ4^RG=O1#i4!iMao!_}CUmqTT1sh4TlB52w5_l23zDqi{tZXSK$0#JOt~0@U4j-wLa?!E{cIc3%%kQV-$3&bm}^DIJCSYJZHI^!8-=x5T<$t<Czx{re@T9EU`;J8CSgagjq{Zeu)}+2brOrxbQ3aBC9wbUJV#{1EBD3i)MMws&@c(3%48FVHZo3p<NP!tZYa$`R|Eb&uy9NT1!*Fg8W^AC=4-zrI=cH!)%SKOFQ^G)-7*9)DllkIpMlpfCe7VSQKf5BXV9SvN`Cz>KAN;g3tNy5hm@nR8IU;W)(n+lKsn#^qF0V8&YIEOy5`aD9G?9*4h-fG_X~174@<LK1~d<M0<AWeV}I{HJKFG^0oe;X_=?Zfe6F4JQ-QPd3VWVhYWPF{Wr)P4LgnnuFqWI5UTJNcklVN=MoscV@`WqB#WAkej^3v$ZpgvqfvFFPQQ3ufZx=oVWm9KMvBTIOOM><Im?@()Hj!t<wU&ll~OJlol7v7mzx<L?y(gc0O*)vOS%4z$WIqA&Ua;;__xnft$ZDMUKbQZ8}0TzV#e8|IEgh@}gP(ISJ&mOT|BFIS_s<gYex&Q9<b$&{FhHou#4T^FX3__6!q#pf5J!P$qowZ0pqm8{z9dHMXCq-HB@?5Prkg(N@1sR#lUm+BG(3Vh%nff%TBSBE7*+e|S@0q?pA|vXPr)+TTlQ9Pi?SPf-@bUb52=ek5?VK=l(tM&ReK@uLj^H*^HB@D`Q=+~<WD(8hy&Ms7^+Ba--vttNa%z+r_^i$@jj2oyY9fAJ{aVQa$IrL2%kOgEaNRkgT58<w&zUrGAsuQTb@c1=Axe7)nrP5`JOMX4tRoL1dP=ZXp&=Mbc$PNI=1ZT%Yg(ZtH9c7hsr@k*WT>7dpmrYN`3pClcgEUOmY80FjKMECYlm9@+zw2v7_=U<ECii}0!0@_{Y5Cf&jbba5~2>cej+?fiTS$^y>iCnClw7}D{%7p(2=PUjvu__q$e@<l0Ap&=2`)tG;q5Qu({h>kjky(9Vb)!3yb7px}H-w@N39>0nsD96qnB}k8)L5}2>u69*6ak8#Re(j0#w>mmr!mDFiUVoDeUEYV&5Qc*e}I2sWe>Tb^$`9|bvPbc6vc$~tEK7uP(QY>wE3Uaw^UMIQrTOsZ@Y%9<>#mxk<O-6eK}P&KXdaOTVU^G-;wE8I@54_mYyoLl+}?nG@e7btR-FMr*BM{51vS;e>)MbZ~y)E`{nwG<%(;OGVi=?;TY@Tc-gnY`nx)L_9tbJEbOxp-(O_5{+iJjruy}hcA_L>O`tXGpX9z#KlZ-KpC_2-$It6uNenG-arNVAAx(q?HP60WeKj@Q=C--|rivANO)L}tm`V!L!}{;?WZ5Zd;r&#(K6TF{3%QZa3;URLRD3m+3hJ}4*1+gg)fsAGM=ZW3qPLGBuOX+<Jed`eo32p(+Zisf>YpsH5H{bBX6u*rc3A@#?GhHk{^n0wdvJS!5U%eC`pDLM=gv=QgkNF*VMoU*`nu(Nx>!i~+P;*t?i1L5d5n!$@U2RN?nL0B{AY#vmLueUB2%!g;8Pmv9tEthx;~JAgX(|f90Yu8xUHjXPOKVYf!RXdqS+1x1pQ(eaviD<9>g;L;tyrvw~_e0U$wL`7K*>JIo5BPf4>L7`W90^7)!5NRC15>yng2=b@@T{`y3+}EMIB=1VrS24zK!?ulQer4ZA=LrfsIW3fl(Z*G_!zIQnOr&Gw}*{$vwVK<NA#=KZOc{*$U@HCvpKp~SNWA^iuA-Phr^IG(!0R@EqVK8{#}Ur{O@m0dJ<qV&N`dWC(%Xc~|k+dE+CT}Rak9Erz*E<1%I`Ww^D`cp-&X7OjYr)aNT!vh@`ijRi>4S!$>lwT*+H&#%<6ZtYSYrxs(G`e|s8iKwh^>|435HAfs_n#Nl5F=H5+tSdM)iQ5=V<3w&?4_zk6?Vtcv$O_CKj^v1LMQaGpetIM)R;9_K-udo`dSF{N0a`C`40nu-#VQhu#`W>ekSDmb+L-$ZGv;M=Gd@zBjk_P0?f&V&xhh;z_<0UvN@xxgwFT#`R`ks_y5i=I@rgNKE|em+c6FD#wZT#e~Qe<*Awv#Ej1)FE0BQNy_CKcb8S?Ius>EEo}s7F_3fX*`8&KCDgH|0A^d~*Yf?P}s?VhH`MrnT5jB**=)$aUJi7}4pI*j?yJ)vn-C!!L&*1p>T&ec5hw+aUl(`-D?<Xu9nOL`PF)dfK=OHtsftn!GF$~I<bZ&4?fweaxKVKq2jNe2{L*Sh_rZgAkPtg7x(2etbd*ggcX>fj?O|E*#Rh?D2eLN0+0ND(UuREh60On`V`FPLl`IugUsk@`IsfjrCm<{RkBr(r^Ox2poMQ!+Uz5q4wj%b9~yw7{;5y$&gAWF|l03Gp%D8-2Roz4;>@+W#oEuaDISSO`dwc+gN{TD?3RQxX)>|aoKlj{aG_Gewk_g^xjEBmbFO{V@76yHJ2!0dw8>eC=wpvP%IXF`R%6|R5d`737EHxZ$J!2a&~Wo7rE{CAlo<8#-*`v>=Dyr<;+2m8Y{i_d6%zOQNhM={OaI_jB!J0B!}?KS`Tm_LEm;{uLgn)m5Y>yxXX`ttAiaj`KR!|a&~R!|FvBRMs~k}f-CjdD)dB;qkuYr0I7U8D?>b~uYi>@MBb+US#C`i}vRSeIkCVDVaOZ-o4w-<n2R{o?$-wQKH91M-sk_nXaMYK47U_bNEQnk?j(m<c`}Gs@xmO1^cLVP4<*RVi-8a90;+fwQc8rpT%%!203}0>1Oa75Gd2X`I~U5Wi134=fcU;MdZF52*`luo}<{ik}OJ@jXf6WOYJ(b+L<I9>kw)bH>r%jkp*5W;6}IKIzB-^ZMt-{r&eyJ{N4`g>Zix#;1c&{e%18d(gMqKjY*sDl47!i5{CkbH^W(w?u}b5%~vw1hGGoZL10MvO4yb`vYGpt|oE=v-9El5${`pF+%!u^RkjZxsn<NPckFmkf_C#9hgxdq$zeI_FoYE15<p-TO%pp_A(icHTbssS8SO7?9&i7MU_32sLv@Q!zNi9{PNuq{nvSB@y`;$KfmuL+)u1)Pk_EJ|N0yG;qXfQ|8;%tU;OG-{~FTAu>O%=i6RNs<qHYGJ&L3X-*jICtc!s8bMtHUA#8AJcm>>__+V4go<2^9k*o>VxfuK}>m2;_Td|<DezK3jqM_U5Pd<9hA9&qgGNQmbQj~yiI~I3eB|%l~@TXayn>lv`_v4dQ`0b8WLrm{lZi?7TIHtH7CkxtH5RQiD2g-4UqiKvRP45jx$OSqN!k;pj-@U3|6k8HYx-sNprTmThX1+d#2SfTF_V2(7Z0pT5PT_JS{5gp>c7FzJHtCOI<)j$CWu<?Sj)uzkQbD5(dePTR8`uZwpU~X{7CxPXWSYCxG3B*%s>z?04!ME5F~79)ZPzc~T}o5e(c@*)0*;HX#^O<#Yp~Xw`)-nF{go|=y-zt(y+c$uv_9@-SFC^Lmx1%c5cHu@hxI#=6+(vV|FFf61B*@k1HnH**R(GtY|)l<PJ{WM+|zzd7~KDDIm<xeU-H&O06dYUw4FNaCaJ=<jzao(dZ*d`Tb$}7y6N{=8+}q0#D6-tiN1UUetBxZI^+^FMLZk!Z&Hx^6OP2g{;i84{4Q8Pd&~Oh1K_b2{WRJ*s<qcU9_nI&uzvNh8uM?7;t*>Q@nx_1`fAe8OT_NzBjT1Q!s?wn<`UjEKXdHxTu?zS?2TowPbe#8`ChWufI9Rs)<Y+M`Y(+^HkhHQKI7@T^uJLb`X7?!T%j%zPl4)Rw>uRqT<dQIw0VgRk$1G9{{#Md+<g4V%kj_F|MdV}@tB+-c*(yI{Fy{sga55`QV5)1Fn=f@8h_W?tcxpqBndGpKLw{j`maa_;eQsE#@g$pt`HhKV`#aKl~1Xm=aeDgt`kqNZpAQz^#$Nt&9565|Eu#0ihuF={@083Q|li@(6gO7*Nnrj<!58c9?=E$ruj7J{qC;fjZpoTcDRW4K=G-=<wqPDl7KaqDU3wK`Z^JLenPP>?qDZNTC4J)eK>x77R+G5^9|vm;x&-|LeQ@->sz-Qc$CucyNQ1um5@h)D5*<8m8dm}24*)}U=&?3^!u1gzsCZ(%l8ejz~%)!Dpda!4LZ2~E9Q;IPt5W!l==LghSx8t?y#1A53P^xSFXOinkme^viyznX?ex}`s?~9((&id7SZ!kz8(U?YMi2EQ)X01YPFQWjIDtX|9?&2s&rwFMELyv5uB+9F{Cax`sWy9J6~NRGR^1A&<Xg~$Hh0bG(qlb`T06OEz4KXq{D9E<=Fbc#q#~$+e;Zx{rgm?vpT5$$(10^%~ukEK`(Gjc<Dg|3*x`~CEn+4<J3Hx5!Q`p9BA?%hBfqZZ0o+2jE#x=OD)y4)JQd-IsE$k+i)yxV={Dp@o&VB`S~5jRUH+C@ze5wn{TP-)qz;sjnRkil9DcRmx_`6k;6k6@pWo4Jf8r^*OFZY;do#;-lq~>II5-QCH3BBsT%=}Xc}=$*1DRD+Ef%SK;3r>Ey1@9q~YovPd(&{P4jiE(|*m-G~va@`FKpv6xjbCb(XJ9I*ho!m;SZzJRv^rg+H+=TZn@B(XjdcEjo8YAj$%sFY&A&jOOHhQq{!t$rkb~Q^SW4^dUXu0!0(&VSha4vX&jB-v-Y=tiW_2JU?SwAkpfsm#CTy)nC^yJ}E=sPhVl`I-@yTq79G6?O!^5H%1b)zUBPx<|c;o8DsM<Y4LFXR)FbwH+0X0hJi$Rezf6FuDFKiM)R`YA9`&yL3FWE25@fk<R=0O`(jyZVgAR_+bwzCpT-7d@0^E+=K~S>NuF8%VjhCNTvql6N`9RQ^Yctb{R*!5i~q&^PvflB6+C47Hc)jTcKBneJ6gP8!!Cb#z65+NekeSAxhcNR6!;URS0)Qeh|PDL<p(16-(!cKBk};9`(a35F-`sN*XCCxHN;5JnFY^pgtLuTA_=G-7li=@#lJj%N%a5#G}uPTya)!r%dUhV;~9T|_P~QZ;@U78N&CXJ_ZHR1NKIntJWh+x>u5H{Vt)dq%guKL;@?{8^ZkeC8z!C(ZGiM)=Guk88~p=SirmTiFccq7f0utOHw>_R&M}uPceOr_lz*?SZxuip^a!b-826=-ApSVOP{R7#)$(XilNN_6%m_qrI$Tt{$%UOOaqE+-23Vk;sx!^+46m>NjeF#DO80*@Uz&zrn^ZYS62S3`gimF^lEhbFe{04e@f9syQe5T>&)-^ggyta3&(1^B`rWi8<ZCxqa@Hm8zX$85_s#oriuEyNJ(lVQrcRK!U~E-uBpyWQ?+RTRr^8xOx#Gfc{f}_p+_g$P+cbX<;fMMD)l2_2&0;g$e<e3#mq7L52{QjS`9GEF%ZWI@ohJVp;xF&tc#z21;#m0yD&%`*k{IqEWV_Dr-v0SQl6)^i_LXfzr?dQ!w(<^JuwEG&=4DwC_PHxvY~1aSCyYP8VU|BlM>rqDkd<$}twsdxUu1C{S5&-HXwtXCGvC11xo^gw`TojFeQxtb#QsNQ>2;?RxgF-T1mbsMg#PpE^D7bMl%~EVa(yxszab6GrBM7<vTD<r!G&7_0c#U~{<$-Ts$bUolnvBPTtb`dP_DS@iucZj@RQNu9C`v>2kT#r0n$%;NT0X_91i|biwnzGI~S04PWBzKy55^g)u;Bt`hmGr0O@<(ZwqC<8Ea*9R1cK@RzHrW(Kb24`%^<q@r?*L>Q}T90O9_I)jgiX0M9?d{AdUR)-c{h@Mq3`dhjtf>BaoZ&nsvGlRiM;_bto0f?aTYw0Wscqp#mjduJ2OAJALpBgOx^h(mWsNe$S<I4@$A^lBX3UqtdBD^x8J*q~yF|3dk<v>az_H}8+($dvog`H|ZmtW?}Yz$X*Gd7xwDoB9iHv%kG#i0V^E<}GkyjEOEqFoTT+3KZp@>HnKU(-8f=50LvK5WX<)x%qCy-sshhyFSzTy_g^I^<Y#;Zn{gx_aCAB$yqapY|0-9ALlYQMfY}*fd-0(_H4dU=C=u|->lzw;))5|N)YG2#x(!m`OdFwuMfQK@0Y{#887s^)px90I!a*fn(_KW$$w-18;T$7R;^(Ofc-JbY~pEusD7<_L!Uf&Q{S4$?<c1Ds)j}!hTTn(l;f@;_`f)7V0enJfd==V;rY6M2+lib7I<18_bE!G2j}csX#Jc&kHiA&p3NUAm#aM{j46uJ=z$qofdcCe7g@E?IG9NPG4Y$haHRhKh<4(7Rn>^4>HiVFWo2q>B;{|;A2s~*zjOY`MYbE_U!fFza^-*>yuLu;IQ|gCe}X?Y={LM|`%a-10{$WOmm}(ccmY4)JH=00BAC4kO9X~JAbc+zj+N&xEgNtEE;6I#vx#GnJ~sKkbgS{^Gavqq{-5HD=<mk3f*QC#J3ZqK|LK!A`@iPrD_-hX3b-LNa2EP5Pf~%uF&Kk1pZ=OY=wn8C^O=9eAMLKQ#DK25qmyq-+|x%|c%GU_b0&;I^$+4#o9EKm-SKez?@OfVli~V!p3Dp5F%PKW`7emSqPPRjq9>sF`K8)Se=?`-g@2j#$^Jf5e*|HF^r>ZiDER-YI1hBWx^V?zb=F#(OnP)RqCU&XpN9k5ynN1h8rv7sa%15B{8ohjlOni!-Kj1MsSyk9|Ln5h7W4Dt<R<PCXnzl>e_B0mf0l7;1zwt290*K(&QFrZ?+*<xnW%^3&!@pQUN+4Sxj$vj|J!V59FC<x{G^k*uto{RXTTBY`{4ge=P-co_&HU?pWCAu>l3;UAkGIoMDAb3g;!9Gor#=r=L<~y?gjpM*_Vm0E=HKILjM0_Sy|}>b-ly0`S2@RylBJLKzKe}T!CvC(c$0Dd@ZBL11v|il}O%Lztt=F_Sf}vlYiBYv6^=K;e3qU-giYMp7s5))O=Ox$TabJtR}>Xv7dZPM*ue#g|nv)xZ8|S>mN*#|LE0wf$P)YB2>HEXF~i$f-3zo#B0ha6F!wpQ<O(njajRjl~Li70uD(VBk`#91)vSP3)0`h`hGs6Ci&D5U4D)l`SSnNAFkk@)kll#5BQKi@9kg#-LpcM;hi@v>+$<|^_gmo+dFO8lx&yZ>VkM@7ae>`3ahh?7kl|-SiIB^1FrO=nEG4OfJ~>YrT#X0hbRHx=BVF!5y`jVmHqp|^nLJkx}WL$&=scZo}v=Fx&c0~8h>^TAU&sy5qr#l^r?stl)20F{~Y*7aN&UuP5<w@L-DO9nDW~_9Q|E^l8zblpqC48^=WNt681c@0P0x0uu0Zqel3ehqT+&Z3~8^ItO{2M&p#)39|$Fz{4GmJU#*sLj0d0T|8L>>62=zCJ)M$eom1v6MSE<Ec<Ar4{OjuI=~KVQMSU^#!C8^wum7hLKkRy$Uv_sr=_M1d_wj*TNWWUdXJZrOlbBC5*{|pi`2XO1_k)iurAEe7fs@to$YOXt^~&;jrv0b14X?uIn*L8|PWgW~8UaW"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+
+class ToolDefinition(BaseModel):
+    name: str
+    category: str
+    description: str
+    vapi_type: str = "function"
+    execution_timeout_ms: int = 4000
+    cache_ttl_seconds: int = 0
+    idempotent: bool = False
+    parameters: Dict[str, Any]
+    required: List[str]
+
+
+CATEGORIZED_TOOLS_CATALOG: Dict[str, Any] = {
+    "version": "2.1.0",
+    "categories": [
+        {
+            "id": "scheduling_and_calendar",
+            "name": "Scheduling & Calendar Operations",
+            "description": "Real-time Google Calendar slot discovery, appointment booking, rescheduling, and cancellation with sub-500ms latency.",
+            "tools": [
+                {
+                    "name": "check_availability",
+                    "description": "Checks real-time open appointment slots against Google Calendar and stylist schedules.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 3000,
+                    "cache_ttl_seconds": 30,
+                    "idempotent": True,
+                    "parameters": {
+                        "service_name": {
+                            "type": "string",
+                            "description": "Selected salon service (e.g. Signature Balayage, Precision Cut, Deluxe HydraFacial)."
+                        },
+                        "preferred_datetime": {
+                            "type": "string",
+                            "description": "ISO 8601 requested date/time (e.g. 2026-11-10T14:00:00)."
+                        },
+                        "stylist_name": {
+                            "type": "string",
+                            "description": "Stylist preference (Marcus Vance, Sofia Alston, Elena Rostova, Chloe Laurent, or Any)."
+                        }
+                    },
+                    "required": ["service_name"]
+                },
+                {
+                    "name": "book_appointment",
+                    "description": "Commits an appointment directly to Google Calendar, Neon PostgreSQL database, live Google Sheets, and dispatches instant luxury email and WhatsApp confirmations with dual 24h and 1h reminders.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 4000,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": False,
+                    "parameters": {
+                        "caller_name": {
+                            "type": "string",
+                            "description": "Full name of the guest."
+                        },
+                        "caller_phone": {
+                            "type": "string",
+                            "description": "Caller mobile/WhatsApp phone number in standard international format (e.g. +16175550199 or national format)."
+                        },
+                        "caller_email": {
+                            "type": "string",
+                            "description": "Guest email address to receive immediate luxury HTML confirmation, 1-click Google Calendar add link, and .ics calendar invite."
+                        },
+                        "service_name": {
+                            "type": "string",
+                            "description": "Selected salon service."
+                        },
+                        "stylist_name": {
+                            "type": "string",
+                            "description": "Assigned stylist or aesthetician."
+                        },
+                        "appointment_datetime": {
+                            "type": "string",
+                            "description": "ISO 8601 formatted datetime string (e.g. 2026-11-10T14:00:00)."
+                        }
+                    },
+                    "required": ["caller_name", "caller_phone", "caller_email", "service_name", "appointment_datetime"]
+                },
+                {
+                    "name": "update_customer_details",
+                    "description": "Updates, verifies, and securely saves the caller's full name, mobile/WhatsApp number, and email address in the Neon PostgreSQL database as soon as the caller provides or confirms them.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 3000,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": True,
+                    "parameters": {
+                        "caller_name": {
+                            "type": "string",
+                            "description": "Verified full name of the guest."
+                        },
+                        "caller_phone": {
+                            "type": "string",
+                            "description": "Verified guest mobile or WhatsApp phone number in E.164 format."
+                        },
+                        "caller_email": {
+                            "type": "string",
+                            "description": "Verified email address of the guest."
+                        }
+                    },
+                    "required": []
+                },
+                {
+                    "name": "lookup_appointment",
+                    "description": "Looks up existing appointment details for a client using their phone number or booking reference.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 2500,
+                    "cache_ttl_seconds": 15,
+                    "idempotent": True,
+                    "parameters": {
+                        "booking_id": {
+                            "type": "string",
+                            "description": "Reservation code (e.g. LUXE-1110-101)."
+                        },
+                        "caller_phone": {
+                            "type": "string",
+                            "description": "Guest phone number to look up existing appointments."
+                        }
+                    },
+                    "required": []
+                },
+                {
+                    "name": "reschedule_appointment",
+                    "description": "Reschedules an existing confirmed appointment to a new date and time.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 4000,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": False,
+                    "parameters": {
+                        "booking_id": {
+                            "type": "string",
+                            "description": "Existing booking ID or confirmation reference."
+                        },
+                        "new_datetime": {
+                            "type": "string",
+                            "description": "New target appointment date and time in ISO 8601 format."
+                        },
+                        "caller_phone": {
+                            "type": "string",
+                            "description": "Caller phone number for verification."
+                        }
+                    },
+                    "required": ["new_datetime"]
+                },
+                {
+                    "name": "cancel_appointment",
+                    "description": "Cancels an existing appointment, releases the Google Calendar slot, and updates database & sheets.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 3500,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": False,
+                    "parameters": {
+                        "booking_id": {
+                            "type": "string",
+                            "description": "Booking reference ID to cancel."
+                        },
+                        "reason": {
+                            "type": "string",
+                            "description": "Cancellation reason provided by the client."
+                        },
+                        "caller_phone": {
+                            "type": "string",
+                            "description": "Phone number of caller."
+                        }
+                    },
+                    "required": []
+                }
+            ]
+        },
+        {
+            "id": "omnichannel_communications",
+            "name": "Omnichannel Messaging & Notifications",
+            "description": "Automated SMS, WhatsApp luxury templates, and operational staff Slack alerts.",
+            "tools": [
+                {
+                    "name": "send_text",
+                    "description": "Sends an instant SMS or WhatsApp confirmation message with booking links or directions to the caller's phone.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 3000,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": False,
+                    "parameters": {
+                        "message_text": {
+                            "type": "string",
+                            "description": "Text message content to send."
+                        },
+                        "recipient_phone": {
+                            "type": "string",
+                            "description": "Target mobile number in E.164 format."
+                        }
+                    },
+                    "required": ["message_text"]
+                },
+                {
+                    "name": "slack_notification",
+                    "description": "Dispatches an urgent alert to the salon staff Slack channel.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 2500,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": False,
+                    "parameters": {
+                        "message": {
+                            "type": "string",
+                            "description": "Urgent alert message text."
+                        },
+                        "channel": {
+                            "type": "string",
+                            "description": "Slack channel (e.g. #appointments, #escalations)."
+                        }
+                    },
+                    "required": ["message"]
+                }
+            ]
+        },
+        {
+            "id": "knowledge_and_intelligence",
+            "name": "Knowledge Base & Salon Intelligence",
+            "description": "Fast semantic FAQ lookup over treatments, pricing, parking, directions, and salon policies.",
+            "tools": [
+                {
+                    "name": "query_knowledge_base",
+                    "description": "Queries the salon knowledge base for treatments, pricing, parking, directions, and policies.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 2500,
+                    "cache_ttl_seconds": 300,
+                    "idempotent": True,
+                    "parameters": {
+                        "query": {
+                            "type": "string",
+                            "description": "Caller question regarding services, stylists, pricing, location, or salon policies."
+                        }
+                    },
+                    "required": ["query"]
+                }
+            ]
+        },
+        {
+            "id": "team_routing_and_escalations",
+            "name": "Team Routing, Handoffs & Escalation",
+            "description": "Intelligent squad transfers to Marcus, Kishor, Tasnim, Raiyan, manager escalation, and call closure.",
+            "tools": [
+                {
+                    "name": "transferCall",
+                    "description": "Transfers the call to another specialist assistant in the Luxe Squad.",
+                    "vapi_type": "transferCall",
+                    "execution_timeout_ms": 2000,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": False,
+                    "parameters": {
+                        "destination": {
+                            "type": "string",
+                            "description": "Target squad member: Marcus, Sophia, Kishor, Tasnim, or Raiyan."
+                        }
+                    },
+                    "required": ["destination"]
+                },
+                {
+                    "name": "transfer_to_manager",
+                    "description": "Warmly escalates and transfers the caller to our human salon manager or front desk supervisor for complex requests, VIP disputes, custom requests, or when explicitly requested.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 3000,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": False,
+                    "parameters": {
+                        "reason": {
+                            "type": "string",
+                            "description": "Reason for human escalation."
+                        },
+                        "caller_name": {
+                            "type": "string",
+                            "description": "Name of the caller if provided."
+                        },
+                        "caller_phone": {
+                            "type": "string",
+                            "description": "Phone number of caller."
+                        }
+                    },
+                    "required": ["reason"]
+                },
+                {
+                    "name": "end_call",
+                    "description": "Gracefully concludes the voice call with a polite salon sign-off.",
+                    "vapi_type": "endCall",
+                    "execution_timeout_ms": 1500,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": True,
+                    "parameters": {
+                        "closing_message": {
+                            "type": "string",
+                            "description": "Polite farewell message to speak before hanging up."
+                        }
+                    },
+                    "required": []
+                },
+                {
+                    "name": "leave_voicemail",
+                    "description": "Leaves a polite concierge voicemail if an outbound call goes to an answering machine.",
+                    "vapi_type": "function",
+                    "execution_timeout_ms": 2500,
+                    "cache_ttl_seconds": 0,
+                    "idempotent": True,
+                    "parameters": {
+                        "customer_name": {
+                            "type": "string",
+                            "description": "Customer name for personalized voicemail."
+                        },
+                        "message": {
+                            "type": "string",
+                            "description": "Core voicemail message to deliver."
+                        }
+                    },
+                    "required": ["message"]
+                }
+            ]
+        }
+    ]
+}
+
+
+def get_tools_by_category(category_id: str) -> List[Dict[str, Any]]:
+    """Returns all tools belonging to a specific category."""
+    for cat in CATEGORIZED_TOOLS_CATALOG["categories"]:
+        if cat["id"] == category_id:
+            return cat["tools"]
+    return []
+
+
+def get_all_tool_names() -> List[str]:
+    """Returns a flat list of all registered tool names."""
+    names = []
+    for cat in CATEGORIZED_TOOLS_CATALOG["categories"]:
+        for tool in cat["tools"]:
+            names.append(tool["name"])
+    return names

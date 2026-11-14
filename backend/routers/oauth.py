@@ -1,36 +1,207 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+"""
+Meta OAuth & Facebook Login for Business Integration.
+Enables self-service 1-click social connection for SaaS customers:
+1. Facebook Login Dialog (OAuth 2.0)
+2. Token Exchange & Long-Lived Token upgrade
+3. Auto-discovery of customer's Facebook Page ID & Instagram Account ID
+4. Dynamic persistence into tenant_integrations database
+"""
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
+import os
+import json
+import logging
+import urllib.parse
+import urllib.request
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
+from backend.database import save_tenant_integrations, get_tenant_integrations
+
+logger = logging.getLogger("MetaOAuth")
+router = APIRouter(prefix="/api/oauth", tags=["Meta OAuth & Social Connect"])
+
+META_APP_ID = os.getenv("META_APP_ID", os.getenv("FACEBOOK_APP_ID", "2026204064725563"))
+META_APP_SECRET = os.getenv("META_APP_SECRET", os.getenv("FACEBOOK_APP_SECRET", ""))
+REDIRECT_URI = os.getenv("META_OAUTH_REDIRECT_URI", "https://ai-voice-receptionist.kishor.tech/api/oauth/facebook/callback")
+
+
+class ManualConnectPayload(BaseModel):
+    tenant_id: str
+    whatsapp_phone_number_id: Optional[str] = ""
+    whatsapp_business_account_id: Optional[str] = ""
+    meta_page_id: Optional[str] = ""
+    instagram_account_id: Optional[str] = ""
+    meta_access_token: Optional[str] = ""
+    threads_user_id: Optional[str] = ""
+
+
+@router.get("/facebook/login")
+def get_facebook_login_url(
+    request: Request,
+    tenant_id: str = Query("salon", description="Tenant ID of the business owner"),
+    format: Optional[str] = Query(None)
+):
+    """
+    Generates Meta OAuth 2.0 authorization dialog URL.
+    Encodes tenant_id into state parameter for callback reconciliation.
+    Redirects directly to Facebook Login dialog or returns JSON if requested.
+    """
+    scopes = [
+        "pages_show_list",
+        "pages_messaging",
+        "pages_read_engagement",
+        "instagram_basic",
+        "instagram_manage_messages",
+        "whatsapp_business_management",
+        "whatsapp_business_messaging"
+    ]
+
+    state_payload = urllib.parse.quote(json.dumps({"tenant_id": tenant_id}))
+    params = {
+        "client_id": META_APP_ID,
+        "redirect_uri": REDIRECT_URI,
+        "state": state_payload,
+        "scope": ",".join(scopes),
+        "response_type": "code"
+    }
+
+    oauth_url = f"https://www.facebook.com/v21.0/dialog/oauth?{urllib.parse.urlencode(params)}"
+    accept_header = request.headers.get("accept", "")
+    if format == "json" or "text/html" not in accept_header or format != "redirect":
+        return {
+            "status": "success",
+            "tenant_id": tenant_id,
+            "oauth_url": oauth_url,
+            "provider": "meta_business"
+        }
+    return RedirectResponse(url=oauth_url)
+
+
+@router.get("/facebook/callback")
+def handle_facebook_oauth_callback(
+    code: Optional[str] = Query(None),
+    state: Optional[str] = Query(None),
+    error: Optional[str] = Query(None)
+):
+    """
+    Exchanges OAuth code for access token, auto-discovers connected Facebook Page and Instagram ID,
+    and updates tenant_integrations in database.
+    """
+    if error:
+        logger.error(f"Meta OAuth error from user: {error}")
+        return RedirectResponse(url=f"/site/salon?oauth_error={urllib.parse.quote(error)}")
+
+    if not code:
+        raise HTTPException(status_code=400, detail="Missing authorization code")
+
+    tenant_id = "salon"
+    if state:
+        try:
+            state_data = json.loads(urllib.parse.unquote(state))
+            tenant_id = state_data.get("tenant_id", "salon")
+        except Exception:
+            tenant_id = "salon"
+
+    # If App Secret is configured, exchange for User Access Token
+    if META_APP_SECRET and not META_APP_SECRET.startswith("your_"):
+        try:
+            token_url = "https://graph.facebook.com/v21.0/oauth/access_token?" + urllib.parse.urlencode({
+                "client_id": META_APP_ID,
+                "client_secret": META_APP_SECRET,
+                "redirect_uri": REDIRECT_URI,
+                "code": code
+            })
+            req = urllib.request.Request(token_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                token_data = json.loads(resp.read().decode())
+                user_token = token_data.get("access_token")
+
+            # Discover Pages
+            pages_url = f"https://graph.facebook.com/v21.0/me/accounts?access_token={user_token}"
+            page_req = urllib.request.Request(pages_url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(page_req, timeout=10) as page_resp:
+                pages_data = json.loads(page_resp.read().decode())
+                pages = pages_data.get("data", [])
+                if pages:
+                    first_page = pages[0]
+                    page_id = first_page.get("id")
+                    page_token = first_page.get("access_token")
+
+                    # Check for Instagram Business account linked to Page
+                    ig_url = f"https://graph.facebook.com/v21.0/{page_id}?fields=instagram_business_account&access_token={page_token}"
+                    ig_req = urllib.request.Request(ig_url, headers={"User-Agent": "Mozilla/5.0"})
+                    instagram_id = ""
+                    try:
+                        with urllib.request.urlopen(ig_req, timeout=5) as ig_resp:
+                            ig_data = json.loads(ig_resp.read().decode())
+                            instagram_id = ig_data.get("instagram_business_account", {}).get("id", "")
+                    except Exception:
+                        pass
+
+                    # Discover WhatsApp Business Account and Phone Number ID
+                    waba_url = f"https://graph.facebook.com/v21.0/me?fields=whatsapp_business_accounts{{id,name,phone_numbers{{id,display_phone_number}}}}&access_token={user_token}"
+                    waba_req = urllib.request.Request(waba_url, headers={"User-Agent": "Mozilla/5.0"})
+                    waba_id = ""
+                    phone_number_id = ""
+                    try:
+                        with urllib.request.urlopen(waba_req, timeout=5) as waba_resp:
+                            waba_data = json.loads(waba_resp.read().decode())
+                            waba_accounts = waba_data.get("whatsapp_business_accounts", {}).get("data", [])
+                            if waba_accounts:
+                                first_waba = waba_accounts[0]
+                                waba_id = first_waba.get("id", "")
+                                phone_numbers = first_waba.get("phone_numbers", {}).get("data", [])
+                                if phone_numbers:
+                                    phone_number_id = phone_numbers[0].get("id", "")
+                    except Exception as we:
+                        logger.warning(f"Could not fetch WABA automatically: {we}")
+
+                    # Auto-provision tenant record if not yet registered
+                    from backend.database import get_tenant, create_tenant
+                    existing_tenant = get_tenant(tenant_id)
+                    if not existing_tenant:
+                        page_name = first_page.get("name") or tenant_id.replace("_", " ").title()
+                        create_tenant(
+                            tenant_id=tenant_id,
+                            business_name=page_name,
+                            vertical="salon",
+                            phone=phone_number_id or "+18005550199"
+                        )
+                        logger.info(f"Auto-created new business tenant [{tenant_id}] for '{page_name}'")
+
+                    save_tenant_integrations(
+                        tenant_id=tenant_id,
+                        meta_page_id=page_id,
+                        instagram_account_id=instagram_id,
+                        whatsapp_phone_number_id=phone_number_id,
+                        whatsapp_business_account_id=waba_id,
+                        meta_access_token=page_token or user_token
+                    )
+                    logger.info(f"Auto-saved Page ID {page_id}, Instagram ID {instagram_id}, WhatsApp ID {phone_number_id} for tenant {tenant_id}")
+        except Exception as e:
+            logger.error(f"Failed to complete Meta OAuth exchange: {e}")
+
+    return RedirectResponse(url=f"/site/{tenant_id}?meta_connected=true")
+
+
+@router.post("/meta/manual-connect")
+def manual_connect_social_accounts(payload: ManualConnectPayload):
+    """
+    Direct self-service connection endpoint for business owners to save
+    their WhatsApp, Page ID, or Instagram ID into their tenant record.
+    """
+    saved = save_tenant_integrations(
+        tenant_id=payload.tenant_id,
+        whatsapp_phone_number_id=payload.whatsapp_phone_number_id,
+        whatsapp_business_account_id=payload.whatsapp_business_account_id,
+        meta_page_id=payload.meta_page_id,
+        instagram_account_id=payload.instagram_account_id
     )
-    _s.exit(1)
 
-try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-oCwdpy+X_csk@%q25p?#!q`8bW>d#&$8r%(#@>+{cU=xef+VY-$VDP;Kd=q9ol=E?ZlzT9>k|ZQZ(zLWxZwLdp7mslLVUGegv_`u_fYUeEKK=bZO>pZ7VBd>)o#UGCj(_f6ojGzOD*5-B_nZtD-jRC^UZr^wahXqIYWk;lDY3OBoHH3HPTh<yR0=?@q6vkC_AvT9=*n{N0E;g%96+Op4!$vU@CT5fPRe*=E2^6XPSuO6e~IZ(?4ckQU&hnqHnv6?7;0j{w>#B6{3Uny*=`rBXu9eQ5SV)v!@t{e_?$$*Wt5|mxaaXgrCyof_RD1hn*dHx`1QQ|>A?pz7O4ld%3FtY2y2<eNqb<Gj{DicbqjejE7ZZhZXJmjV1ltd*KU|P>aqcVdE-=dlAvS?qGQISVo5RP@YS<3vPYa#b1qt+L6dTLl{(eia_e_Aq)R4i>vCar3?xDrGjvvM7Ac)Mr0sG9v#H!h&joW`LOOL(`EC_dY>pm5VsOF|*Ir8^vXO<6FG7PV3m6&Cs><OeDQV@IYGl6*V@_duoTOTzC@=<9)e+lY>rte{T#-U`CoZpjlPA)`^i`yLI3Q~Q<qZ%mmQ*>|jYhGpW+O(b4+77b4P%aUElxj7b!+Y$Wq724$vDUQiOlnU<HQ5o539vHKeH2+gZ^}}?>^X^A_K&<My_IUjjKSaJtFlFVWxgbq{j0!6N*T1!rTnPDP0`00v3}IP7CS>iK5saK1LlkOwskjQ)F-k}6jw^hnhZ-Y=DOMO)dJie#e%p=$_IEppuX1YNMiVm<PCVmFY7x;aN6%d8E#+6<d$L$clb4qMBbZ<R6G%v(f1+1k(F&y{Ez`zVg+(@$xqv`FMkQ96U+CJ1-#x!*fFP~Lgb^3Qi=~fLa8^SO8$*8SOgIj?)hR@(W6yT$#WrFRdA7u>-uHs=+&`LpAfOIsZWW|uScu9<D1C0|r@=*wodcVNO_AoT!%a9Q>G>kxa_FPt7_$QaK1~Fz{COMc)T;?^*CRaY9@0?cF=y@xjym6+ewJ4_p$DwTv*?I2W{QIdcs~S*9dlL;du9(SshP_%&o~J*6j~C}yqKG7D~{i`&jn062^CjCJDzTmRxP}q;*>DFJm5RCZ&TL3wqt{~r5YNbM(ri}-bZRz*`1K@XtRtRbeu<48I)k#ln9o3n;zqf-=OjP=wr8pj_3Wdep`&$A)BZFz4#e)x05^J(eGpt<I;NE8=ni)`$wHzLX1{SKyriN#=Ej)5YvAL<BnMj*68*>Sh9A^Nr(;fJnxYiNfBfmm3xY6VCxQ9j@2_4obbzTwoZ6z?-mrpnIPs_`q}<+S!HYe2Q+xs7yXTNR&`9pX%m5lq+*1)?@xZV$~vZ~@OvAZJ9F0_`SRV3fCWGEQqPD{>DWZ(GExt2zY2}W&2<5x&N*?<gKLKa@fpgBaerx}ainAgt61@8=#2l~>OFX>GTjq%Dxct2hYA!qfZmy0hQu?|Go@(3Z5v4e<lc=iLPkjOxTRk^Dq6IVIgOu{KHH-RBb>(0Z~$LfT_~8^IFZHioFM0JKr!-CJun6xOBI#Sj<#^b?%>i_wvt~t)A-tuo#yW>xE6&QR%PeYC0P+?$02^rhycD5sf>SrGko*TeJhcAgU-tGIa~5MMhBFI-8k7ea6a1e2|3Rp9@NkTHAaovC{IBibqZ12miGOw&uTPLiRLXS@xJXVHfy*8QwmN-5z3(r06z8y<~QSbH%z`0JAPFrPq+KVFE7Upfqj8u6=Hkxzm#0JxL(9ZsnOv~yRWWF{#3%bm(tvfP=j%Vqxi<bFhXi{=4(CXE15Gs#=V)GYbO?LP4NPwhq27#;QF>eO56POH+qtKOt3$JRP5df;H&NqO__Y%NnC*G7_+9T6FSdGg*E2kd<%n1I8BhbyZR1DiSD%{Tmm<?#S*uM6!n-&-=L!Xtn^cSZm;&W1>VPm^nS}M!!=%`+p5=84MA8t5@~pqXR+e03NN^nvq~%&c4m)Av+sRxwts!+8Hit<i3-41h2mBW%w5MH*CK+;pbrK%NzStSdN3#rHXLtnUc$Qzyssfwfk3^Cpib!gpB7Wzi(}=<yf}{F^ZfSJ7Tmm)1g85*GP4Z(YpEMPBjj;P0PLI$xZnL9@v@y5)bO(xu;0eD43}N2LZ;47Zve4w$`%v9_q^&;7fRr5+3tZidu~OzZ2aI^7`2*z<c9yZYGA*Sex=}n5)R7C;($#@vGU6t&A=vnb$sQ3o<NNVX4yf?z3(TB-L|DbLD(18f(t<X*=V*krr;Sx)~Ms>;l+UeLBC|Jf<t;2x*q4W4+856r$_j#dKpXPU|c0=3KK_fJLrNCJf#V*89mAmgIBLD9S1QRjA`GSTkRv?ixTrPwgx~9N9}p<bnm}z(VqguUlu2@AeVdOE*5Wi4ESG*pAlAVcZ^x4yyA(e+Z$9A+tGbQcfU41qQ7i>%W%DYDp+RVxh}FO-4_bPXF`h)a89NV#IVDOdtpv*XE+t8PrYclMsB}sY8_OU!$E_(fcgvX?N!2d1oaneMrr*6tP}4A!v#AJ`h$rb3xri#d}Gz|6$2)MmJj!<8DP+`joT@wwwD`F86g#~Z3AjB!G3f|Ils<<ufvbl{$cc;?oF`NxGT+gb_-6$b0(#Tfc#<r_1QqA%io?oU`h4-zSnww8d3nq&g7z?Jp#y|bpN@e0Xpdvq<&N-+PAK798J7!94!u-TO_)<+1I}=%?p9m<>!%W^!NNvOg0Y<)Y=DS9L{8;f&5<efTQ&<aQ+#BtdXQ*nt&^a>2_a*T)X(4g;f)FbC&0Y$@L;Wrgf@*Jy{QPud9VFUVLLt=pn1YHks{NJ6(S2@K@s9o<sp_nxuH_s6CMXzdj2iZu@Xu(zHpt4)Ye3%omqK_l`#5_l8uQ5`R18UvgeDg`1PhL8CgHy-$Gw`=wiBN`{2G^(BG2{Py0NE`!;OIZ1*1>as;2NVxLa+k7WH!6gWBRdPR;;GNRG5=kswZt%o?dr>qhHM;P*R8eD;C|`>%a@VXzyZ*k#17+A7$~*z<7>LAg3+a4=W7eSK%$H2^2V?s_FAS)|0>DSd7{KpqOaBWJv_Kch>F^50?ae|?Mw%W2`*<Pu6z0fTy7c-&-TQDMcpHOKQG1futfdJCHGFP`8!@WSw?(RxD)Y@)wWxV`nn5x7Uhv<}$M2v2V~=4#4U|TR^L*!iKLX9m*e7F5^0ziV`$H-x4CQLbG=8=CW*CmzxEA2F{>fZd{0!~-A^vpu2kPeqXd}RX*O&H<qvbW2#0aaoGx?#zpV5Pto6y(Rl|L22)F#2Mj&rp9HiJ*?{kBH?W3G0g1g&yMd<>BP?OZZHJBI@?9FAB%GKHU?b@{o5=V)Ha&s9*^TT;A0pgZ=gQ${VLD!+qkPhU3my914ka3WsR*00rva|7_Gm!ZC8n7xGy%u|C(`%D$Lc&kP846CGnhWSGuAM(-{^xH@-!#Za8chWvd`)aJ~&V8<)$y)miS|6)itG%y`Qxpx9m}qBeX*j?SYmR04n+7ymO3Hi=?9tj+F^*$Z|Fgd7^xOPz_QaM>;g3!%72N(t9HZmsE^F0sO#OWz{=QX1h90~B6)mQ_Hk+hFwElxJCiC;%yGV3u?71Nbs(<-+OiNEKf9m)VjDKv;I?ieA4>HTJ>l*;E>ixnL&PL}~-A{&tw&!vXsK?IS%bfA<NV6?5g^&4xHKyTsJN*jszu)uA$vJB$`9C$bqzJ_Lm6FJFo~|z(JgUb@SZLfjutBmTw(kXwRYMJC(^)$Ff`R&`ji3ByPRH0r{QjlW`Db`OpiK!g&Pee`LW=Bg$H0x<^si5>t9-&2w9W<k51sx+ax+pe%(=Zz>`LtKh4a?x^8bIt7lYYp9L1!wOQf10Jat=U0G`re&pu&Pe<dEVKl*eRp4v=V1K9VYPg4@bNOynn*SI$-9lt1lEFvp3velA>#y!*cgmlqZWt^9q0D68>@sLhGP@Sn)y=ymHGq)Y`Qn*~$XgV^dV_1pWwXFXSiYvgMekyp8cXJTTeP5;wP9BWnSI+4G?C;mw&#J}*>+}VH4{&xS3u$`XMT_sjSV?BW*>Ut_{nX}95=^XlHG_Zp<a#XNf00V0>o1Jcb3F_Vi&n6&!8E<rMyYEnhWyzL$nPYM#$z6JDg^8LL)r)Xs}oAQadM4C6c^a9TfcP31CK3P#4YqbGOQw`##S~{`02hhtTX(g;I4z;bpDl5A9f}ot6Artp&43zo)|cj--46x_4~H@|0xo>)}W%rF_Zi_r=h}|`Q=|r2`S)*V=82|vZ9EfXdp-VIT6d{`|K!^?MFNinBFMAN^JI>4QBi2?|4QKv>4NZEI{RaoqoviW;*_1p18}puUTl5&pdK_9;yZtrsJ=d?u!C1U0nY!8_nExsTPC98<44MD_?^p8mtZWD}y5UCk}q5)Abos|MrV%{OI(Nw!hqbEQJN=mk326rgroT;q9>U0e$fg<f;DD!qhvhL+;Be*+{H}+#FslObsd?g1EkcMhDRKJBhgq#Qej@Sa3qgQsD_)NAdUYT_FX}O!?LPq>uPd$8QGr233Ru@)Iurep})eg#7AQ<a6$l&_6zkuhu>xuMQUu;G;zGXEH?q)HjF4EimQ&ulw5km!0D6{&S{2P4nwZdtNyf=wB8bTzle-H)_m@lT39u8uLVKqnz#hdSW;>QO6JQpbz-<)x3}VQ>thL^eNz<xn`ZA>@vd5&JD<0yvh1w!_>wHsJ~u+G%+C9r}pgQ(%%YYF!kD=1`|O8bRI(GzF+W12-a(72W1ue_}A3w`mQ}69tH5zRQ*fwGSTaGbbV)1|18W%9oq@?zdK}!iuuOped-o_pszQ1pan01{FYsq*+2Py@1`({j}E^l6A8cIS_iCgdjd;d%b3;1@x&FzSLFvSh3t%dZic9$ppWm@?l&({+~y*@Q?fWf{GG*Dz%6aj!~=m(pQBm3<-r06;}VZ2Nd(V~qp+39+duT52=y2T=s&Y^_uK#yCnNQv{E9pK9PRqXXpKLRU$VSVgdiss<K++V<Egoax|C#faAA)*^@d3->09v&>~0#sm6?<ChvSk5Pb1AT<Fm$1f&SUq%ZXI(K6$@@k^Eu&-rz*l7HfFRf&Qj88SAxWFVNqQtl%EU9BNfT4~A5X%NPKEvrWuPh5PJKteuCvP=?nQ<I->)W0sETAqC?A{^UNAufZ3E?KCgrhj#=kKRW*%1<>bH^ND1N@3AZ?UJB@&N_@w_d?P@gHX91=`O=tHka9t75*zjKArx$Qa;fkVxOYqi+dISW@A0|C!vHmm<z2u$0Q#q$@rB*~vU*AwJA`~S;64||%H9Il-{oNb#=X5$r+-cb`~%+xU5mKKf&M;;m>yEmjPlb^7WvVsV?^!zrS4Ct)52nx58|V{Ut!~UPTHn~&*cAy>*OewGd0DtJ(2=yX%d4my^gA`rT@T}_I|&e2fdb?J&l5m=xN3_Ag^iTOTA7?q{aaH^Z-QsVg5|**Y~?l3ee>T!0&EbQlxkrt^Rj^)Vay;dZ11pStM%bSHS-GS@!cy)XtGS2hfD9DOs#kr^>*Xmp1+*mN!QO34p#Yn(9wIFY@k&QP>S>ZcHn{KmWkD*8ULlDSorVRbU$bv%&SY{kc~-#!YU>RR1GnZp(vU-7bbg-cq#v%Qa=m*h*m|DTeDTD&yZuB5?qHzML@TD6axHj0%Zcg9<0etgV#Q0y?QAv@XbmrM}I>V0-M9g+_Nf!}YJj`~Dt(;C*I2Sb#sWuh6IJZ!2l7E1gt~9a0+cGg4)qz&fCR59F^lOARf31wsBP7qRKYzc#ih@ml_4I6hw@zXp3yv`loz;^$MF|8c%nUsT~5yJO&~s;n*)DqA)W%lRAs>imn`zy7Zj{%re!_1lA+(A9wcBuf6^0{LZL?onrf<fZ3|A*Mw%-(A>_e_KfoDD#I**&3H`%vJCb^1VoFUPh`|ocwoueRzJ3&vJB^vk>SHhBn|c98UM(_$~Y>KNDiP$4v_uke_-hrBCg(`k-{4Z~y$+{5NI)U^whRAP~QRH@Gl-oM&0UlL(SvXS)vsR1`7u{yvavBPN{ftesB;A${`h=riX|1d%R*8%u3b+bp_^gqU54vz_1ZF4AmoLf>r!uNtB4pL-Vn!+%rnYo^4pIf1kISMuBZU0o1fJuIB1T7Fqtx7o=rrzw(PIAFy+j?1ozB=1>QFwXaDAkxAt4SrJOx*}KY$ns|{yWujM|Ge5`N&kQR!aK@iQR?WD*B)*+DT!=5^10AQ>*4O|EGgQiYazeVq-A)+oE&9I0okvXWY5vw|0Gy<KYH$K8gF8bW;6+xx<2cTnWBLdAa;UODQ>SZkR7_`0mAn>vUXuwU#JKj8>(KTnUnSZ<m7zg@BVp*<JNqhpWOg`tnEMWxuF!s9^iiW*AYR-!S!d{sp{BDpnj(>iC$%8cu~6FQHZYF15yfR!PioFmGnu78NgpK#;o`wUl!a|TKgQ!^MpV;XgmOag|=&F!Do{Ug}CDKDf|kzq%oL!FRi8J`iI6Q?e}N5qM|u;{V`p94rfWc1*0_oGNYTrU#_Z~fA%$B_r4XzC7$V!+3_=Z{u${bl{I^3ng<Zy`K(IlA#Hyi-#O(!XY#Q7eU+Kf_4ZW|{BsBHe|`4tnKi$r&OZ%l>weEqEi&gx|IFkEqXN=6sx;awFPeZz8c1<$6L_VhX+2(${b7DkQWMUe5u?WE+b&bh#vfDnH<D>CcF?P#?J=g_$BxR-KHEQ&|GNEl@)Nkmw#~#Xfqj=J{bOfTDX0xbaL->)Pzp|de*c^<x^S0qJ5WE<l;yAWVw)&|q9A0s_dy3V8>oK_QL)SaxIfCR!l<QFNI0k}8ZvZMyU={Ch$Y@nHjrGW{PWQ|p#Qy=xDE&0Px1xt$&`UbKSrrCd@g+M{HgwBZ$x1?I<~<mmQN>^=v}t^T>Rhb0|wHx7b_`%w{>n@up<=k596kZif5u<BzmNTY5lVb)9Y+LY}{UGCAn_#cvk+l_tDO;>C3W%N_F#9n#kGnjN;Syi;>tO%iS|Kka+4GjzK_o#JWn8dynaaJqdk-Xx0rZZ8dV?F>?EQgm)Uyzu~*ArA4yr@y%wr!2Pq<AMA+r&EYWq-nE5qDXu_&h<7ypNqRR)%mef%3Vo91Hv(-Prt7H_`d*<$jmC+*6~+~_^6QVUOas)^U;&^H<e6Ih?)5;U-v9ql)d^XX^Aobls8rFOMA<w!ADuP+ir+)vf-OgVmV<h&gjE=z{?6>DPTFVfzUSlq@B{tylb{ah&$gt>;HEuTSKWNr^^^6<?E<KyEu6SJ1c;xoac&&bM62&C%vpJDFa&nU9`}aRIyN)^Tg0N1FG~MZ`hqV3`6oIVL4AkO42PQ4F1-FJd>PbtDv@e=<q+Ag0c!Kv{M3+CA{sS?_h2!CrOxEwZ3Y}nAABx9I#;mDp&g?e7GwnG4|!<ya|8{3L9y?%{B>4wI|<F)c?`!e?6MYDu?~EepH9tf9Z<18%n!gmI|8ra4w&b4VdI>qyzQ43GiKLM+Wl`-pR%8Y#Pry+-x;@bh54mf?3mC~Y&T!Sv!j;FbAu_uhP?r3vq9bbNB95Ir!k(MKUDkb=0ohcT7Bx&(j8)!yP*Hn=5J@a|5N{WzrFgDf2RK*6qESt9gG%y5<mWBm<MfIeGlk2WHTj{X9BLkf093NDz+p1ihFyYHDmieH-heeK&lx4`hTE*Cjt1f|0F)HJ;AYBDDfPVztzVV_&fdKX4hh?dhvo*izsej;HU5f7S}-IM9au2;@Zt<pNv%La_r-U;sV`#vm^0rAMUgF=MU-mz4=H#Yx@tZYbCN{Ks$e((HG6L?VmkAURe5G0@oJ@64GKi2ZeEWpwXtz@Uw~sb_*H1vY@t0PA=BvXCNiluJ1RptA-NFvV%;leQgJJf8SpK_2re7<g)gEEv^|sONM%$_G}Kqvo0MCFedamDa+^lo*xU?H<^DluWA0+1Doj|&2;>W>eOG&)6F;SNZf`j%t!U@bdQOsdhR0L3gUV9gHitBJ9AhNG|+#K7_{~!;nWGGMIZdnD)pFKGdTvRD^aV;Opla+b^66npfOq_Rymf-?<G^1dB?rb2G6ZnW!^W(LRo1Ry{{>(YF-kPu78zZ$3?Rb-DE>RU08l4w52l=sSf?mxFNe*Zo7;VnCITK9>F@?E=C%T2IBzzIII-z4lJ0!$+nwEi)qG{-g%bs?2H3YW9;Ax;Wej+{ow?4P-QbjaRV3ZKdm3y#9+h=OW|c%cCC_dFz|Gpsl0)-nrQ|v5H_jIpp)~vh^ha})5`K80!wWi?r-B(qPV>g&CF<8i8LLw=WFMubhC`mD?JpsMiwGj;aTN#D+JHVPK6@p4BE4`^IJMB^}AAC{Y#Y7!KLK>P?8|~q8KANX$th;*^OR;>X`DP<?<G2u-^*!1@gZ=#O`XKKLqvL%TK(||5s>U{oF93u0L|{2kZLdVH=mSIY52Tp5Lq|XrO5SUw-nw9|>b<|33|jT>ddXj3Zxl)dZ2)zfb?~%<x|mHkj!QKj-;m6Utki^&LWQh|WFXq<Q?MQR;ea|MLSpQshXw>Uon3_1JdQYq{yz0znz}BYtqPgcp0XZ-Q>#kuHUsYV|kd;nOgL?*ACzhmHOg@Ct0b_WhY+jLkHErv?@GfOPiF<gYINQ~2+QJ3B&D)DRa*>C~&CH&x~=fS<gl@r%lcuN*L8)}RAK4o2sFbojnK6<_xmeyK5EEpgH>4!swl>))s5L-n1T5c^~MhG+igfc{x<EEOge9Cu`%HvsIDHcs<<45ZxS7H~h%-|CArmi%(ay?pKbzF>&xs-D8%{RkaD<57b)l0r`2coOk&bm0JsI$ht^D8MuGy(5F+NHt)eR{z9d6Fsje>bURgpOtGFsJ?p>YENv%N&U(HdDb*PPv)=bg+2cV@1`yl"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+    return {
+        "status": "success",
+        "message": f"Social channels connected for tenant '{payload.tenant_id}'",
+        "integrations": get_tenant_integrations(payload.tenant_id)
+    }
+

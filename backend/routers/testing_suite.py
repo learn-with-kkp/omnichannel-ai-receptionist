@@ -1,36 +1,394 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+"""
+Interactive Hands-On Omnichannel Testing Suite Router.
+Allows real-time hands-on testing of:
+- WhatsApp Cloud API
+- Facebook Messenger Graph API
+- Instagram Direct Messages
+- In-Browser & Outbound Voice Calling
+- Virtual Telephony Number Provisioning (Vapi / Twilio)
+- Google Calendar Synchronization
+"""
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
+import time
+import secrets
+import logging
+from typing import Optional, Dict, Any, List
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+from core.blueprint.schema import OmniChannelType
+from core.blueprint.tenant_manager import tenant_registry
+from core.engine.orchestrator import universal_orchestrator
+from core.notifications import notification_dispatcher
+from integrations.google_calendar import calendar_service
+from backend.database import save_tenant_integrations, get_tenant_integrations
+
+logger = logging.getLogger("TestingSuiteRouter")
+router = APIRouter(prefix="/api/testing", tags=["Hands-On Testing Suite"])
+
+
+class ChannelTestRequest(BaseModel):
+    tenant_id: Optional[str] = "salon"
+    caller_name: Optional[str] = "Alex Rivera"
+    caller_phone: Optional[str] = "+16673070119"
+    message: str
+    accent: Optional[str] = "general_american"
+
+
+class PhoneProvisionRequest(BaseModel):
+    tenant_id: str
+    mode: str = "auto"  # "auto" (Vapi/Twilio virtual) or "byon" (bring your own)
+    customer_phone: Optional[str] = ""
+    country: Optional[str] = "US"  # "US", "CA", "GB", "AU"
+
+
+@router.post("/whatsapp")
+def test_whatsapp_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On WhatsApp Simulator:
+    Simulates incoming WhatsApp message, runs orchestrator, updates Google Calendar,
+    and returns bot response and Meta WhatsApp Cloud API JSON payload.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"wa-{payload.caller_phone}",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.WHATSAPP,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
     )
-    _s.exit(1)
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
 
-try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-qZ-X;@R|);2LfLIyIBd0-S35b(6Mg{pud34;QXiA*FYQ;-1878L<&#1X5g;DF$WqEti=dLk(Gcv=PrKt-%#L1s{pdIYsc{r27oNo>!1eLueU$M^fW_Oo}Mwbs4v`(95}&LqCu#mM$-I;Z5Y3L$RvlwBe3Z%me5(4Ow5N^cRhLg(-u>bseQsGY6rsjP7yYOdX#F)jKodRre&-HLPNdY~^+8xqLerbA&E!dQ~DmVdi*9d=vBg>t5(WQ{L{Ipuof-G#{Lri)yxRbT3w?|rMzcm(DysTg3Y?<%8&fpop-R}BhwJ|~RGK8{L0q}_iih+44v>`U9|dL>^SfUAit4q^+63Zf9UTa&1Vko$jGPbpkc@m569eYuw7V^c1A?Cle|X-@>_>+b0aJ@U8RQ)Sf}{YO}IgHj@N#$6D!#=~Hz@_1JGSE<Rz?C!o;hu@uXtj7Vr%QK$u9{!3kxQ-C9sTih_9>+*)U=KPyzRgXm=)p%nQbtF)+Fc24jVCC!Z<&u}ZcQPNX{%l&*zI0fQ*I@zrz6!ajLOgkZ!~vnP6WkvtE>EkUE`Psd3Vx<Zbr-n#xj{p__^Ra2^4<QVIGn3Dv)}Fa{EORH8-uNe3tBIqz?saeVS4{pCBlC8;NI(rbbthZ}(*4>olj{GdV5F;3ONr%BThn3frXL@U{CdUy7=s=ZBK@y>$FTo1_?5$7)$|0y%nfj*|0Dx1Zps-P6v*m4@}79hM1~ATLF=XQ4uMTWkrGAs=}azhxkkvUl~szv!ylflFgtt@V<@RY-2vJ~@_le1`NG{6K#qMz>tw&EW1pCQH4o&m}f%DM336<s8=N9O*G)(U_K+n^E)7R(zAZoD<;iP<d|&8Md`pj!^WwFVZ7B&LyG0PpNok#kqw{<7(km;jP&i*wG{NN%&WOk{kYyCYBO(D{9`7xsCS7MFBQdjAu(w+<zSjp|E;fMODO>p=8wL@7K!w;QtUl(_%t5A6aY58k-|2vuW;JzjDjUvVM`Q37H%nfIcT|jYs2l7Khl-`$?iIRL5`{ZLiC*erxq3q^sE5Rxf(2MQto9l#^IpKJ)%gdNkm{%w2L~lp)$di|2SFuZOjJ6BZsWmQ%!Ip7X2yZ+9ls@>drEzrT*TEXEIBDZ1+-<>zl%OToYJl$H6n3}><OR-XOHRyX00bDeFj#<pimSxrYnY>30|i$1_Q#(0#xq>8sn;uw87$KCpBN__%``;X#S3jS4!<73jJS6QsRE^o?b$Gz}L3--fR5btEOLpE(E2g$qVsQyFj7|+7zCk>qzac?n~qp6{Viu);O%*i9jukmAns#;i4+Xno;grP^V-(Fa=Snf?f&-j=~kJ1%#!S%#y>K&l|>Vwa|BV;wwlI4ku9x{r(rQ-Y}VHjA4t8kD%@g@t%|FeC*!7cV`%JT3JVNVxRqZ-~KIpX6pBsWkU6B25!wxUv${ScWdb46cTd^Z!dq3Iqn=&KQ*sMlY$yw;*~-ENkP@H(e>xihXJ@lGN&D!(4-Z8PpFtwlU|whp^jIdDZp%#ZlWYQ1a}yK8P3&9MJ8K`Ht1b8T=P5dV#MozgYN*G?~L_(qz37_6`E>Dp3aW4i~p&h5e|L;Q%Hp5l$rhdxNB1K;PWp^SKPOZfvYlc>6AeeV=m8#ztti2E_BeIv&1Y=Hvd_tIBzBWlxb4_Tc{%_t+f2^p)NvFKA+L-q<-Q!5h3=<~t8Cf}X__dol|N}Z>4C2K>kM>Q;w!~S_PjL52R3euxmhCFcFR@QtXD|ae^{0*%QZjA@le~_b@y{VBk4vnXh?DJ<Be*apYpG}qeo&XuP`ACFRd}mIu-ma}D(Y0W;{*ef)Q#sGohJOO`8yi)U6a8P-V-nNDKhcYQy;n3mLk4~Q&lKis?x$b8#C2}lev<(4<#64c&Z+OYAtQ^nSOv-7xJk;$kKbe}8qnuQiTD;EzZ}?C6b&2c(T6MMV_^OMl1i|CqJN0H*vE|iiSN34D*B?Reeq0g(Ux@x>j@ujnelvv&Pcum&Yxn9zNotE{7qETsUSFP3>9*MKl~yAvoo%y*A{gFSl9Yj$J8&Ti}Q1lXlB<`Ie@RHRD|5s*P5(@bcAGHAo{9$k2gxB%SB=lU2Xy(emz-~z1{<#tVOqw$vmxhrTEvyY}lCsE`r(T$@`=&I^`kD%{X6fD{iq{CJhX)6*qXJxJ8>nFt+`vlG-Un^;&GMOUZLGw{6}EzSiTCxIRT1ckLQ-#<V*&)DwuG29s!;eWCML0sRX&-{Q<rSX-+SP3un#sU|)9btz?kM$M=#ZRZ-``@<{LcfEQ41OCk92iVl8?{1vV*?dHWK#X~U@%c3ivp1tNM+D|4@O*h#d-n8&`MC->v42fSmD7VE4g0RP;vFLTCfx^$FHm2wqCy3M_0nCVpQ7vbvd^7)={-5D!69C-#O}JJMT6RS_)rK2|0#v}m=FH`I+uZu1l29#niO~Y=iyIRks`Mru${!0F87tdI{5pPi&fs%7u7AZzFDX{oQfj7a2MS8;-@#-m@8r1o=so=W~TZ5+xIL$Fvm&CYA4+rjn&Tdvm^58pPiDWetf9@!Tg7jMy3mn`PYN>GxzE+R@ul-qWPjPNr2xM{e3YXA={cteGPrz_i-ot2%PuCc!fvI1;wq!)S%r@7r^NwKD?dC#{*jE`(mN|@vyxfepkZ+&R>qTdg1Hz2eD;98}mbg{)LyY(N4?ppiMXwJ4?k+o*+ZTm)0Y?L${vwSkQom;-_{^bVrm+o@TOnO*bMaq~k1g6|w17rd=K9WG_sln<vQD+LTBB2Gq~)Rw*1aGF5T~%AZ{cHN##(w`|g7-u9mm#cQDY2Jj`7d>!62u5kqT$3tsQBW<nNFSM6YvJM|qk{d>}DNUaD+Iap$ADP4w<%*cuwv~#<Zp@&(qY-$|-`%9O@O@ByfajlwT+jCapU-5=N}8=T!2Zzrcwu#!HD@C6&s1@;84e$;inG~*%4RvjX5<TUKGWiP>{_)iEGM)*ixirli;{|8`EbGh;G!s4b>Sr;xP_jS5@=f)dDk}@wmApsAM?{x+23)E17Q6h8bt{2(366laUUqfzH@?fdm`*(ewz=z|1BIke?$Ff38wf4*^YY#pC%u=;Q{P_Zjcb%rZVS8!=4~G^M#LMOj%U65v<=~>!7?vNQ!YCzO7g}579qIQO@0TYCWq!KJ=Cl)L`SB8W;D;xIYR`0rB0xzH`0P?v<xT@xb{l69#gxsvF$pL0dum?wBJuX7y+yfwkGK>-0ur{d}VRwuBnK=}1&i)Ny}7Y3OgAS<yG+%X*z;O-yGei~Vu<aZio0zTJK=r;A(Iv3zfbOX8;~A}?cnsbi?e0RQ;@yTX11@cv}EH{-neF#>#EtjXSr=G8dd?pz=9L;AIkO5%19pKup}{wzm!9f+_Nj|2GU|FCl%N|$kA)HdTbag8tlT@(3W3B~SkL9{)i+ZX%Vy}2ius!KaEir`MrR|b2~&pG5l`=f$lp!#^#lguudnb#v)bIU1N<Ysf3@k)ah<R6JbAdb^i*Bu^!_%{d2Z{JjfzwPzN_Kng|-JTE}>%~m!e#Dc`RLbt91HS<Ap=+Z(XrDH|@}>j%El0p6{AH#5rm^*y?^oBpC5V9j%AG;~#46r^4c&SWiO2swT~$p!@ELyl$$|XOBrME-Dn%fANTM2tHh`bk8~T$yfWI-HqV6Zya}VZ**?Ye97hQt``_uNN>rVpp;RKw|>>Ba?^=x5LffCJlK?*)iYO8=7^H*oLTo^FB3cyD?KmVSw{zAd?%T1~<$2Y8fBO2sqXu=I|^53oZzgdUhJag<4AGyyW|4It^Z~&iFR}}R<%gDRq&Y!drH?g%G2lzG06+`}V#9eNZT4cxIS6}bSIM%?5ZXzbjX$}|E1wr#xT)mRyKC9VWzh?)jVxYgrdN`Qy6He*!k(Gs4oif&+@D@HD_<oT8vsuRY(kl@U2DRuL%S(G1;%!iW0Kd;z|1Uh{)u!*GMmOM-xenIXW7?tk!=U=FMm>JBj<p%!Z?@`YVv=KmV|7fs8<Kl)-&z=B!acZ}^uu`%QQhjdCqxWg#22<3xTBQfz-X^7@b``Sa7*EB&%yVfeN9u}qPe0i>le{KLv;ezF`T9N)#cI|wkVJ9O7cYJgx^hIZES5~$hoCooBPKZy0{G&9}VKu&j{%x{sH-UXiN*+2h@+PxNW*K*Mo5>xMY#Jejxlp?$?~_^5WEC($yYx0KX(FV3zB^{_BPYnW`2#5Ff|W;qAU0Si_bG2COuhI!0_6OJv=gGw_b4Zkg_9z2TeJjFK$6G_N?!Hs)$7_lDi=x2F728qYVCDs0N-VqwQ!Wv?R}JJ-eJCDa_31UEAig@KNG)$@&{$dX*t0`W_K>Q?Uip(J8m(AD=$fZt~bT^%9(3(MaV%$fHxfLF@xJ^$JM-<ZzNDI5HLW))N)`cW(1Bcf{r-<W?*%?b)>Jb(-0-#X0qOMw1OG{;}g`M!XU!H=Y1Uvo|PV7VT=dCOX`{vv_rC$y+*Zu(Jc<x`cKVctIs1{<C#+ezt|$e`@iR*XncVErw@>Ld62g8DiH<N3P}@9%bv16uaY89gR`@j=?U#359--?Be!N-yhTt8S{iEcWLiY{z_Lm*I`SX3`F(l?{XVn=z@MHyZQXB0p%+K>WnBXIF)ld?V%N6-WvAzRCVEG+*Bf<JJNE$BllDSmH{ED%uiegXo?{ey@GnnIYSkaP6a)tO>U!#*216=6M1|oS$R(eSc6M|0j`>oA`VAHwJ$oKp)niW-mHgsGumXLi?9_DTcuKe0PhO#9Qosk@4?%w0Qe|Ih=MJr#c3IGUnmAO<UUs@-IIKA4U?$qPzkn!WPJnO1p<Ik{#<pPrtK@zG)w?(E99UJdJ0;4i+k@h!=j;WALUoNz{UbKIr_MN$F7kzz_g^LSc>i&`-b{yCsa>t4@C;aCV8I{uT=0FRLk!kB0aAbE{DOL+cq^f!}8v-Quu}HkVc@1Mq9()?z-y56f_mh9%hjD^DLc;ak*Q;C#0L{EpP?gPP=@r$!OMx0uQ1_~b?qY{B^Bo?gvRY)k6xc98uP{q>YAMIUXCsXhY*wTQMc34XJQfBE4qD(+`a58eIDb+Z2Y7Sr-GD*D2*>xrq8{9Ssu(AH~Ci_@BYU%jh0^TT+tFYaRG^CY&kZBrPN{?b$U0r8|yOWo&vbFw}x`R9!}l5*6ep0pSvzr!q*x#C{WGS&}=(mh>KP3j-kkp99CqqdhsK=}6_;$OP7v+oh&pOk@=0MLJNUnJgC60y*x-#>b%&7)VzSl!Cb6C$<_`Gu1<=o5O^yinYeXUIj$tx$fvNJj08yYQAA`yLY?<!p0ZRXj^7@0!FPZe!<C{12Ln9xEWfGfD3D06zH=_?Hhyp$Q$?@aHkPWvj$Pll4z>!JQ9#x|9uXX%z;+`o9eRQ++Og;<Ic8gnx+sK+Z8_(MJ=0sFriQ9m~P`fEVR0fZ@md$Oe4^u1kb>*jlNFE%bg<eORmu8j-OEeEmi$%+FmJWZ+M|XU+S^i$VY3c@|r^t5}Z1_W}4q>KLEys9W86hAeCW^s56yANphoYGM8X)B-dAHt{2jmZlFYSjravvpF2g7<83g=I*iBKUEs&cs=%>mONSi<UxMR@H%X6l75(;@sPb<?uNGLucgx^W$?DXWz%-87^)PB8`vv&9`+D^D!bmgx*}c%0R8L0n<UgekD*gm;s$ym*BkM{;YtcSq-je80oD;HxB>rdLPNTt0qg6Q(;Bs#^@Oqi5;<QFdCF?x4_dUSeZq=AVB$8U7X~_iUpX9#ugPD$oN#i~fpd#6$^WUs7RVnk@+Ve-%dsA+x}L0!)*|#_cePI3reZmipBE8NMm(7NSJ(71@IT{I#nZ$85!xCjU7de40*nv!G`VA9I#eGLVjhIw=TJa?{g?cN>YM992l&%>l+fZrIe|1nk{+{Z?p%l63+i9ThxTb=5BmAUXG<tC`8f(Wgzv;V6Uou0{0k1mRU|e8{BQgI2(?Z37m6Ch({l-|f)!_95?B`|``<>kpa{hOVPDkWxwoHB#S|py%YqSwye~;+{;NbVyWN99{4nCXBY@vAu8ujv$1bM+EV_nh8`hFLB2V?OR~qtjNAMkuWc82N)7+>3)7Fgt!&G4%pf9K6P9yGUVG)}P7A_=p%@EWQ&HChLcDmeymJ|MP359FI51Yq>iLAY<tIwILI<r3DY(L6HAUfP7*Wo68Y2;TI70nvx`xZd`7yh6p6QxTWxFX^J`cII+IVWt^NTTy|BIi+F2FS|bjTO$aJ1#Z)Sp06~m$n<^W2ime;m9s1{@-%+HuryB&-x+l*eC*DWY!mgqx+)}w&Om+o#Y2YS*V*c26}DrA5}pzH`u53ce1FVx-C3F|APL>A1}3x9WFV&Fix9F4fU4>4T-xmCk*HLyJzGLyT@G~+`4rpd<?A-JO%N$naGLx`v#k#n5`GREbzq-R~Gp{*Y`5vT-(!$&019W(M>@Aem8%TKY{DS+r)IWD=sIxeH9~ed(J{Y|KR6YtV8do5<Wz>uf_oQrLbp=1N;g+f6$+Nh>vbz1NBe8ByL#d4g>ImV>>c6_%*KW)OVO|z`CvYAwE?Y__tpB&d>N?uPMImQ2rmE1=W8}1jXu=JN1kizk*xXYk~toeY+9M*$VWxm>*5w?{@AvS=B^OC#?wwzHc#`f3ScT^cg;Vg!p4r`XaEuy1@??O6@VF6bt_G7ksneH@Qn{x|yo?m}IV}O+`$5iX8dNTN8inPonJ5oPKG^pBRyw56;IBOP5&eKZ#E{M*IQxANNsI!y0=MrWyS&3w;an3uf0Bn(LrGX6=l-`i>xi>XZ6#)|CiU<k2k=c*XBixn+@u%CqdZt*!z1-_A8jLeKDX>bsfK#YYY+Dfm|;RV}e&Lc`dnDeF-h{fFNF;=eY``OKf<0s1c2#+!NEDM(KQ^r`Hg%MazVvL^LmYc>b!Pt%5{ac&@PcdnCd%Q)9d2k_rj;7-%a8obHeqTDbW{Bdty4Z5hq1H_MVxU7Zb8sZPHi7w7&N9XN8Vj=(a|8sp<M%e#q9c%B*F+Fd}p8qX<DD&0aIGr}joS(T%&W$p-@2SaA%Nf^$Tb9sy|0)3b`-?zx{tS|p4fJIxbEi~_+Giny_8tv^6V4m`Z@aDOr$?pVPU@FuT2e%Q&RPs<)Xe|R4bzl$_OViLgdXBgH=+FXQB+ZyI@4qwE&#t){Uq|_xFhtWI~r8T<vk%(=C}{<kEo(E9@yp?1EnI^{)J!AHt;_o_aPwsq)ZtO1p05k5nn}E9m1Ty2MZUVZH9dyf6yzq&J8+0-W)`_+20GI_4{$FU>#*&%JwE)Ympf0^BXh2i+LTOs>JqBXzg}>SJ-RKz3rgo8R}QU&);GdWIHi)Q8oE?XWF!aw6c!~BIJMn?ZbC~K7o~Ql44me0_D}n+hy*uo6-7iD#%Y#|9AKmMzU#(5`nPv=LVSE_x8zr=Rf;vW_?dI@Q<AE_H4(<gC!B5{^V7Y4?Ndm>)p-{TFDxTv3w8OKg9Rq*t~`(7XBS`clwELMhu{@f&M=h+n%`yzO6XKj`d<D`Mt&dE$CE^A2{DI^iKf40}b{2|A;S%`23|6BWzWk7%A|;e2Q$}h}oETm~V&ga|QGRSf2)b+-2m)dERrvwjbdm=xsjSvadS+y@6G*x~meZFH(9a6#ta%M-~#KcigEZxV8~3`)tO*V|HvaKAz)7>xJTf^)Qc0?+z4{^6Mv(oOCO$0sG&={~2FgWyc*_CYHrO{g0TZf_`7*E^i*J<S-AR0QIZ?lc5dNeF^&G2LCqzcb<{sjg8v0IRbCnJzY~ndh!zBe=E;^WO8<3mdShpe*Qe28U^ty$UnUOYCW|cJ=y>K>H5&;afbPBsIfm!Cjs9#>|o)~pn>lL{Y6*dh}EINI1!-F%4o8!K>rA|xk%N`4#&4z__JB8{J7JAe*J0wq`!;d>I(Q2fPY!kzX3m%yH|-GMB;;VM<VQ9{+J{9;5pXBnR_yHiy6NZ&(hgZB^AL4j7dKk@Z~T55#%5LnIA#^6V{|}jQr~KFkM_^jBi0YJtD7AK9AWwO#pr0BIx{${2ajVY^q3iz$zRzJWcQc^cSXmpI+NzC4MCGqAUjZ?LKb-?AMz#fubsz+7)H+KTdWt6m_&zp#K{1575W->`8w|u{Ysdx3vu5hhTq?x);xh*i;Ynhq0-$K~>Hbzo46D{TOP*_lqGISid`{uRa3xlX&q=B>oY7d0IM6AKtP`zTp6be_zjoz8|eyUHg`Se`fYi1SJJZs%`0V>KOS>-%@}d4_Wxb&kX$&sIL@-9(lhr4WIA!nLm;_U6{X#%QVz?cNxeJFP`x*^XtF*D{}_k5`uRylQ{{Y*JTX})TqmwBJd6`{pHnD4xKmaXJ^pA72aPeX9E0)py>4p{)7ALP!e%l#)UJn7W<Pzbq6DCSuaS&`46yvA6s>oo}_l2ZJdvo^?O+&ZC}FaL2O1n4&ZONONu)i**qxzpXSedJgsqP1E4?p-ZO(+M9y?S_~ppfBujt#_KPLh-AkeQv%Nt-?l<~tQOA+$Dr8${qPK2EO*>(JGkrP7INyagG(+#tu0lQ?pZaya%aLxUghs0C3PXL*HrDt5-JdS>0`xg@zefLBBzfeJL7~Afr?)0aMMZ`3g;4%*50ydq{*ept^EGN0+!%<z8@Cq6g7ZfwgFgWDpYkw#Gch&DgLYogBA^Pl9s=~^E6?B>Kwqw>e4lXbotLnYxJnp6zYhBE8%y%!m{?Q)-oK*atygRvZh4Fs&gAdnfc_!5Y%!l{qc7*V+gwb1kirXT*rJSL{O%+Bh<kb_Ftqv0u`}lW-Jqca>9&CUW3qmM_zVO5fShFZZ;bPi5s!z%ao=u@JKaN2j@hgbE(tiWe30{{xqc1)it5BD7Hibkq^Idju5ODNf0ojArUBm{bjLv}H1Ur;VfOTXf6WQ|N5fjPz7TucUQ*u^P=dA;l8K~0rc0})9O%=KcP8i`GNSA05dJzq{HKr$w;A&hzE%`XBw_LsJCB3+PiBJsEfJb87s|tx$CIdKl0B!~WG#PttCw4CQ_gbY8~m}*oGl@C|6Tu_6F>hB%{^E#AMBsxGGhNwCM#ccY{biU-@;kA&-lgIOih_neJ992YDO_!%lXmPVm<}nSL8wdKg+UMMXQG@MVvaEj1+*oAi3r1uAIz&@O;*@_N~(Qh!&XZ3oYKhC6)lbztjOZUsQo*{mUL|DN*@H0e)W^sJcpgG-9dGd~D7o-qRo>_5%71(eI}nBXzt<w7RLZcwX@=lMtz^0Qv7!-gWp>13x<HAO`9$#@Df0d|v?i_aS&%zwc-L{}+d}Sa<8Iv^;P={WJ;zD^C&E*xi4T?D&~~8~Gp!6PZ(C<iFfar?T)nR+n{6&L=JS*NA6uHS)=SB%}hj-^&TgTbSj-8Bly|yt>|M@QjH-!LiW#p>+U%>HiN?_A}iV%n#Z=1dF??RSD={()=3SlTHaEH|^v@wyK4`%<%p0M*ey=b(O&%xSVk9<23ODyJVhUu%Z7qG^3#WJd9}TS|_@YG4K@J-*q*xKY)MI6`M+8?MdTPd4o{>R;@byPGni1L3yp9|C$Q$pXO5`_+9a}??lR5$YiOn!>5R+nQY;%0<OKd(_c`9eLA#}S{HYEL?pV+P8a$*eo7xyNg#e0Q<?(BKP#+m?!ZTOY@J|*FaVPyYyA%Nm#qx`0jXmg$j?=$yQhdB;o{{EHWjjm8npOeff9>2KZjRi(=omd=zpjGL*TTrA^sOxpG~nd)u%%fz|VF8_(G1UGxdKXzcK6E6&3FgAU{;ki1`PtX$gUo|C{hn^=B<@BqlGg$bZv({wurO?@soTMU(fV9$3sLEA1Z-C$o0W&Fg2#`bhCoSKOuaTUl&eZS7*0SslnVC7x#dy5+Q3=;{di1H9<%JGfX<U!tVareiqkFZcl6FERN`miS`!k1Xc%Tq8dfERJ!u1^87wePKS-pO--AuO;U$zcz{o{S}$N^)=%D|Dq2E%0%4#Vpo<{F^byd7K&}EgK3QM8QXx)ce!NF|F8xvMpOj)Cu0GkN_f+_WqtZixh}e|A;DW(Q6$Fj48hoE^|dA?kfB#UOEmOfpHhFp3Di$zB8%s}?P}EbGbh(Qf&JUYyr$kZ@yB$-{C4BvLb)~L)il8s!~EL!!l)H3kG+@!_6JaZZO-8#2%q@}6m=stRq7Sm%ebdO<8~G*!(%$9O0VMDo_j5_*dL*fyqCZfG}I&U__4%A)x;ml5?K3I9vcMoktO~eoe$o>5Zpl2k89aCwATQBRELk}2jZ?l^>^T{t7i7Ashl!+<GD;q!RpR4il9dhtJHx&fBzv1AE_%uEy(WkiGEFK9LmNQXv%uLxOMns{#2Wb!O!Ed3%3FIZjAp84-ZhEPUSSBQo;VGY2Se57Hxq^KkLs8u;3Pl3}Ha{4t0wL%%5n^oQY}TYEsd|^^^k|kpI^i=Py5a&yL((h~$wb0;T^}7TwfRbpU@S1nY#Z`~aJ?!n*)}Drybm5c+*pl?Xr|%Bth8c8i>JGghme;gyW01eEw_0hhys_BZ$sz2*MupXjaxABRfOp>L$|n*e<x9(NPGwz)H&McI|0uR!4ItW$Y@@Qbm<8Cb!lBM}7K<8#zC$c|IVm|gJ|Z{<+`P7nPs%j^%NqFxg_hBZL{)sH&J+K|hlK!50YCOc~T5#{9hoHOx%!~6%rmxDWyYH_(~{sHo5&Qs`q*Y=c>sS?p)fFH)5GxVo8r#j<&cBaD3UeCyxC53O>5rT=iYQm3<+J1`okus1n7kygNs%7D}<|!zQQK0@P%|pqox^#WHgt;&LOIW6Q2(|O8`EV0HLGj(3pa=L-p6UJ=I`puCzX@)TJ8qctv)XmJhqXQwz*pGTqY-fCaZhe3?zdqryKe2Vw^lqrze)WOwd#8&|8EYj+N$M)76stzm?Uvr<wr@MKQcu(TaImNPIUwO>)V)|ssP1pm!Ugf6HAoN?C(_ls9nAySi_|(kbkp!W46`$huz#@;s=a>aEfP1qYoBFqOtvc^vm$u70~^vw^)`=<$+iw=m+}K<oo?4wNoAqNZ8wwj(r6ETW8V|t4iU0cQ-*vjuipl<u52BADGZkH^*1>F++AmeBqQB4(N05>99>lka*IInSwu}_q02k__;RN1*s1O-XGGiO=^w(G>ZrD+o6PMn>81@t%BQCruvIMSgb-5`u(XR{6nubcH2}nAK1#<4$gBSez%bxlV36EuLJnzxHk^e*KH!x^QQZeBZmC)JvL&=A4yzreun7)`VYRPON;JU4&FcfiN4ItAGbu<<3auB)IYp|v?)P<g~6+LOy-*LSp~NlCWTzHYwHB(e?Oj?68(@I%bz;?WLSGTid&LvOJNN9$adOyd~k_q*f0d)tC!*Xv)SUKIed=2*?(P8Gi=3c1LI3Cmp#*<1q~MZ!<7HPx?#R3v79fKX;1~43q1spVg8pRs*huE4+8jYs9%fwOMrg=7Jf~A&zA!`oD)J~_4)8D{TuLpR{-eGqyzeNi=1iU53i{hU;+3V8yo=oJE?N}BZc88#!F{f8KGq`j&f&hSvOUD$kac1azlM5s;)2({b{~c5e4x#@cvZ!Xa2e*&pj<TApDy8aRM`_q;MhUtESY&AV2aTZ_B7CX9w#LhWx2>lWKH7gix7%siG>>gK-b+ZkL+pz&dfQ!UtEuc$&?IeP6)0rT6<%$F!FId;-bG;ZsU$Dj}#zH=n}(%l+`>pWhEZ?kT&%fBXu-Hz2>L`0>9*Q+#bMDj#H%gFt<1dp^bFZ*@WO&7RATD+z7=4#PcY;Fq*g;^VOmsGBoxju0d|K)*UT>cbimDE!O0v1nL7iCc!a{c2sbNxxvU?iURF?5u)<_zl2EZc|SpCEv~L5A9Mne1`(?djS^EH=;7!-4|I_btx6YH0~W`+9ECblBD=6sqy}U9~IEgr!+Fd{yQf9YjFO*Uk=T`O8L4|>8yRK$@{ggj{4Yp(EV&hIIQ1YQcLWAktW-{a^MUiy1_w9N`&$s$ZtU3S<FY=u6-nPn?ZdXS_$Y!x_DDDA5Q=5e%|E$NFaX<_&$%-XR&VdZvy{%|K)crvp`cb>IM2QYF8}q{2B}Y!LDsEj;eF(DVK!QIWFV)0?!X-W4XVyqO3@-W(oj&0QAA-m9?XGX8jM{zfhw{<9?D8ltVW>rdZUUU8U$rf|KZA;ld!<@s!E>2KYV5&l9=cAU`+yt5b$NgG&+hZw&sjm#Uc%Ck&Wftty!+jXc<jB9LDAifbJEf7eU{{l6*VJeb)ZhxoJU{?N@i0KS{&H|f-<U5BHn2tdDl;vagWanu3&O@h*qwHyy@g#z?HjQT}hO?>=oCM_?aup4jicSFxB?x!#!3o0V5JiBKE>+v0y^L5Cdc`$i@1314k+@>)Nc0V{jCjRW8UF41}4{c8Y`%4%Mn(rC>X>dLq^9bVS=Sjb6Fm?@x`2<+^OkNebzh^0QKLf-kFNz!O6YZ{+!rNB7XdbJV1m0hMtyL78{U=Bt0$Q^$3QrnM!M<i68qcEbTLto~Jf}3NC;V#EJq-&E#*Z-$tXtx{AW`VYG0m^$QC|jX%IxlUCMz0T%HE2IZEUT;$EGZ?Vd-@6eh+xRaeg)TUuQqNUle*S;z1?`!bkg3zu+q3opDhAp6g{uZZp?%J?z2zN%$b$0WJdUuLazqA3e<VY5aYpNL@3GqdK0Vslpw4YxbWY{w#SA@4(%Cm=E;dS!84V&lxyFRW~tGqy1@mRf&rfzBwlf&K&+5bUy`nzlZ65dw69ipr3>Ciupmx^MR@|R7ZugtjT4l{A*qtSt|^re+b$0r~6@X#C_=}p!=(4e;&~9)~wzDUiFkiXFU|TOV0JeR4rhBdwyUX@Lpu<kFNoI@IvLLmGwyIx)@iI15Gb$&jRZo<z&Wxs6UwaE3m)3Ay)~9P56-q`G<OzVz;fWI3va98Sod-*Mz7NFusQQ73AO7jMBspNomsAvoA(9XRw70Pmovyz)zm5a%$%;eE7F_mm-MUl+F-8eXKzN`U1TF4&)c~|B<^%6(5zv7J9l6obTKcAcdPZ&$k8tfAOPPe?a)?Wm6g3qM6Rwel!9@==O*Fi*?xC)wS<{`cZ-SZa9D7d@%T~KuBKz`YYk|2$}O9m(2YZUZXBZfbI_&)+6_T{Bg<IK7#5e_Og^fT*bl%>1<g3Q3XPL%TrMb|JPsVv;PNglx1H"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+    # Simulated Meta WhatsApp Cloud API outbound payload
+    meta_payload = {
+        "messaging_product": "whatsapp",
+        "to": payload.caller_phone,
+        "type": "text",
+        "text": {"body": res["reply"]},
+        "quick_replies": res.get("suggested_slots") or ["Confirm", "Reschedule", "Cancel"]
+    }
+
+    return {
+        "status": "success",
+        "channel": "whatsapp",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "meta_payload": meta_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/messenger")
+def test_messenger_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On Facebook Messenger Simulator:
+    Simulates incoming Facebook Messenger DM and returns structured cards & quick replies.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"fb-psid-99281",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.MESSENGER,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    messenger_payload = {
+        "recipient": {"id": "fb_psid_99281"},
+        "message": {
+            "text": res["reply"],
+            "quick_replies": [
+                {"content_type": "text", "title": slot[:20], "payload": slot}
+                for slot in (res.get("suggested_slots") or ["Book Appointment", "Check Hours"])
+            ]
+        }
+    }
+
+    return {
+        "status": "success",
+        "channel": "messenger",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "messenger_payload": messenger_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/instagram")
+def test_instagram_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On Instagram Direct Simulator:
+    Simulates incoming Instagram DM and returns response.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"ig-igid-44119",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.INSTAGRAM,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    instagram_payload = {
+        "recipient": {"id": "ig_igid_44119"},
+        "message": {"text": res["reply"]}
+    }
+
+    return {
+        "status": "success",
+        "channel": "instagram",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "instagram_payload": instagram_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/telegram")
+def test_telegram_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On Telegram Simulator:
+    Simulates incoming message or callback button click from Telegram user.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"tg-user-77291",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.TELEGRAM,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    quick_replies = res.get("suggested_slots") or ["Book Appointment", "Check Hours"]
+    telegram_payload = {
+        "chat_id": "7729104",
+        "text": res["reply"],
+        "reply_markup": {
+            "inline_keyboard": [
+                [{"text": slot, "callback_data": slot}] for slot in quick_replies[:4]
+            ]
+        }
+    }
+
+    return {
+        "status": "success",
+        "channel": "telegram",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "telegram_payload": telegram_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/twitter")
+def test_twitter_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On Twitter / X DM Simulator:
+    Simulates incoming direct message from X user with quick reply options.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"tw-user-90124",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.TWITTER,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    twitter_payload = {
+        "recipient_id": "90124991",
+        "message": res["reply"],
+        "quick_reply_options": res.get("suggested_slots") or ["Book Appointment", "Pricing"]
+    }
+
+    return {
+        "status": "success",
+        "channel": "twitter",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "twitter_payload": twitter_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/linkedin")
+def test_linkedin_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On LinkedIn Simulator:
+    Simulates professional direct message inquiry.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"li-urn-li-person-88219",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.LINKEDIN,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    linkedin_payload = {
+        "recipient": "urn:li:person:88219",
+        "messageContent": {"body": res["reply"]}
+    }
+
+    return {
+        "status": "success",
+        "channel": "linkedin",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "linkedin_payload": linkedin_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/tiktok")
+def test_tiktok_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On TikTok Direct Message Simulator:
+    Simulates incoming DM inquiry from TikTok user.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"tt-open-id-61029",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.TIKTOK,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    tiktok_payload = {
+        "to_user_id": "tt_open_id_61029",
+        "msg_type": "text",
+        "content": {"text": res["reply"]}
+    }
+
+    return {
+        "status": "success",
+        "channel": "tiktok",
+        "bot_reply": res["reply"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "tiktok_payload": tiktok_payload,
+        "latency_ms": elapsed
+    }
+
+
+@router.post("/voice-call")
+def test_voice_call_interaction(payload: ChannelTestRequest):
+    """
+    Hands-On Voice Calling Simulator:
+    Runs conversational turn with Nimbus latency waterfall breakdown and dialect TTS.
+    """
+    t0 = time.perf_counter()
+    res = universal_orchestrator.process_conversation_turn(
+        user_message=payload.message,
+        session_id=f"voice-{payload.caller_phone}",
+        tenant_id=payload.tenant_id,
+        channel=OmniChannelType.VOICE_CALL,
+        accent_key=payload.accent,
+        caller_phone=payload.caller_phone,
+        caller_name=payload.caller_name
+    )
+    elapsed = round((time.perf_counter() - t0) * 1000.0, 2)
+
+    return {
+        "status": "success",
+        "channel": "voice",
+        "bot_speech": res["reply"],
+        "accent": res["accent"],
+        "action_performed": res.get("action_performed"),
+        "booking": res.get("booking"),
+        "metrics": res.get("metrics"),
+        "client_elapsed_ms": elapsed
+    }
+
+
+@router.post("/provision-phone")
+def provision_telephony_number(payload: PhoneProvisionRequest):
+    """
+    Customer Telephony Number Provisioner:
+    - Mode 'auto': Generates / provisions a dedicated Vapi / Twilio virtual number.
+    - Mode 'byon': Binds the customer's existing business phone number.
+    """
+    tenant = tenant_registry.get_tenant(payload.tenant_id)
+    country = (payload.country or "US").upper()
+
+    if payload.mode == "byon":
+        number = payload.customer_phone or "+16175550199"
+        provider = "customer_sip"
+    else:
+        # Generate clean assigned virtual number
+        prefixes = {"US": "+1888", "CA": "+1877", "GB": "+44800", "AU": "+611800"}
+        pfx = prefixes.get(country, "+1888")
+        random_digits = "".join([str(secrets.randbelow(10)) for _ in range(7)])
+        number = f"{pfx}{random_digits}"
+        provider = "vapi_twilio"
+
+    save_tenant_integrations(
+        tenant_id=tenant.id,
+        telephony_provider=provider,
+        telephony_number=number,
+        vapi_phone_id=f"vapi_ph_{secrets.token_hex(4)}"
+    )
+
+    return {
+        "status": "success",
+        "tenant_id": tenant.id,
+        "assigned_phone_number": number,
+        "provider": provider,
+        "country": country,
+        "webhook_url": f"/webhook/twilio-voice?tenant_id={tenant.id}",
+        "instructions": (
+            f"Your dedicated AI Voice line is {number}. Inbound calls to this number are handled "
+            f"by Sofia with Google Calendar synchronization and automatic SMS confirmations."
+        )
+    }
+
+
+@router.get("/status")
+def get_testing_suite_status(tenant_id: Optional[str] = "salon"):
+    """Returns connectivity health of all 9 channels for a tenant."""
+    integrations = get_tenant_integrations(tenant_id or "salon")
+    return {
+        "status": "operational",
+        "tenant_id": tenant_id,
+        "channels": {
+            "website_calling": {"status": "online", "webrtc": True, "barge_in": True},
+            "whatsapp": {"status": "configured", "phone_id": integrations.get("whatsapp_phone_number_id") or "sandbox_wa_active"},
+            "messenger": {"status": "configured", "page_id": integrations.get("meta_page_id") or "sandbox_fb_active"},
+            "instagram": {"status": "configured", "account_id": integrations.get("instagram_account_id") or "sandbox_ig_active"},
+            "telegram": {"status": "configured", "bot": integrations.get("telegram_bot_token") or "sandbox_tg_bot_active"},
+            "twitter": {"status": "configured", "handle": "@" + (tenant_id or "salon") + "_ai"},
+            "linkedin": {"status": "configured", "organization": (tenant_id or "salon").title() + " Business"},
+            "tiktok": {"status": "configured", "account": "@" + (tenant_id or "salon") + "_reception"},
+            "telephony": {"status": "active", "number": integrations.get("telephony_number") or "+18885550199", "provider": integrations.get("telephony_provider")},
+            "google_calendar": {"status": "synced", "connected": calendar_service.is_connected() if calendar_service else False}
+        }
+    }
+

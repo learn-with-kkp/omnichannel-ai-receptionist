@@ -1,36 +1,218 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+"""
+Universal Custom AI-Voice Receptionist Blueprint — Domain Schema.
+Enables plug-and-play multi-tenant support for any appointment-based vertical:
+Salons, Spas, Dental Clinics, Auto Repair, Medical Offices, and Professional Services.
+"""
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
-    )
-    _s.exit(1)
+from typing import List, Dict, Optional, Any
+from pydantic import BaseModel, Field, model_validator
+from enum import Enum
 
-try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-oa&d0bQ1wgv-9NCFwiOh5=C0!2D`1t%am34;P=f`o)H1rnP8LKPJ%4i(WBp%oMy5U>n_P?4)>5frU$!B9&OK@|G5po|q$UJ=?V@0<h>d++_d_x|3$b@twCee3(awU6AM$o0M`(5g`U&(0tnO!VI3>)e_4WgfYz^Ap0DmZeIrC#+7`m4Pv>Iun5~f5DVga>LDwBxQ-^W47{4k7&6I;yUq)KiTK-nIOFAH)qzRjlE+D!Y>l4CWR3lxYWpKyGCJOEXK4jOH81@@TOe0xKpm8oN%c6!z{9$kScXCJ5Tv94I0Splp_#ROkq80e{MK6JF#L$jGMy5a-srHMc&&*3({T$&^BW$fLZR$i{0cFLG2$TNzZ0xx{FnVq%T^WcqHG~6sK2G>XCir5_GPzb_OB2Lx>I6cs2TK6*fR&AJZqS#CQE=V$ZOP<%#6dL2Fz)K1H&@ZZ;LXpQX0J*VOcD_0F#dx=|%H+kIF|54b?zDsc$B!0y$MMf<-*qN%?v<5Y707))c-Ce}<)8JTO;0(+}TdPfWc$f}jYXk#9sl@@n$lhC=E;R!mYRi>7%Gp`LU@+S)qPBT^H=dM5r_vNq>_tloFLAt1IMLO4oRTKP^gIJN7#n~8gNKKjKKELC$rd<BH*7K80UnX&ld4uGEM~bPo6S?Z$7HUS8<IwlMo|hbcuMYKVu}hBh#O{^c*I-~zI*}~VeOPMNs+s!|Nx#GBD+W)8jpeTMzfUi67pGK|A|pj5p5Y}xeYuOIWz&&f=j~%_{S=z8S!#z0&CfX<f<Tn`g8LV?`?+57$$hYDH?+T#Sxs=?M<}0z9ZZ(!tUC6%>#JK*&su1IparMoZ9vykuegg%wH15Z9J;OICZ&ayyR8myZ<>G;F36Z<&GO^hru^5b$~#G{u;)z4RaoD+Qab7|TrE_LuMXXX2>gX!ybB*#T*UU-a~8b+`!9Mnd6w~quLub`;#PsXRgLlcB?-&l(=Mev=bn72u|1$_I+wBL!qUVrZ`$n6&KPU|%wy?f;?xG<Pg46!CrNoy^H2oJu)oU}+x`SxHD5PC_ebt5ve)+j>&hH&RSR*M-t3)NkG$0B05L<`p>|w*(<;5#@vlmlq{U(Q!F#dKKJ-hWEkBu2^sX58&6RYA^*>-^7S`L=?*9E<zZi>^vxp*(wTTsH70wPnU`f52`e$*}yp-WqQ+7K+$?;~^h5VGUIrg)CK_2vHE2V$P4EayIIzdm;k&*<dfnfdJIi_v5@M2EAI`xdPJ~3ra5u!hkYN^ZS*?_h^(D|sskot7Wr*0>6VIO~*P&I?V4Ot{dGO;xQ6FZ4O;lqz$@FBSP3aqQ<gO9=URnsI|$3!rHdxN{8Y%@MBion6Is^!gu!mBPD4fz+`CPWMD;n#z^V#pb%PjTV&--(e;)_0~pkQ`2Gst&*v_#?@hz*%vt+738T%R$?`^yZhy3dfa}E$fD_`L4+X^Sc6jL3CGv$v9CUp)g*o6pU~mj>eO~^>&i1n`VfYw(g>294g|PF<vaUoHXkhjRWy{dfHTUAr&dIN7n=t$!!Hir#2$iO|1<7b6M|{=EK~$+Glh1gIzNz%D@N=_#Sr+Z;%yE?MBa?AF1RyQY+r9Kij~mhx&K<5mm*kiKv^)jAYsw@XtE|em~@_yR-?>o(tyJp=JUh=pm)BoXju2i68I~WLtED_pec1d+ov2Sw)hQ15XGZL^CXM3xZ)L&%ITb5s&oo=o9P81`t4YDtNxY24S1V8o2an1Oh(A6gQLhmveA=+w*2jSkp3ZG78oh+Uvvsj^ssHnfAMf))9JMZUwTz??)K&w*mWgNY@@)4j2#ehr7HE(LNqe$y+=8y)9ekoXpy=8pPK|JdkzV1dbbYW!)eQ4XEh(iH(y1vUY6hQf}0JiB5y&YfEJ?>p?jGx>^5Ahqe1sYJad1w&2__+`w6Sk%D2P-6z8t`U}}RtYNpLG)-sV!2JP7c;lP<>+R(?P}&<Vs}83$=@3AV0~4)zry)|eWiuxyKY&7;BJ%3Z+egz)`V&fLOlXGs*i=h(3OoOt<2&%U7whG9u>WT~x=Pv=O=D*j?0^&h^t7CG)lKbY=52565n3Ag^`-oQnkLLTxWkP2#9LgtG;>5n+#gp}Csb#>mmpq&uAqMD9=`odffS72VlxR$JWilwrqqmC5)RAkW0ozg4d~UF!hYyPEkl6(Tn*%xySeV$-aL)t^~ocb8uF8Y@i}pD2a5jE%W@Lit#<)hJVAU}XL3B@p9G%SVc?$vF5Go=8LM;w|C^xvku<WWs3YzxG=}^=ag{b8`v%jOACCL2daaL+lpuD89{~H;$+WvO-qL2scRk3j<pD$p-)`L7I5pqhuFn5h6or%X6UqcPxQx>Pd}+Yvp%E&t8=EBXTv8`D?0-DSOr(EbQs<?89!1Jdc|1a8AC_$kvtQa6kmc?ba`X{0WaC+sq}s?YP=83im8m%f{*JW)zC93NWisSxGr2_fZ1?7e=wXQep!|dP?^26lC$j>q7=ujy6))}MbnM}n+L=&XJAvur4zG^9>rM;F?c`dTo?Rb$!@7UU*)DVY<8ugUJ1&uv$bR~65p+K2{t&*v`|Y7-Z>yd0AaqmI;r6swN{~OpJ_G#&ymt$?0?{>|gv*R8n8CB|k)j3O{`=pGZ$Rk=T%>s)l|G}gvt(+qhH*W#RfRVF?DQs<&9B~+azxh)4eD-u?Q0pK%OW=13DXeS%SQtz4nX?9#co7XIDh}S`&CJGJ8k)O9TE!hIg{52>wB2SIJ%>B1kcWb@M-*hTH8K0n)ck2l(P^I7wIgv&hPK`WO}0&QSV7P<~-8An{mYDvoVBd*g9TdKX?EA#|f-8zj@1>ki8>(RQ|`uK>p04$NEJ}Um4a<W(DC*$CgP(xLSR>fuBk8ZnP3G@IL~&|3;YU&^sW$_m`(x9)<LEM+-p-xWkR{#d#t4kh2JR31I-_zh-d#eMt*0-fji<8)<7aCgVunMl$`y`=}dOt=|6QQS|v|BzCuqE%Lx#4E}Ww#c%(apup7wp8PWweUIbj>VKD(j?vK0`$PJ6qF~c{;>1c$qj~R`oAG>t?`ayAHN?Lxq-cK;7e?##WS6c5^<#BzQte(SznU-y>{I&PT_`uGe%8-jHyiE;`H!@*N_bx5H;GYTf4LKb59I+M|AO({%yKtI&O1fDp$7i*w5y5J#^6~wwZ8C>vu1vk*q$*J=^DsSF1SLOz1eQW1ZpIaM7nWCzTB*lDLdf&yHS59sG@r`O}IO9as1r(H|jLgjrM|8|IqL?E5BaS74H#MVe~KJuVCGSQOl1fg7rsbVp9Rg|J;kQ@@bof@V8c8Y2I<eWodR|)oYM{g5E*wGMpdH%gJM-ZJrWAed%Ak4xi_b!>0hW>7U7z%c!2g-QfMF%Z&Qy4XYREG${Y#&v%&6fAwUKaDN_&r{;t81MG?n`f=6&feHiqmmOr>#9FE0`yhTG|MM#?G2D?m%kNARvpzeGbQ6uPlzzp%Ir@ntKM~|NY?dLuNpvsWR#2EHL(|7yrP-wRzv37V9j?8GL-~t#r`FT^Vi~5V_WGIO^qvNM8taSTwPF$l*7Pg>eHpd}eGuJHlMcWNN8-t!JAC~V?swZNp6qEp8}LAd56SN2S(<#c#lT+)jJ%k}0W+Z8TC;$ks|N!x_yI4$q<#Oeij?Vac!VO-BJI~1@)JY~&Mg4e!v>t?R}dio^NxW2Ie_p3O(EHUePwOnw|YZ=g*Om7MiUI@!->9?C5JFA_VONVLt7j=BMlb)x2v=Q(ihL1olmMIR+;NHA*qJ?K>g!uCK~gUH<Q{2mGn%P>tj?-3w9-W1*|DJe|5@Yei~1b+=@Csf|u(Y)%-+Izl+joL7;xHh~pj<y=DJjZjzkDrfP7$LB)o9VQWmT{EgpSu=^64ClKl^iZUb-(r075SJ=P`VFR-LVU+DH*{wzVTBIWSAL&F{;Qrh~X+#!Isz}Ea*TDY2DYFmruxJ#v@$sBC1HUpQlepfIPZ)V?--?I!H}bbek9hP<L&=wyJ`YU*{kf5!L&F1eK1X@)nLi)Y9|Htj7BZD%&8QRntaA3x?LeY!=J?x%niDsC4lip#DaH2a=73+)DgK8FcA)VkYDp6T)HliTsIpl+yEt{x{)YP-<N4CegxbIG@;2M3Mc?1f@?Tib-+t}>lF0U@$}LV-uas})57q_cUr{!(M5M*V3cXiViMkSPGxi@xu^8iO-+I)KkJBXkl4`*DLWhm;afCHR{-R*Ow5R>ZqA{mA{(oD)pz{^w0Ti4bN2(-fAMPQ8`gPw{_!hqx00`KSleFG!@j7xoUXXJz0ym!@*vF$WWn&0-=7t@hel`Z&jX(t-IRzjhT3mq!x1J{&Qk$_pr1%B=7v=$$Hpcl$uc7QqY68DsEDJKs&wbI3{NlY(e$2(qFoQlPRSmu2AN@`fKwBDMMITq=Cs(x&8vB#X=_Y9e-n6~Kz9_Iio5f_tuTG&i)`R@I4D=tjZR9O;{<C){T6E%b0t-In1<glODpGFJsDYoi2{zb4^D)b`Y`>8o4uSKL5ag$WPw66q|FXLtp;M3nU8j_cIGak*J9a(ZL(NwV-?QQL$at((@J8eOwciKyFUgb=!kzLDCAVB>nmC9r0#?I!hfge8CrT>N4<DzqTY|5?wvE)<CMI~>)k6B8bl`N53aWqolD?N36zFe3e+<o+J0mCPlPWCx%w8UA`IHyGfskLmk({@^a!`yLUT?n+s!yAO1bkV<eWM?qM-+_%6y9g=D}Aj$sPpeO&c~)EFTD88<~JAk^MwbOXyBh{Tc6xo8JaruxB149zh+TqJjidgK9-2F_r%R!eS=$34;@MeO+fy9&&cnIw2(sufE5w)_g+7ZD{XUA3w{CfgY_gknVqNabq^#N{NLjZyvwjV4;8qaZA}vhR3=Ho0_%%DWYG5zOZro1eztk<h=y_?s_{SL!{Gm_XAu%DEtzAz1ezaNrd3%|w9SwwaLVGxmuX=Aat83So5Fa3E4n(gjc@03=%61CbHjpFg6)2shB}wnJdH5=Yh-mmSFA0+ur{1R8v_0HvLC0SK!1GgfvKzo`yc%|yLrY|-hxe5c)=S3@)3so{>|Szi+WIMk&EN`$d1k6e0s?jL3<V}XfWx05odWrSv6u3*<<b<?nFCp<oA8he3DEl2K@=&H9zX>aW7G;of5!<^Z%a;+o0Tsn-JCm8>E$9KM#Innfvj@D^y80(#=r+M;Z&hu2X@APvMe}uGZ@{#Q)9zEb=e(TG1l~I3KqnmouJtYe4)~xp;mWQ#)u9)nl!Qw8!oT>$kx_=gg)+{E&NS1*-jF67|#VmD84%H%ZZ~ID@{-&u^~6I#{><0|_{vK>p53$+t$=NB*R+@yYC98t|QmhWO#ej;d$2!rRCMK!K=}KX^Bsos;i}!<EDs{XacB>e>uVq$4Kq4fxt(>!;nv!;t&E`OS!KeJC}5d*h5u&<5()8uULy9)R_)KF!-Gy0D#c6nXOoY~J6J6l5n_gYfPy2%jcI;`0sslEA_zQS|&3zwKSjk9a?AhYVpe;Ka_x_EoyzavY5M$P8mz%~HFzgqvm-$=>iUd(`1?{5tR7<yU~GVE-HS;k7(fz(ijRhWNQ*dXYX#G80P2g@kshJ=h<!oBE<Hfx=GEADrF7Zb0^q?FQ$g(Q106?v1~<d9qkvq5J(sl6BCM6B3Q@hmbyagZ{*LKISb|%{iAf7Z&T|sbE&v;|)L~vVSUVc}`UM#NX!^6bAISq)B9t{>}Y8*S)Q8>N$P6=2$UC6TPJ$Uqs*;<12v@ukJww<KODL@%z~Bx%o%P(^8qll}l>`_f%;9rPBde-2Yi$_iwv4Ko@mmBgF2AM(SgC&Vs%*Bkn(TTQ>SH^IK6tIGF*?pL(utY|fwHZWH3kiLi_ER&c&Q+JVH-r_}Oh?%lySOlHd4_<;78!)Py80*3(ISONyb_vBmtA}nXG3{4(zUNj#;@k((10`U{e5EdQ`w+VaWUmU6iakwm$67YmINp&9LkOK$b_z&az)Z+cEe6qm#Xl2QIeknosOhvjS1Nj@Ak9P>X-+Lvvx5X0VN1o4$L%whDVVH02xy#HiM*b3Ox#@60xX&AZ&=OVgTu8W2Oc1;H&k8$tiTyL@?)RVPLotdzzLJy!>dXB6YKUKTF{C5OR?v2Vxfq{{GRR+HK9Vr8ujpN|bNzAFRdR)U^7m+Rj-p`DG~x%^R-(qNF1ScRo~vK-`bFnA>~HLEN7$*8ei&T86AOC3af9@I9{=<!qI;_FPZs)v*suQtJ&#|c0l&Q}JJaH#9e9l1n}6M_^<_Nqi|qv?HgX*;jisP9hCW&*#@vVW{pv#g97oTsVt3P$g!b4PdTT7+Z-2oi7Wr2vc7t6zG=Hipeieq^v0}3A?P{f8sA>G-&NRpOpM&`4_P^55k8Lk~O1I0B+b{G_VL>>N@nj{CP5N<IK|Q(?(%%_^J$1QxgYa1BTmE~%P1urlt&GlVrR^arg3AK(cB4T5N!a8!_z#;&TkZJ-%+aW(0UP-rc(vHet}&p+o#dbSh`_Sa#|aupk6uPu<f|$NEeLP*Kgh2lJ%n%V<G7`FQ);J|NWP~fFPyL8(L(*Ec2f^33ua6sT5Y$6K>q7VY&dpbkuN5q_bq&dX7QLo-gbJ(f625D1$fgMFYyi7cQqeK{+V1mV#{koss-MG2YgRDh~eKA`k`&AJ=w2F_r~K$c`GjW80Xvh{f`udgZ}Kz`I^QEp$q5V%yXO1&t*j0R4D40rhE(@0Qn=F*(+jC3_j%Bs<-f`9DNjw`<Wi=7h?nV=PrD3X6`o3hga2`!1(hjN?vO1^uNi^peq;Rr!+>k^4U1aw|jwqoRCiz`1{V|-I$|E!{ecZta<<IzCv&y-`5Iv)pu7t8k|p;<SEL=!{xW}%8gvdIeuwH(%?hRyjR%nC!c`+>*C9d<eSv3pnrWz|31Su=ty4x9RC8uk4^o3s6T$I#<E**3hKHgb;1W*Q??w)3de_>eHUmz{d``H$x~HKAlQEp6WAMQdeM(6az^nf4gz^Lo^p=VKav!-z>jjrrL_ThiNxT-f*oYW#LB>4*Z#o-$t6|!gfQw3PAyusdDi!?is<*<0)O9m5y!~$C?B9Fwb5ev)^-hH5BRv?Gkc{=MbP^msc<-oa#+(mB;>cy69AWaf7r)#Adau#-$3>1qsTc9#RGKV9keHTHPl~@bYbBsE&{G6aw<^$Q_l2#N#`f1vfD_tgt_V*$X}GuODFv(2>m}O*C78EHi|wq0q27A5l7?njqJf5TaIp8Fz>G(reTg~s-`W2E~N6fE*1?^odPW?>_mY6*p+u#R{uK9a-Z_+`v^`eJ{DL-x&Q7|EG0CnV3RrStVL)Etngd^72y1+C-Azk5gac>z4WJT=5B2rDAk@rE2Q-#ZMnb27m1+1jc6gHDqIZs`Ir9_F;&l~q8`V$-*-U%mo^ZGemB++0rVK~Qxo}9I`sa+g;9<3fx*9Cdu<85Pj6v@{wT|RHLv)TABOlG2UHRv|8NT^o1pWI?-$nte+2PeTpWZk?e_?+gtd<=jPDnQ{$ZM*kG#8DoOtS>ucgg^GvwbMxBwu38T2b!?rwH5QU|UdJnidXJK!W~K#l*kivjZIcQkps_eWt&v&PVoZAjp|@&x<k+NCMkPA_gpEb@m7|6le7!CeQI^GmUh29?s${{fjxMlJ"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+
+class OmniChannelType(str, Enum):
+    VOICE_CALL = "voice"
+    WEBSITE_CHAT = "website_chat"
+    WHATSAPP = "whatsapp"
+    SMS = "sms"
+    MESSENGER = "messenger"
+    INSTAGRAM = "instagram"
+    TELEGRAM = "telegram"
+    TWITTER = "twitter"
+    LINKEDIN = "linkedin"
+    TIKTOK = "tiktok"
+    THREADS = "threads"
+    REDDIT = "reddit"
+
+
+class BookingStatus(str, Enum):
+    CONFIRMED = "CONFIRMED"
+    CANCELLED = "CANCELLED"
+    RESCHEDULED = "RESCHEDULED"
+    COMPLETED = "COMPLETED"
+
+
+class BusinessHours(BaseModel):
+    open_time: str = "09:00 AM"
+    close_time: str = "06:00 PM"
+
+
+class BusinessRules(BaseModel):
+    min_lead_time_hours: int = 2
+    cancellation_window_hours: int = 24
+    buffer_minutes: int = 15
+    deposit_required: bool = False
+    auto_confirm: bool = True
+
+
+class ServiceItem(BaseModel):
+    id: str
+    name: str
+    category: str
+    duration_minutes: int
+    price: float
+    description: str
+    add_ons: List[str] = Field(default_factory=list)
+    intake_questions: List[str] = Field(default_factory=list)
+    required_qualifications: List[str] = Field(default_factory=list)
+
+
+class StaffMember(BaseModel):
+    id: str
+    name: str
+    role: str
+    skills: List[str] = Field(default_factory=list)
+    qualified_services: List[str] = Field(default_factory=list)
+    available_days: List[str] = Field(default_factory=lambda: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"])
+    start_hour: int = 9   # 9:00 AM
+    end_hour: int = 18    # 6:00 PM
+    calendar_id: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_skills(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if "qualified_services" in values and not values.get("skills"):
+                values["skills"] = values["qualified_services"]
+            elif "skills" in values and not values.get("qualified_services"):
+                values["qualified_services"] = values["skills"]
+        return values
+
+
+class FAQItem(BaseModel):
+    id: Optional[str] = "faq-1"
+    question: str
+    answer: str
+    category: str = "General"
+    tags: List[str] = Field(default_factory=list)
+
+
+class AccentProfile(BaseModel):
+    key: str = "red_american"
+    accent_id: Optional[str] = None
+    name: str
+    flag: str = "🗣️"
+    locale: str = "en-US"
+    tts_voice_id: Optional[str] = "21m00Tcm4TlvDq8ikWAM"
+    elevenlabs_voice_id: str = "21m00Tcm4TlvDq8ikWAM"
+    openai_voice: str = "nova"
+    pitch: float = 1.15
+    speaking_rate: float = 1.0
+    stability: float = 0.5
+    similarity_boost: float = 0.8
+    greeting_template: str = "Hello, how can I help you today?"
+    conversational_style: str = "Warm and professional"
+    sample_phrase: str = "We look forward to seeing you!"
+    description: str = "Standard Female Accent"
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_keys(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if "accent_id" in values and "key" not in values:
+                values["key"] = values["accent_id"]
+            elif "key" in values and "accent_id" not in values:
+                values["accent_id"] = values["key"]
+            if "tts_voice_id" in values and "elevenlabs_voice_id" not in values:
+                values["elevenlabs_voice_id"] = values["tts_voice_id"]
+            elif "elevenlabs_voice_id" in values and "tts_voice_id" not in values:
+                values["tts_voice_id"] = values["elevenlabs_voice_id"]
+        return values
+
+
+class BusinessProfile(BaseModel):
+    id: str = "salon"
+    tenant_id: Optional[str] = None
+    name: str = "Luxe Salon & Spa"
+    business_name: Optional[str] = None
+    industry: str = "salon"
+    vertical: Optional[str] = None
+    tagline: str = "Elevate Your Style"
+    phone: str = "+16175550100"
+    phone_number: Optional[str] = None
+    address: str = "450 Newbury Street, Boston, MA"
+    timezone: str = "America/New_York"
+    currency: str = "USD"
+    lead_time_hours: int = 2
+    booking_horizon_days: int = 30
+    cancellation_window_hours: int = 24
+    buffer_minutes: int = 15
+    google_calendar_id: Optional[str] = None
+
+    business_hours: BusinessHours = Field(default_factory=BusinessHours)
+    business_rules: BusinessRules = Field(default_factory=BusinessRules)
+
+    services: List[ServiceItem] = Field(default_factory=list)
+    staff: List[StaffMember] = Field(default_factory=list)
+    faqs: List[FAQItem] = Field(default_factory=list)
+    accent_profiles: Dict[str, AccentProfile] = Field(default_factory=dict)
+    default_accent: str = "red_american"
+
+    @model_validator(mode="before")
+    @classmethod
+    def sync_tenant_attrs(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if "tenant_id" in values and "id" not in values:
+                values["id"] = values["tenant_id"]
+            elif "id" in values and "tenant_id" not in values:
+                values["tenant_id"] = values["id"]
+
+            if "business_name" in values and "name" not in values:
+                values["name"] = values["business_name"]
+            elif "name" in values and "business_name" not in values:
+                values["business_name"] = values["name"]
+
+            if "vertical" in values and "industry" not in values:
+                values["industry"] = values["vertical"]
+            elif "industry" in values and "vertical" not in values:
+                values["vertical"] = values["industry"]
+
+            if "phone_number" in values and "phone" not in values:
+                values["phone"] = values["phone_number"]
+            elif "phone" in values and "phone_number" not in values:
+                values["phone_number"] = values["phone"]
+        return values
+
+    def to_system_prompt_context(self) -> str:
+        """Assembles unified context string for ultra-fast RAGless execution."""
+        services_summary = "\n".join([
+            f"- {s.name} (${s.price:.2f}, {s.duration_minutes} min): {s.description}"
+            for s in self.services
+        ])
+        staff_summary = "\n".join([
+            f"- {st.name} ({st.role}): Specialties [{', '.join(st.skills)}]"
+            for st in self.staff
+        ])
+        faqs_summary = "\n".join([
+            f"Q: {faq.question}\nA: {faq.answer}"
+            for faq in self.faqs
+        ])
+
+        return f"""Business Profile:
+Name: {self.name}
+Industry: {self.industry}
+Address: {self.address}
+Phone: {self.phone}
+Hours: {self.business_hours.open_time} - {self.business_hours.close_time}
+Lead Time Policy: {self.business_rules.min_lead_time_hours} hours minimum before booking.
+Cancellation Window: {self.business_rules.cancellation_window_hours} hours.
+
+Services Offered:
+{services_summary}
+
+Specialists / Staff:
+{staff_summary}
+
+Knowledge Base FAQs:
+{faqs_summary}
+"""
+
+
+class AppointmentRequest(BaseModel):
+    caller_name: str
+    caller_phone: str
+    service_name: str
+    stylist_name: Optional[str] = "Elena"
+    appointment_datetime: str
+    notes: Optional[str] = ""
+    channel: OmniChannelType = OmniChannelType.WEBSITE_CHAT
+    accent: str = "red_american"

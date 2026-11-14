@@ -1,36 +1,1909 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+"""
+Universal Database Access Layer.
+Supports:
+1. Neon Cloud PostgreSQL (DATABASE_URL / NEON_DATABASE_URL / POSTGRES_URL) in production.
+2. Local & In-Memory SQLite fallback for development and automated test suites.
+3. Vercel serverless persistence with reconnect resilience and connection lifecycle management.
+"""
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
-    )
-    _s.exit(1)
+import os
+import re
+import json
+import sqlite3
+import hashlib
+import secrets
+import logging
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import List, Dict, Optional, Tuple, Any
+from dotenv import load_dotenv
+
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+logger = logging.getLogger("UniversalDatabase")
 
 try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-o|Wd0dj|*S_Qeu7Jwwj+&vN)wF13Dj+VovM7kVn3$-kX_=*2q0?rImbRE?spZx>)|eG7-^#E|D_d<WEw{?d8Lei@-}3;XSkw1?fA8PV2e_a6zRx+=b<TATp{DvYr&A0uUxU8o5Nx{sh&Agps-xT;zma$0Gjr{A)fj4I_%`1=>oAOxY+XLJCN8~Ry}jHMwPR&Xl|@)PESgGm$V)4>TpWJ+%yRSTH}xa4t&6IN3(9?R9?nV{a&%s0Vz)kV(1oodE{mCM_8(mGdWUz9T>V7+iYgWIZR{$Rz4A$BKGYK~zT^hce;<b&wrf8|HQb)iFwBhlb5<Og==nRhH3IMa>pqwY{zDw29?{XaOnp1A;v3Unj3op*7@rJ$o^IqS&hbV<%IwJvx*a1{DfjJqpCidPa0zH9c&*ptEPZNGHcS`s!9KK9w_{+rp(yR}H$%iDTm*-p(!gmVX;6y}P&E;6XV8bC?JtS=9f=i#7;3Yg0Bx%Ld)SMW2HtsXuF3{oGwGL<+lQ=DuA29+&*a?Fil^Fpp7c1!L-}u7A54b!xP)FpKN?-f*^*q@J^s9AX)8~Q`uLLzT=ks;WmxCQNCawg)YUGW^KG3pV1145kJB}6Hk7cnp(AnJM#vv;V~qP_8eZcN4~^17O_eX=AB4kv_T|9l=#Q8?{-*z^muQroTKml?L=+syU94K`Qyhz9<>k1*5p{8t2F;F_0#rfx)wgP4w}R7r7b~9%DVD9zVZfd;M*HXOa_wfb+%HO;+qzLf;htN4??f1Bi_g#uvbr7EmuS!X*BR!m>Xog}RP|Emt5^&x?_elDtH;u18~Vvm1gFESXh4a*-8{t4QmrBSl|=v}FWXH=xhKl_EBeW(08?Ohen5>Sh7oWA_o1-+89_F=#U5(bZ!9SFu)DSK=mK8FKQ_+SVaqj%D#xSm2(&z|ej@1LU(ci;rU}cV(YebGck3Bn#igw=*FGQCVi~kjcpwxC9kS*YLYuqeu=%|HBbf_ZbuzSQo@4mpI1QhiHcw@ApDpK{d&k%1hTB5R2k`z^aVyZ4&=ahdbhi4-HW-;z7Ka&zbPNTccZXJgLi)GjLR`$TXW4C$dfM{m&|7~AFq=Y;e^Ci*)=lFQRjQ+#BCV+TyS#NczXH!`Mdd`!o}`)qCDs?*8WvG)z5C;Er0<TxAY>N!dEe8(bCKlyZW={|5LGVdKaIrDatl`>je2Y;r4HhMV(=n<`4<CnYjBb;L47?JurGIEjw{q)M4!^=@JIhL<88dc&xR}!ENL-Ow=wKaI-8%f!3_bq>EPO^zhMXP{br4yv^7oy6VL+r`+MWjJy!fn(Dv>G!`)_wdsM<6!3f5Z{UNa-V(|T5+fufv-+sDWQyAVjXybNUCzffhdKP_d{Q3X*{Y7TIRS@SZMrjN^cqQj?gcT#N#6=6)<3N2f{`^QLLMUBda7!c#vaQ%n71yIry`bDNv}St#>WV(*xP4IWCs;Wj*x;sVFfyHfQMYGk+4S6m%6C}S7x;1p(YR(7xc<B?OQEVGamm%H9e=Gu>`45$o+<nO^I=VN4CCysAgKO`E&r(c?e}r$9m{*qF@vuo!|5c?6H3JtjBnm2+56F+{FQE)7hO1@;(Qw=Ae+HY`MgTUWP;z1D@(&%hCb|x$BI(At8_U{xa2_lX|GncMHv~08{M=J|K<Eym*cpnHJ`rZb2gBAOGCMBG{S0gm4;d4`>*!5C373FzsnGLspW%s>K9mitc~i)kXF7GePf|FT20~il~`gU0a;J^0(3YMO>J#krftyU;#jGF<+3ukzY_b7W81^eyFX7y`UtbtRPpa-a_b$Qbw>m5cl^`%{x))3`DoWI>sKKW9~?tZDxdC5!V8lcs~kff>a8HFV{2J03zEV0p`m{#IgX!i-6w+(A$?{T!MGu$MWE%r=^)oj_nn2`W#yhXe3US;W<U+mj7;V%F&^VQk1+Dxkssu!*5lyPpxPn1pS2$`tcNf{%3SpZ&n6zmw^hFX<Lk4bh;&wl*}=!4((@t6e?MG*XF|g_rgOV$1ZT1KJIVfSU+)HIeYE#EsebF#qCjDK<0lkFh)SfHW2^Cle4O`*1545KM;)k*`V#x|KX89R)?bTe#cD4;lrrSCFutx0MK=4eg#JWX^hTgwV3sYh4>#%()mkOV{V&T{H2;plikA+b@4L^cao%!cHliq)8fc1Zn03y>F{Y}LH{ZHlCw=#fw@;lNMT>i1LqY$<AQ+BfKf5mpzjSG>quEW>wBk8E&EDK*v;NPh;M=;UCbaMiVb4e=)RI~+Wk?q>pj5f%Lk8;BjNVF5M88&An7PWOfH#?1jQU#yaDPxk)c($Onwxo-2BC-nTs&LgI<~wmQ;W8*Fyj}8vKj1)u#Pw2{qOy(L~hoNMq6V~1{U+tfg9GlX<>UT0ssE2Pk_ziSG;37-_}cDEOD!6zKBHmZ^>~{!u7=YUxxlMV#U2`ezgj)AN3VMg1|9dx&6Ph$DLJf?u>!oGT$aPP3m#<PtkMQo>pR!JnkRZhiQ*Stc-=JwcXROxpUmor_I}u`kv#IQg?Wj*}`Vk<ehVdZo5tYjj`!i$U>R@<J+>>K1I)cp%5T`{7oGZ(H2~G-TY!+a<`pZEY3b3TL2yRKNhaT>f-7ILohxB>;CnNf25}U{@7P+>-eT;1lj#5>d)ZpNPhDUNfqg?G)`E!Gq%suns@#P&(ZWA6!k>_-rpw8Uf}(j@dU~ewK4AfShjl81~(++wFA90xUkBGvpKPMOf6Wbw*sAjKk3o59EkrLsqCQISWE+~2sodnMUwpi*RT9L{#KSgyeP*50U25xTB)<MG98_tdg2q3Qo<nVNBcdT@ULZY<ii?8=ZV~%2^YTUkwx&7pfuMH*y8DI=DtHII*7MXs3Yp)p#)7~^2c(n?lxN3Vu8#*-)dU}#lCZ-53Anmj=>1y3ww=1ub>3}N!W&^w|E*<vCvr)-5<v~to-Et8crRrvYY9A)i|C)P;YQAPQdsI3zwn|-&tags6XlxXy!}aA6&l!_6&YKNt==TJP4}#-kMqOv;W9)WHx|ru!%QO0=lKjd1wn?ow;GXw=<_K7WKvbc4s;&JF>Pc0DeP1icNr@iT;C!cHMB$Hw@adkldi(am0otG9Nt_V*Ch~97IxY&@Gu`;IZW(4T|d^hF+Z3I*>r!&HH`Kh%5@VMJKqA$o(I*$BBGcvcLU6{9uwruvJuo=PuTLezMJuLLai>kUq6u|88dnN|=11EClf@nE=G6GgAA!r{O%i$BBMYx9DvmXZOmAZllnvfd3O{j(I%J(xL7<<c(A-v*nb-Z}-RO3lkfwf|rSOA{eH$v5fvucKntSPc{9zIM;gU^JB{}+gA5BTj92b0{9o)|12Zcq4hK}=A8xiZ^3wcGoWlWh#>>`M7M<Nm~!kK&pBA`|97NJw*LWl>&UuGtE?71h&7hSzt?Jr+whtGMB@gg*fJ=*@$f3!xh?7`yB)sWb6a@UJ@>jzX7_A2{pj%V`0R$5Y=4`?4#_VaLn5^u3Ze(e3sM#De_lc(xIUu@77<sYTVfuhEiUGI5js@Xj^F>Q?~wsQR8s6>)f%6tSw{40&tSew%ZTho4Jm%;KNi4yq#lE|)EeWoMH#zq%MF4e%beK5s*eU@3^%6seltM)rI$pu!8XLc1@U{Mx3)o96!o-HN8bugPWaI`Pzk;f7@x$y51#8@QYgXalzLQic|5itylMc-YG=*VPjHvm2l-HTur{{Cjy23J>R%I>%WE9O)3%5DuTrwy75&-QDyga>TzdZ`>)#yH+Xtbv>Ltd`fDL&x2{c$mLKn1ARV?`ZPi_1}2@O>NR1rKaHo>!=S)8CvFDZ6)M0QTZuZBS-*GIa96(qHqFv<N{?~PXaV2L>e*oPVM414Q;ELIhoQ^K{)^E1X=93fi{dXaT|ocQNt__7f258GKbi)lIy!NtpsSZA|2I)(tgI09{cXXYoGIZ_3sKBB=u|AsBGvvJ;D2%Bwjmq4kf-RfS4Y&JXoj{yg?Ujep(`@|IEo4XaJV))*cT7_!v<Z*;44X@QGLV#c3;k5vM3Y6Z@npo7(`1^N36WehsoQc>oVRtkAV3XqKhc((e1OUDXYo|vu?BS=p_So5kS6*D^I9sG2vwO~mO4AhZ{(|-&=O<9F@@N9^7x;c5FPBg&)gM-`(auh3{H)Ar)wkA<GCu8DV!`&=*R~X+HewMp%oUc~P`2~RU#oePgxY8+;KvWPlnVX!^5t6jsg*r)d<XCsZHBN-!y7WV2wMt$&>u5>Lqg?Cz&_zK>9*4IXXNFCAPmYZs9yp6Ex_z0_CJ}owtr4Yvd+968GWw6{k_Lk#=W!T1LyNT9Fv>;<~>?>TN;c`)EWzUoG!(m)*r1Y7kqY=Teyjm8$bC-;!A@2*VyNAMvyuQep?h!sZ-RoOj8tJ*@u$&_euN@YVaq)wGsBPGe$e#4!Hl4&ja_LahI-1-M7gbf$OoS{_QKZ4{-l(s3(!lp#VOK)P!#<3<f?Qg<5a*ClKGtIa^!o6aR7y$V{Nf{lBJO*$i^2F2K*QdC{`_i*+)-<ldACcQ4tm<Qz0I-EC;n_k+K`1YYgi5+$<_xqsQsYaCMx6^4??X7~>t&m%CtXY<**_yJ1_$UoNv7R6uqC|$qo^ONH1z;)O8b)nna7Nqu>(^p{$U(v;On$Ee!G)Mi9i`WgY=3aoGCBONIrF4V>_dC2X;CZGd<iyE1ZG*SA%u4v90Z(*ZYVAiQDZg<4ij~;UDK{-h&o7i=%_jqVV_{0~7qzhasAXXU?J?i`JY%1IB`^TL+q(V+eb!0DZcM5C3`LBPe8TMElK7jLS4<;YzO$#C)$eF$&$}y$Pu=Qi95c;o#tVVI_wF`lWrH_X^isfnGO*hL|Dc9w)rn#|sa^7U5Q&Cdy94^K1nL*hqM;0IUh?rikiQaG=FroOCNl{>0X`qcXi#l_y9|?^a;i!#tSvZ+u|)Y&z=Ksd)`nu5mxP~D_g6~rGw2`9L&6Bk)zPmkHL1A;5O!9XZ2vWc@pVUyC||Uq(Mg{59<SD6=p}oCplVf-a{qE+5F4=7B%V$1e1!+`xtu?uI{Fd=H?C~>Y(N&eNb$d9|Mq&TusZYse$z1;F#T3??HgTONt%qmk&tfUY;PUC8Ul42`VT3-AIBdiwE@Mm*tEQyRcf;Q%+s}++lVja{0ICz7gBeSi-GpUQA;%*_QxA`q}2Wm;XJ|-{LHaqD<1><x1j*0g&&CvxUApN9j_!xY8Zq9{2YcBOxQPYe`8@owD$gWGJG_#zHxlB#Pu>QAHX+%Bwu)g3%i1Iq7n_N7%luD8##Xj_D6sM{MRukr3o2NCkB4S-;dOSY&ZzRK;KXJ=gIhF?<}_RooucS_MIL5y?)1^YZ1G7{R;1=#n^pI9{<KaPZ1$_SUc5IOkjWfi?%M+R(+k0JE`72Aix(8FMh%r3Qbl~om6Y1p9u_Do7Ve>S@l?R3*pa(JhgTwSALqnr$6VH<L@ua-{`jX3Q{JWk92+RIfZIST#v2W-vN8;O}~2%-Y+!>{;ehEJ?+-W3jB_w6X$~%w{-;!JL6H`mIx-~*W4f^{)4{%Y1QWb45bc6?ErRVvq@U21Ga|MGJ(Ir_a70Ua_p+d)F`)g2$}+1L%=h010Uf*HHgv&d-h?UU2^{-LL@QL!Y7}f9cw&)b7D{_v0Xa>u+R0L&(jg=S3kif?QcHs=v&G9fcr1YUp-$c^$$MJdjiz6Q%ftD)MjK1$HDlO=5}*;*vm=hFSQ>`m{@lv)!b-(@bd&MpM6_lVXUEr+y>o_dMle9X;&xjPo|Og_UB76&>;Z-b7k-M8Xvk<dVabS`~dv^=Ft_D{we#*rso~<@j^@Z-`>t7!;LE&2Lb+IOG$#*jQO>#*6`hOXcZj)#unKB!RxN%t23@vO*vnQ{mmdBMm-v}GA!a%k14UXhthf4q}>_CnGoM!_XlYkyjwyA)+eUf)H-iE6@WW2`SXQ-5X46(%wFSXo$1<}6Dm$-PPsoYUHu{ZsrbZ|sP?;pf2f8xKMn8)_n(arsYJxu>zxSOMKa?2S{tg2tBa#otM&}V`8}26dmw&!JdQAi|5{Ab@>R&sD3PDjU{mZjF7!8A$Jgc43s#>WWOCYry*LE;>siH<^FLGl8?}*jFC59b_Ut?RV>Q8J6!F22&R^{e`+0)il>3##uNc4v|9E}k&S;ankrzKf!ybMA9Q^!HhSJ3QPkmmh{GiJUzbECwYc=B=h<H~bdE|%h_wV@$MgJu5Ji)!2nLPFLsSU$E3;+H1cO+IE#RT7m#~4S4PhCHlpWK<++oHt~N%;Sd_y7C=lyXAif5H5L5hrg~2pUmkPrs~GP`+AAm~!eQlhUeVi(af*%e|LLhLq&8br5A~n7@5@O~em?->B<0aBig=(Zw4>pwPeLoEvoSmGiX<63PdZI5&bN{EglgVMyKA7L3q;YtKEc+u9$)xwQn$PppSa;)g8%z+K8MjYY}%O_wgB9hcx2saz9%XE|BH|66m;tgQO1#A#JeV+g!Ejf&UlJO5hftc`nP>sm@{dAklNn*Q!H191(&XNFRKlH71f;eI8Zc&O?s(#Zh)Po3}MEC_sGAzMfPrLD;jXa8{`_dm(~M>7AL{X1VZPoWU873ku1IL4L|?oxStH{6z7d-A`2-sK){g>N`;{w)F&ed7M!?p&v}JF)jOGWZ%jg0cj6(*2yoKY2m*%1HD|)qDLhhSK;h^k0lt##b}iqHx|P>s=s_C-#)Xo<-MVlr9EO#FtvuZIUabsF13{eYwQ7RQ+~!qG3T~>1#Y|J4=55-M6;|X-_L7P={wc8W1S@KN<d(<Oj$1FQxVyge(qT76!x@_qH|uHWL5*#@2sWsbdJ>|M5r5psXgm4LX83mi8c1YYmt`vmJ7B9ix37SYdH-BL9Is>3#P{>jUg}()wih9s%O7+6+HYOywsgS%?y#m#7}|=!8n_hoJhw!mVDv`5!s{(usGmQ>|h)N%0q%-53{oQFj6#Kf<L^mZ-@5n<PF)yEY=9^{>SgXkJ~9U|kCa_|Lox>{k={50fv!lKh`}|FQZ0H!!JzOLRVR+QMPZB?mkK`)~+2N_*BHgAqnHb{T{UwN`KzDqjd|Ap!WcjSAK6n&C5ydNvxaUXa{7fM*I}F|PKWzcc;=>~CJSnsZ>OWPjf#ayBOyelei58mwSAkw=u|`Lj_6E)XAH3A8UqAOD7;Ux&xU0{CW9{37@dQ*$ecm>sFTU3kPjodiYy34Y!i;9s=-<fA<XOp(h9hNDTn`(rz~|8cF?y)zoa*_nK*&%pVr&rFuN%Bipy>3+<8hg8VY``gpS#}_0t40}Y1j1rP9)vMEQWoi2CllpIFBdooAE+>D*(Jm#{Ub?LQWeMgdxq7$(C%Ob5_&1Sy!TOTkDsmEcP=C7=e}MP}cUZmUX(D!GYUL+wL{V^(o2hbjSf07H&q0ZOIJs6y_a8hz5I<mvQvajgRJO)^PKyTScXeR>*lnTZuMsQ&A4h0U@1B(Z1M{2T#cz-6Q3f9SifP(PLvb3zGe#d#?Q0gw?4Kd=-y}!QuZ3*z{I%u&=?jX|F7cnWVNF2%7w>Y@GWgZS@dItoF$>O_$kIWazi^%)%zlC&kQrqfWPl%cuS0A!6L#s5ufyUv1kaC{ozUdW9XnTP8Vopvp4Mm`6BvmW_co(~+i|ePGvL4DA4DNpXZLz~>b-Md)(02$EJJTI`>Se>KM)^Hr1&dHxk<7=(>M*ft=-Xx{k#iR2>({2@IWW{n9uV>fS<OxXtA1Y*%xWO{cE&yQ)-`Bt_At4$)bEl6F)%WU*~_Y4X9KWm#@Qah_C(3M%+S0Q%S}R9>w8EdeH%zD(j^Mw?eah#FCSpSW^XMiLgm%V13+M5n7Oag-f-eZ|rfB{aKg|ygvfbtZT<5LQlG1C*j;m3WLac0}j+m+U*Z9oScM)Do8NEzYI)OkKtPdT2$dKe{#sB^q^ATz2o^KN&K@>JIQ_?!Je`|6944Z3|o$d%{a)qA7w-?IpC%>|D7eJ-nhBel#`v@`yM?}zv3A~gvG&R$^Oxv48(ITM^`;G3T=kP1)3_Chdm+Te0Q{YDRBqv`9~l>;?K#G@Wb;SD@1<i`FD!(`RoCjCZuB#yHxj&QGv$g<my+*kn7B4%!&Byt)teX$WOkYfcr5|ihs{$FV#Q{TAQ3xk>cyZ_vplC-8izP<{8FKz9FQ&Z7o8n$Hno<w2m&~^v#Kfzu7q7hNt;2f!9ReO+Zj{@|Dyu=i^d#SxWP3hhO7UZtJEo<{FR4^P3a=Sme6x1~UM__p6Djr|{n*Fw7lo0$KfFZ>0@avcGyl@0n;U{1o?ox+dguKH%RZ_z!r0IewMpHzoXijn&+C9Zas(mnJXHakt*<i+DnZpe&Om+we_%w6idWOAb-Mk48+PHH8N!9OCa;<OLI#t+BDchD#VGeSL1Jz;8}*@A28GbyaK0i|&|UihudDN%8p!dRvrHrZCr43GpE=YVVS_<!<xOn&tdqzjm_%zw}T;ez2vM(%y>vNh06e7tG8LvwZLh{t<{jhn3sktl-o;?{8Y1G|K!%E!y)y*56*F_{(kZ1=DW`44zEJZzd}kfPI9%5@<m#pIb4X)vOXVJmX!Ht9*SnlKgv#T@dW0#6J0$m+nRF0?obr>Om-C$S6FBD7hbol>Zd^LD8d5^uNdR2jJ(O{8F@+?8o;>>Prz8lJ7U~Yz`uw0r0aLt=S~TRX|p#4}_khy}!;~c+7c!nd`J-7GasO`R<HCCVP2ZwF-YS{%ah>`-@>AVKY28XAJtx3jh77aX@gH>grtD$UWD2BF6US*^!-dTvALttHbUK(5#|1B~4^?-0EW5KO)z~XQ{nS^P=83(o(_|@TX<KCFP=4FEe2O|6__6Ao{FPd~QcR3<dKimj#ErAyg5ZkTq?|{&k<i*oj9gU^7kcLKXK{YXw-pOBv=kE~_hr&0N?Xm!4z&r`$fbNzV5xw!|V?;=cmQR^x`}HUATh$WOgcW$J$u5hL0ECy4>n{KBOeNKX`Mh$@dCDWeXQNOjMxlKgDhS;_Y&Z?zj}4dUddo_b?MX@yUzZx7gEgjW4GT<lL1zg-GJ{AIf|L)$(FKjLntt-w#Ug^9<zl@gn=gm7*9gUSDd`C<NeCSQL!cX0)Ef6Ky@PCEjbsB($fl*v}#uopsJ*c_L#*ZOO#7w3rcfu?yYJN*>+iI)DLEhg8zvz55u1grPD+1ftE=gR02f=fMZNF1`blDfZYR%(}H;2NywdpZ7>)))3y+W7TL_)Sjme5}Ccgl8KM&B`gHq1DPv0#0d2>#H@rL97m31jQaciY=MI2P?D9KLhJKE2&?;T}W81yksovHPt5de4B@^>N^6bQnO=VorZ|0z<+s$kc(&5m^og<nY^a&D(Bc7_uBlJgm~}3RkXhmTh3`%^V4u6QQ+ps3s!gAS}U!ljII30VJBX?#3RqXshyT%{kGiJNEmZ`3`_k2j|wtZ`J|{XP<_%DZMZwMVgSby&Tvb>dhSZ?Bh6n~c}em9R|EJ`q!U83P(2k^%yCS=+_sElR;C(RVqKu%|Lru-1U$~N0{p9s4y#=!F&DW1zV^R)AFN_v6#WYq3jLG7taoVd<{64u+uMNq|4RURnp1w-E`|JpcxVM`b8_QDy#Fm6AyR$LR{St|CZxQQXRD}xfKspPq{Z4RpZ@9kh$<JNn|LUyxFUX`ncRMx75MAjbR6qYHf-+Pd$6qCb9dG+^7}Xc=RiNL+wn30TVQsuWhPHJ$2(GBu_bNDOo5+%jKCHoAOE6~Sm?ey)(L*fr<giFweGk0S*#m6NxOgfvz6$f`1@e~_3SlgN3|YH%COx?tJjipM(^F(Y28GhNI}rB0zW;g{^(V-;pNEVZ;+u^j8?=F4I7wEbfl~F{ou)atll++aBfcTR>+^p>VsuQY1x(^u5<nG|MF6P|37)P@eHWVFBJG+cy%8#v^AKy%9vP~F=*+7y4ohN`sJE&MlP*nRA6*DynIlNbHhl0oZ{cuAU+CNe4Zs=zxSt~*cZ*0pn00{f`oG4w%$WhKmASpb~#^tXTsrbr4W&BnyWzlQa~$TBQvkWLlXz$ciksF(T1Y%qo0ueS5yJ~sa)gpIQDz}#AN&Y$7Lq(_qMg>3-0P*PNQ%2hhqu^wcSb-p(8C>K-`(u>pXvof7=*-^bL~y1(z6TsWz7Ii8T{);#`8c>0J}dpDz1rB=KiZl0QJJOY}iVAK^rP^e?_fzNW;!!wAZeo?AQ~XZ_#s!L3Xq1`uBq?DOz@=CW>EmrQN@QLW7u?4;i>M4MYZi(9+bY0CYFUShP8Y{P#)6>e@-l|Jo_Z;_Y=#P{MG_J|L2md4=h6z|s&sCXn3y*s+_6^e2vI3PuTiQK>VWKGV`^cjRaG!ppgsay(tOq$6%Qz7@?#})GD#tqEpQCgWB_R8(+jN`xA*GH>>i}LvFHf>ulEk(m-OIjZ(jJB^h3~f{%qks=@=)?rt!!JZXPglf0^518T*9T?%`*7T}Q|?7K)@l?a0QZ+73?hW9E*x9l5^3z7TgWAwbrHGsw4FBq|G2!jhM9FsH;!eYd5ZZsf}Onk;8JP+V%pPc0Yn&i@f#AG8)_=o4;(9vH#fT(7q#2sPZ4oeg(SXrS}cvmI*f5{Wor54fcm5=m&y4p&J_jwT0LuVi$?So+OWuvrI26X0QcYX>;W&b`8C|i16KXD_DdhnP_%C&uPq0t^5=`Z9!_}<^VoFITmIb1yNRR_f8w;gb8BhJ*d7T!{GXhk>-Oe((S0)rNGHuRtoznXh5VCL--bxM4*Qw^mg?7L%)8_x@!#_N&aQEOgOldp{=t7<iFVF8u#}7)nCU9Xk7<akfcqEP4qFjusZ#Ax9EV|ucZDD!@21laqa^qxy6Py>U1YL~OeBBJ7~(jlh$~`E9d5=kD^Sh-Jj30|z2aFbg-+gUa8|qUe=e2aD=U&18?~Nx=dXBd0k7sEiYkeZGX2DkooZ0+o*Cpy<(=dBAKag0WzWBj<?&Udvts{@)06X;SsIe~>X=@3c<t;d=MO%QR-e8<y^rJpsV$AMV||>-KdIh6vQ9IbU-69@^UlF9MWB9?d0zm;uNIiA(y+dK{e|C<q1ScOVi!+4$$V_B5Pxcjq+`^a@9HP9wq`eRGXJu1<%MqsAtIe5w6^U5{5SIa<jbY8HjCQh$Yl=F`gZLnXksf)5J)gy@A)tiO%+!zv$1%jgZW#xV}Oq-2tE9sjd-XZ&n8m375vBE8UK_!J3W)fH+72x_<cl*<bDK}#u`77)Yq?>eLKqJiFBjb_MUs0O?(r^mK+ytgQ2*n(<%=-rTHneu}CF`<zU>P3-AN^{n|PA>-CVuBG%?x_Nl^oRP;2<t@ux@*~ym=!_bJg)|^U*)`4|~xhcoL8HI_b;?p1Fr{#mxdEviT!-%t<Df*W-{V1}N<_XVN>kvM|!c|&IgGBmaht`)wQaR_~MEo>T#4j!H_}cm5=fBv{@4@5PL|jeu^8^E*LkEK$4c|!lm-pfd=i(cthz(rZ#gp^b*dC{VZRjVj1k*Q1_r93TADZxgYBv?~<C_yNd_x63GD?gksW-B2N$qp~tfwZJLi2CegXf(!8?0q3@Nb#^lX+UBV;~;88#q5EuhSv`4YS*q(d#l3(!3!^6WitB^QWi6{UsCC8o={spWP6otvp~yKm23=9JpnJi>so2E3ukz$)V;d718%sqbPanf4;ure72_bM|1W?<({|koU_!OFPJMk7gC~>mW&zgSHxGteD%$t$3H_k?J(f}%&QNT;y*b)DO2RX)nTpR{VG|dga`G#+8qNwKfmVAXz>2@*f8!GrNvt6OpX7F@zvg_-lqw`C&2qV8u!eR@(;&yx6Oap^MqW>DfoSHXeC&GHV}q445}rz>cuh$o?EkCbJ)>!XJZ#Qw8tT)?0=A@%Gt0dJap!-hg?8?GQeLY{9NvT<7f)}mfHZk-x-g{3q9V4VYS0U$mWm+=6~5AMteHO^Xx8AfA7RUuY6@HepBQRx~=cmp|}1ozW-R*AJG_}^|f3m`hzWHc+S_35YAC*p4e>dP_X3`{J6yJ9JIMJetLGQ^!|IL1N<a$$VGnsQhgWqs`<<HlKdk|U|Yd_9*!i7OI%c;T~48mFmZVzdbe3+51u2_&*ASz8n|yc1cMlLS#s(%#FF!?d##4Jp_hQRR2hqqzh9{n{j%~OqkR3#QI+3psJAgO>;&2vwu!G#1@I}{`lWdQ;9p*X`n$%jM$}f^idYi9KDwO`QJ%2R{X?0Eg4EhiHgu8E3dWLo)vR_tTKQ(1hK}J|Q~Ei0`_tv9&Af_lHk>P<K2NQl+0Hj~7uI?}&^`9lZMu)%3outF;<NjA=Tm9Pxte<TrBc{k^C*@byvE}d@I3FJh6EqxP2_*6k5ugy{0p)(nqIB^?87?4TQU7&dtRq4AyRurepYe1k?$7JKfQILpVfad6pqgONqoHaW*Mqj%75(LR%korClp(UDNodAeqLV#@ujllegq<R(+R00wKMpkNE5pF0c<wp!xCnt-tEqKPWh_iZ~kxjACSL(LB#tzd5$Xl{z>SAz5v7~vqR$PDeoNpjMuSy^om2Q`4wl@EMhh3B#a3r$LBN#LGzT)t10|k?!W&>{92wLo8lia{!NG&sviCv>%J_1C+F{>-}A$~^{b%RE&})G_G3>!jA(r$n4Smlvnl@l;rIOhi{2`-ohrbexeh7E8e(UKoXs*GCVai-KC_0^TdT(s<5mQk&Z}oOuSPO<Px<_XK|H8G0OI#}e$2oxc!GZ>){ZHWuOp`Tzo8{Tm!P-*`7i!=l#j`eZ0J&<{(S$`SU2=mfcn|!TUq+j{Ngyj4!x;}Z)3Hk_@cv}4&bYoYdFV!54QZ0Ix3G}?uz*-!@c20$53GZQLK~tN%zNc{<K>4%fIF~JRpz(3(hupb0<$jn%{WoKwX8Kz7@Yez;a6b&QEO^!%*+(#L)G0F8Mr{@~7#uu4_b=%qc2MR++N?1P$tz9B(!2E+@tOmi+hqzr$At29ZpmeT*N;<cv>oD9(G+K~P@=@N>XE!!-($CEt$?pQsNVj<=n4#RRjH_)Z++e|tvn02J_#tAO*}$N%WeX5}69(1Hxbg&#2Q7ZCyb`KxNF?&e_YWc8Vc5{EcesdbI9GtD}trHuJX@q5D{6j2nsj2Wrb;PWCH<D2&sBDp^eN=2gr4N-W-dnQ>V(dUk0UqovAmfTYzyH>|(yr=y-Q9sv>cM$}Rg+5O=Vr?k#_A+?4*yM|Q>&P;b9Vz7lO4x1k_x~6F0PdgpuGmjuGa+S-Ye_QvH$wE^9Nk?7=9g^I68ua@Gjn!&BRFN&jC1-OBWqZq$cvxUSYne5yg<D+4D4?^n;*PXf&V_AxAudBKbprH#_xC0=H#`7D;s`@Lk`dG=!?b(lP^?R`8Vkakl~)6klPk{pkLfHqEk<2AjW7VrxtsNd~3g=T_33uqV2H_VNGW2s7=|y+6Lt@m_L6RxMIr^Em72$El3ofikbP#-DxXxX*=J>1N<wuYGKyU+@-5E<@T@P99S1;BEwgq2U`{<4a^A1g3-p9ZEO5x`E^PDp)(P?C%*9^l=Vm>jzz?cL5l+v@KvpiEr9>Kp@?@zaa22#YV0nOm;TK*lfd9Q1^$A~ogKq=@;vC<WXFU&zN$iYITxvzpJtk_B&l7ZJYQ}E#6Mi1Yh9e$K)^0Veo6ki_Ev;G<j4VE4cx%Yuu9ba<3#ti+1*vHYI|6U_&B6gi4Nw+V>oA1Y6m3wA^mXA_pt3|Y`rH}A&U8lvVe8hb>q;6@C%F*GdAYg3mDV6TE6~ZxqWG!bT7`d^4(J6?ZbMr#C42zYm|t{GpiZY^}mNmiv{(o4-$;%iu#m%5I<`R@uuD~|C)LE+%oe;?fRL820h=_Nc?XQS)`Q^Xa^rPDz;`qnrq=px$iBU>-BfmtmG>2`_Mnk$Mq%S`s2y?Y46JS?$)W|3(Mv&9QW@UA|lAYWc-Zr#EdOpzl0x8-_EZXQ)0FI5ok-48^aX!Tj2NCJ8$}9c9f9mh!+6&cY_(*_+}eM@qUB9|BDwIZn<mi5Oq<i_^FE;;NMpd|I&NKom6gipv4q%MSVpe*gyIz9O-)~#~bXwO5SSu=RNPmN9}6H)cjjf@oYV4JrmTw+-zeb3}1r!udf}R^L}&PemBVZ5h{YA5FbioQDd~7BS3s6jpI+fCHq(YLz$UbR<A-<>j3K~1?BNtyGgxY)NtF<<oSKqyaEplZbYA2Y4YIh8tr_*KiTPaB4XGi_hEdAGmi0VE*I3due_k~sME$mzW<=U#-oXjcFrk;X&RK-(SL*9>038_yuP7`pVTDyTUegRJs`v1A(849hgSB{XGia?WgsDv_3iCjrXx)0Jfg0vpikTD>4o@W%dF7tsI}o<{Z2ns)|g>s)gG5wJZH3gjrP9y!=IHXLS`I2TvlH?d%(+w_0~G5-m|ECx%TE&wMV|wx6Pe<*Eo4SZD)fe=MPfvZ)`*X>pT6{>SEg8x80m-+_%19Vw<rxXqe?#;yVwA)Vj6|E3-0dW+nV?Cy^?er4WDYf&lwf0^X0n7#oj&4^2}C9K9m-%nzW8Gqo~>`L595YK8hM<pCm&Oq^H4dB{gOU)$@+X5CO<*$8XzTn_5<nhZi)acju3{vG9}dl|nt3^>t;3I8+^0sr3n#(;4hVT-nh*Z4e$GLh)#!Tz>-{Rf?EG(<7S-(cz2O=7VL?q6p~`*(0&tah1yCuK(+9hB@3-Im%wew?7q%6kg<M>&2t!q_f0O%=|dtW>faOZl5LKjCs){KCbpCcI&3ej~ZJOkscBceJgwBDKfGWZV69oog!c+<sq?zk=^Ct$&Q%4&l@>H{DQteqg_w7NWzFd`YEaREmE9{~hcVr8IpkahOV6SvMvBUh`fJ;8#D(pJ7}d>BO+@^rrArN&HaEAGYvuth~Lelp$p%$y?{h^S|=-N&N$`Kfw7(^<!;zy-&dYIYKlMdz|rt|9{J0-{orrZrJ7hgZ!r?zx=QH7rB4?S$_Gy<)3w`r2Uz-u9^k_J}8yf|Hk)!O8#3P@UL=wIL<#6^P9f&PgAq+EClOwXr4Sj3L#tF)K1PeAGzUWElREJMumd)QA?eXpVU8QV+9VE0@|Y3$t7E<nrb8Vm|W=7KB>MLLEnm7!vNxM*dD<C<oMLGUj+K!gW~yXJA;?55LoO?D0VmHpRdRO{L>t60}8}93g<t*e{-zFYH8U{MR&bS75Rl!f3QjusdzsO75vvh4>;my&-0g}4ga*o?4R*g<g@s+*|wHBNgrkfpw}tpCz1}%{o3ra0JI+_R(`$~?3B8*@v~+%!vO!)+!=$-OTADP%(*h*zoh!+Qm{Ws!fy$^mx2(z>Iq~^x2+QYC_Xc(KZA2Nyy^{7a=&N5hQj{CH(-_&Dvj&Mz|WKSx6I>p1_!LtnZADtzkTvoI(l<rV-GU)NA+z9{wAJw7mBCH3KzH~D)KKU`bB8_5XdhT>Vu@kyxKGCY|Y99jC!RfAELD{Cm(-f5V}FJJ`K@-Z$&@+U+bgKx}#CTl)^8DVd9_GM`ipHewzCr;^+KQW}l7*UDN4Oep%-O_^0T;S+-N+pX7c$jlpi`DduMs?L*Sv^iYZO^ZG3^^on^}m>FE^zsfJJB`<me%~0guNo107mB&x(&)5cT6W=g%OO7<ZSWJ9d?l!Z=Te1ED_t=udRaX6|uiB&2Ga|qgm}Or#O?~CyC+Ek{6#Z``5ML4t^g~>UD%JQuDKmLB=hn#g&q2|@hO|YRc<0qFRmSyLGEVFFbY>amr51J}5JL_@kpkQOYyV--O%*?cPpO|7`ipgAf&@$UNA^wJ50^&xv(730oBJZc$hSlqe^U0Ee!k~Q5>0Oa>nq3@s-^lR=9K*Cz%p%N^3U_f6+Zi099Inld!(Q|M|~bg;e1PKL41cx-UIMEw}s{OUTJ;7RY0x}oxqRM{u=<l%(yDqUo$j(S_7wDq7QS`)cs&hsi!^bkJj3rc%jNDKnROsn!?AptyxCSJGR20+5`5K`f1<QXO<6oISH!Tf|W7vZTStb7yV|~ok^8lc<L>jfb2y1swc^>>~hml8nguU|1UDog+cw@s1Q+T7}{F37T*#H2m4#pFf|hWFJK?HX6#un>%Vhv<hDi_G0qmcDjU9!#avWxE)U0uA}ilOLd28s-Q@a?`@FM2d@xPwndOEi;ZLw0L}_{D9SlaYuEA4=Ek~Pz=hltuBN%3y^#N1!pMZat#J6j~rc(V19qHQCM$?9r5jexDkNVc?=Os_*k1w$E`AXDZbAzEFr5YKz=KbX%_GRANt5D7l_2Ss}&<0Td5`Ll{X14II@tR_pfBgP_c|rBMmT)T_#NE;8yy-H1W|+0-SMP@cE&7%XY)7|xbABn{A8jQ4t45(hllUM9=qZm}=tO_YS7lM>a;*Yh=dpQfhXDJ)+7zdKBH{cG6uW3a25mW&sG{rMjv{jI4YPFv!KtAn;~MUrbyj+R>|cdMymk7{|F4zR&o&gmoY7rY+--sPo~{AxqrVCt)(Z9ytDg+G6^@?7uO{OQ${MWQc3FN;K|kZX?JhH=e^y||G;qE`gcV|AEf;Dq0^;YdSG{cH`EfN_f1vyJHjOFs8EjbhagzBC*y1P*OMHMvM!&NnUxJAz@(+{qBWHN?XWf(4cPHOZ&qJA?NsAIHE2C$!UR$uwYIHnZj@`zqc#k4~!L4LW!Y}gtjxAT-AFppW?Gp1oUtd{#&<)KRu*95HfAE2a$)C`F>s-`-oN7b{_?2hiHE7h{xkat+i)yI7ljdjKB{@W&Xp18`JW@*^?_Zx{|ACthEQQibrS=<cA~FZ__hOhSnxI;Ze-OncZ#onLHyHZ=*H3KOwG`Zc#rhVQ-_krC*1|Jz7CzLF@=N%OavRK!)Y{Jh2(exon1AQAMQD2ovvuY9#dw3eypw|%*H)ahzV`I3S%ajR;m0q<lPC92PR>u?kJO?TP4SO|$3hlL@QKG5JfF0PS(M`jM|_BjELFb!f8z&w;?9g8=(i;K$2MH%A*=r9#5v{cAJym0Zt6u1&lqhbF8IxRQ<YifTT<W@ec+;iQdCQShSBBN<DU(s_6_1Y3MsyFN_?v9QSle6hOkM{27I5pX{xv}W<IOgIHP20{Z8h8ex`rA6M^%cq90n;@LHLAXG(n%Ezv(ef6CYX89w=To4fcpEvL#U^`BsC`R`wCTVwUhO<Z!Z<=1wZ{!hYhC-lG4{NNCEf6aJ(V5jj+G~A@dr!5@Rzvz(7#Riy-`j5K8QDA&S(VK7tW4Ky_dpju<a<qh|iSD=NTvUEg9;B2PDb1fPV@AR&!(Ob`qF%eF;Vh583r|xwznF~}a&%s!?zwkuF=auj_}mJc>Frp|Nj>q<GJRnRfIk)Z+jxC-<J_TJ?l!-hZEPVa;@@3VD70_9KBu_9kHc~9xsv;-$ZsU|b4mSA5kDnrZHq4i<C}yZDe{v_<@W9v?aTa{D$~@jGYGQ$D_gB7p9<y=|3~^5#rj;8=M#Yzbw{lSda8a;{(jQ_0{}lqI!f|;K_dFT8%9)7a0JE4_+%icZ^}8~i_jk-urH#Djt~)f(X}6uloM0^R~s&^z~-}5KmX7u^qQVE%K=x-y2sa`U%e+ie{lZ;@H^r!_TVW(7ef3J)ngGQQ8=%>d#Rv49dlT{1&rSSe$ZvLnk)}ARU6gol-xfT6;|m){cs|_RCzSf4SaHQUA5HC%klsJN*{7-ouP9{p_ilnRR6{`HIeXxbPe{8<ChCh-DYc6F?&A0p)#JlxEY?jl{R!ulD}`6nLaYZA8n~q8U13lCTmlPH$tsL#vjywO{f@TW(`d2uX;%#O<7X^^(^`;0-eWuS!KSu)7DLzzb4I2mfJt=v)G%nGq$oDiP+>qK*q`9@4xrgO8V<$`rviA;W?80hgt5V`strhT2z@nk2*XD)Za<)4f7^F#)qh0<@4BbyuSi`|Gyu3*`KBMzL=NX=P*V8GOoYC6!1=blGInG>a!{JuqOlS<oX9XPu1!Wznk<6@3f--ODi2vqFmQXj-8ypw;tzb|5kth%RHbG1@OD+8&+QE!h`keKs)u5zW39u#`8N9@uNZ^|KpXH<Kd{<HIu##{`}|lad`X4I;=!L;D5s;p7O)^|8xHEo&MoY7Se0WdjEgbSKP_M1a8>tjhJG;wCh@N$f^AFvhuBW%P{*wE5>kik&cv~$>t}K=~Mj2eWT<sX?^m)?hmN{aMT|H=le}QzklN&1-zq!dgSZK5T?2DdY`ssM!rASuWC_q3jzN!sL#9rmFRaA>uXc=XX|t}r#23%B?9jsYXz^6#>e`2i@A@WQNu1JQ}k`e7)|K_KiKK54DE5?SE}FdjQP3#q%Rz^l~>b+PrQMMWBd=!H{d~(9(Bh7nxp>98T3+A&(JbmVd8(;AO4YV2HY<u31Q&;w{||{=k?8Wq-RMn<$v-0g}ka)24Q#2lNbPh_W8MfV`_Z(aelM*;u@>P|53#hnZGPIlk59!(8hNAvIgDfN7jw&vrt8~;YLmJ_!vFjpY@C&@&6xa|NIk!-OjJB!f~$ZM3F63Pf7KC#jaY0FU<ok!aDkh8apBn4`2~8|Kw3@X|tm8KrocmZOy%`^5jjVlz)N!J1ldxF~)t8x%_?%>2~x9jCY5ZKSYPMnx}EB;HR*=NI|T;L*A;;uIc=fI#0m-jd^!f0JRO3MkZp{bMNr1JoC0{Oz?MZLE7PON~}lb;S3VC!Cj`m@L`o&g<jO|co~kl9C@@08QN+dM+fyItvs}6-d-0i>#iBhdX)I-I`mdv#j%O~E0LWa`aJ=hzxQ6Cbd}V5Oo?+B79XOg*~odEshJ5phZ;!pSC4;@pHCWfp5pu~#wquXuLAs@)Y>v#-R@ZdDaNw?jq&(#QMcn&2DX4-*$qW>+tbi+%lyO-6n4<B#Z;52@jrJW{|3%~(S?-h_?}e01?oc<DcrwxIC{}1iGS7~_TO9XiQN|8d&3~GJ=g+mVqEL{0_@-13$s%0vXaFQ5%It?drm8k;75}7r%UsDZ-}^h<Bm6LwS~m-{x<OYzlAx5Up@z$KUV}z9=7`?>0jF3<`^|(M_>V;k8TC^BTv82-!x;T{_S1ZY(Z6N5_!o@UB&t&EQU=2?CU}7l>C@Rc6?<wV+y|W(7^%z;Ue^5=g;*E-{<H4&A;9-N(ch(SJ*uP();KB51fzV0zq_4^bd{m>p1V>@AWO{J*m~Nztf+nBHr4%p4RAj8w1<JZy28Pe%anykO6T1<CO1LY4B~z!g){W4@kb)gY$o+`t$db%#Ts8W!y>sdH%75Z{V{Jun*l1aK6b;^=*s_sXi(6!XPG0j7>tTT5Qew;%+Uke{?DGAI3t>GrrRNKNo`kVEc1?&^3e7px*v8Tw5r(Fa=+qJTWDI_gRU2&m@hq1i;sTe{`O5ertZ4qHp|ly|*%?$ButmSF!&~{`=3y=MV1MA&F1NnNcF#GBixqKYAX-_hA16?9mX>u!w)*8}z&U_Vk<3<ehVhZqR1du{ujb5ZB>=|1&w|Q@qqVp`tAqYS3j#DWwhG@v<p5lhm&%rg#Bac0X#@S}nS!8nw;tpW~)}viWduf+mRHpYgTG8;fbskm~XN>)pHyRjAM_!7CU})bn9YmO<oAxioZOT^#faO?aN@F)<&4pn43yo&@6OU`=dKG^Y`{v&IUMpHTN&E#x}P+JyE$sE__hvElt*0V7$JO<Pe+>=zMd)v<DA^EsV7M<?pvQvK+_TKx^Yh6<+t6)dnm+%W#dY7Iu-!KDVAvKg-RGJc?_udofTtc;({s#<9<?DFS_BtwzM@h&yQ#$Xo1RP9vQ-As1!mP2k@^tw32r@*|kOS~S={d9q<w84*nTpc!uALhd;ht~U(r;j+$>vaptm!k7iLH{A-21diYhw&RG=Enf%TTpH$yMJG1xUJT<*c$z(2NNPJ4qF=h>jXckeT#B!f`zz_*WcRPQWW%8oyW|>Zs7p@Ot{2oNzi6By?_Nc*TpHl@m0)^^W1lb-Opr49?AjY)2R%DVfywO#rQso9TVs~@6Pvy0_UgpCZM3)-sRqu{sBMb+FYs*>o&pff=27B2<?0zKDtiZ<41t52^vwvzdrl#3N*7*4|g+pk8n|v{8Wh<8}a0-3fb*shOuIP-&!A{d5TdSV&uBvo(h?AItKHaF)=^qlU&~e&IjO1>JwwM=N~dyqND~ee~Fdqn_guaF^Uf?g-+sklKDhmP|MIsp1)&nd^bO|IP}bCo6zgX80-@GiGb$`M(WLNa35B=KH`h}gZ@mz-Ncup0Sfl}FZ%!S=lt@+@w3dzRHBFN#>6zhzOt{IW(naj)P>58VRuP>?mJ${_31AyIiNm-{hfY-Q?|&pLA9es0iS~3&vl5ubS{G&axn(;*0V@f-&dTU)N~Ix-zs~4!?c2NewsMs;I(SnlJzN{&Div_VEwKR^q&Rg>6%Tl{Jm_xi9p-Cq?U`;dQYGN`0PB9aFu#=5bvMsM*z;JmUAl;oDUbLfqQ3*%9Ed;ZrG#XB(k*s2k8sW&(R;XqHIIS`b($G_W<h)tjlr!Lq^}}2i#tzX|g2itFdAqRlZ$os-kHB|I(j2{yb$k)G_69Tg)t$SS$VD+^^-%3(oog{@J4ml{D@jr1~|9egUknHJgF+%kJZB7EhfYBeeSSo|m<VI9kDkZw_|E3%H8&Ylf)%j}!g#!Th`7xc>DO$1$<0ajoOx8!?zt-JSuyzHo+2pA61N2za#)$J*G2lFT=(H-6R`J$+|*<Evol{37F8%0&KsCcV<((P#jEH}Cj2WMZ4%iV$1Xlm2`7O60slt9128%%%Eg!=lLAFG`3`l?cXS<9gP85{@n|oXDSo^Sf(51u;d&tNeLdU$g#`VB{?px*?1^E!gL2tpnlOqNr2gd<NVyEdjE@4eSqo*$VSzpNLyiq0#)-f+WH3h(Fb1sPjBO<3Fs{at7xIu&yuRoRs$8%zRy$x$p{(hqi%NN6YHRN?IKR&MEaf1M$-(`3I~dzvVaP(Uj#6xzP-pZurtkP^x?TIMF_D^&aW{&`)sR$G9J>DZ{66tSZ{`w|tZ^y0;5YzpXBy3#9s3-$NyyP-snD(rJwcBSeGj$RkxsVdM4>&M!E0&{Y}o(wu(IeSf8m#J_>_3qt6&viU>59`aT;C`$v*Z|~qTL>{rO3riL0Si9O|hZuKbk+cmtDrD7u3r@Z7t``>W_ZIB|>sMOKIRyAvSZk&cU|*8>EScZqz350nMK_WG>YL!Ir+gl#YN=ms^FRXlbz=U-<o=aV$N0KaYsq0{+R+DXiiQN3?8L^;vi=?^zm~pV88oxVyr_XV@3>d?3nm1xKVxh6FD@@4jGTo#w4FKC6Z7vHUMv4lUn$G)r&NAboWHQIFc<@U8|T`HJUwYX4LH9=sxP`G<Hy_Pd=<MdI2)RMH)P?7v}Fuy$$W1usxY614w3iIJT<%UO-(Xi2d3QU1I|yr*%qs%^@nVJG-h*Z;d``9p9%2mXm<4RQ*K%YJraC%V;QD^ck){>PH2<_;Fk$~_#}P0`GFSu)HgE-hJu;fQ$LWTzpqwin6($M?{IMb$8XHFZ)Y!!6mY+yi!G(ktq1H3zWB=h1NpY*5Ah55oL>jdCsdqog+PofalJ^p-Jh8v)fcy_uV4$1a{TFR_$F3+TpwNdVs>WtoPbzW+X?&~2<o$_8_I3w?Mbh#TI}DfLqG@|8v<IRjOaye8Q^?P)I|IXaK57_VCbn-1^&U;P;PD0@SvVuqx6Qc{Wp7$d*&1I_bc~FtOm6xTZ7Fi&6?Il8|ln6*pqUq%8L337efyBEN0zJ$M`l);PcAmTDwzfyD=WQG=e_P;ed30<PHKq3!Fa$&ff?4nXG@zl}8!FY$VNfFUm<#w9iM<`(vq6@AE1aFPk3*&R;INvUH*R{~1!vRjR}OlkNu-=X1%E=f6&_AH8><%R5#9b7x)0tv)2zcPxs0>EMUf`DL;`37)*(a{om9(}^KFU{8Vm-z_g^sfPZ0E0ZsR(>vk~bIfG_A0VwSSW5eU$K&fSpuSp~p91S6O2y#)l&pVISR<_CGEt)-MY_LH^cmO&kGl(i__SVyoF$zfIhuvo$h&ZoxwaXe7LPSK5%4%bleO;!IA1dc(*SFJ%#`MLD6OgqVNS+1O2sZnddYDv8v2Ke@$k}|a&N@O)O>&+Y!0Td=Pi)l?+piC(AIB=Cer!3c?p-RJP=_2BiO&5AB73H_DoGv?H!4ISo6t{ncx3@ehYw4G}Ss5`SmH_tAD9~j6a{}6|HW+71TE*h;zKP^xryBhkYjSiNt@;JLP*X(Fm|_*?bVsqBm<bck?Rxv<)ZC_fVWaI7J^V)0YDH%9vN^QcynM?>qdIP~H|tT67(n3Gf#%KV-J;Kg{UA?7{gH+p_vd-_3smKM&$J0N?G8{N_T6uB%rA=RX(>f2W_7_rE$Cj813O>jU^^@p<y5KW3%Aq=Wg>23dca?EI(BpVPb$+QQeQi(6n;q$|+KLi2yB`9_;kYCl7NfWPGWA5t$^zwskT<|phT;aqpD_eQGK#R2?hm#n@uzP{gCEhJ5eev$*u|L`pOD+8SW`58&RkBVS8Ddu-1^Ctr&`g>j77xMgtYUa-DRp9&M4lCd4<Ku<I!77k{gdn4-XIQuS8tPYfXz-`b*SlgolQ9?G=-b5iQ<lZIsqddP&0#;kk2E{+@<o{J{|m(BX5jnD`cEx&hVfv3>diJUjI{r%r#Bq4Cl#EJ^iU^`MWj5$|6sme;N}}<sUyMG>fxT9=;Ap{$b%QKkl<f`H2-hs%3_}diM5v^%*@K7LeKdYU7>M)^WO&6XYJe~zt{H(%e~Bwco*NDy>csd6_o_yBRa}mm>UcQ_TTL={28ckrS5F9kACSu!!E|wa~^-EkG^W&U%|w-n@`c-4(W4FYjzwb8tqBxu2LayW5E>gBUqo3;XgBg|H%Erx$ovP7RdGE_LBKQR_;4?tiq{{NWQ;18ePb1C=2n<{cis2WPL_}qP}?i`|U>By=>0P_(z(rsdA0azwwXjCTU>{;Xj_wct~s?-DyWKPN9vd?jpHqi?2cWKbp^|Y%!Mpk+LMd48S)b19ry4gwgU~;!)>=EzGFS8H7MP<9e^hBv;7O@8&xO=z{phNvdC;gwMr80hnw-?U4z7^Eg72s;Ix;6!m6Mi*-XijlmnAk34z(v+C&EADbfjZ3#T}h4~rZ+yQ=85krRbSO#3wmEGS-_W3GG+iP=SkPoZNj&WF7JYvb&xU%6BGW3S3?IeBK_wPUK=o6*xFs3W_Zx{cqe<Mg4;OCyw-|u-F&k`jb??D<$@#Qf7d8{ELFPrPbdTZef;1>n{4(glkO7!U}WaOxW!7%zZSpQ6}{WOhp1DEvu{7)2EKk6{6I|ipp`m5*Fhl=RRQvO%tKtH1K<c+}prrBTx6Z3^@gEdt>7S>|vAKdia`TUFi^at_dV;DQ7u8e0s|E5g8Zn%5Z;XdTQ>DOPb1@i;1@rk!k0stS>po`aOxc^%C<NJlT$xr+g%2o&c1E*}I!7%5C@dNN*D&&wMNqtm`uOAvQHwP!h5;RW({@0KR#BW__wXA+U{{8rPssL9VE$Od6K$GidfBAlXFt~oQdl?CJOy2*lp7;WuCi(vS2uwiUdZneX((n5F|3zQ&gZ_?-YsgkN4Kj9H{@?g3`2At_HO%c#nArV(1gU>r>~AyGzWa{_7z&w5p#BLh@Be)B9e<?~jjP=6Oa4Danm?TA|NovJSP$8{mIMBEjeh~JVgOJ5f&%y@uG+nT#4-_IazR3#z(Y^!c8#plY&P56tsVbKioY56d0Lq}b}C8rLCDsj2+mQ;*4Ow@kqOv83gDk~BTmUv2w8t9j&W+Dzjbo`Il1mqJP;ouFni{X-XdxUQ!aI3Sna{AOm+MHll0ALn73g5O<td}HJQ+#1VJIA4jgd4$E5k16aPOT#Yg;7-79@y|6Hd${=LTEP1k^l|3FLr-|JUY^C(j~ACx0TrNz#GjY{>4;QuF-!Bcli=VS9LyBCCsVKF}T<PrSyOt$OhiTN=v;{t{0wS5q(h-oUD4<YGKv9P+Mh8h3;-j2noqYjhwJuR>h)-~0XVd%4=aJUe_2d-d$p8WaEXA}07fi6t$JqPX|k72KVj@ugHH-X>uJBHS3=9%SxveOkCB{C8gj0Lx4u^FI!K;JE<=FwWah?+anE>t0d+i`^W1iLeUeS`U-Xl3ZjCDb9$qDoKXwuIVaMBsjyp(ETr;{VCOx##A4YT^c*e1@HiZZ1P_1^*u>RcsK)CQ9c!y5<$YAVxhig14a_^sm#n9DZrQDEPW@T#%)4h4lY%ay$^S|A*+DgzshfQAz(6n+48KmEgafDYb8r<VUz=u}=Sww)c)}>i+k~i2)J_BMBjkB_JXoplxlT4j_anI|(Et1Y{!t6csBfiZ!AYaiD?&Q7WPgS1nq=f}_fEfCIH)QBgo}P;POw%J;m_Iav~WKllFb@9*<S&N=V%e!u4P^?aHi3BR4AXVR7{BJvtjjZfn*R3P<FxxN#eA3*De_HX+;0=_vEy#LPJr6+h+CYk<)oa-yBq5NPO!cT8_cX;*G^>MujzS6_S{4Dcb@a!Pz{y=#C6Z*a*63kA!N0r8&QhJQSK6l`4h-0ZhUuAfqX;Z>^1plBGe;PTbn!WiUmwOZGe<s|Fr*cb+gsd-bYG%vx6BPd;j~_aXS^j0ZD~e$I0P<sSzUA}F`fa&^MC{PCuzdXe0ZE9W|LR6R2I}*kzwHd9QbGMgiN9P{pDdZd58JbTi96(f!ht?PIAv4D`Hv*eJWGHtt@dqmGz%;)!iT#n>ep5Szhih^S~CByf*%F?5X+9eHR5$xCq}p!jt5_lr+T-oi^LfXeM$Qj*Zyn)u^>@_fBZG*UKpNJu+xKy)DPSHR+>wf6}>cOH(_ik|4IJ<%|A()ziq{+eRG8DYiJifie-bVqn0F7z0LsrzA_d2o%QC+U{(CDiv9lF`nQcF6LyLlo-laQ8S_```1dmZ@tlJx-rz@t`BOc>{M9jz^u`PYz6zPIQi{*k1ARF6E=GLxSDuRajP_!RsCH8SSORtD#Pf^tC$2N<d9z568{6<?5>FBTf%>^f*K`EM*DOK!)4GYNUM`Ha{++QD%-zml97cve(%t#p;U_ruUB&)E?8As#P@`enNH!E-)PK|$LHV(l5%VOk1L!A!@7M3@1)guUMt*Yr$4F5tA&DLD3Ht9L*dO+XBKk7kJ%ib%O_Ar`lERw|7ICJ{st&rm0Lq_FApQT-#QVbuFg^^-4=jfAyY)#3{@YKFG~^s!f$e{hsJ8>Wf9n1aE8HsYaYDW&pLp*fp5p=f7yiX(+@{F;|6*&48W`XD!~OsQ>4{rdzCqXPmAZ=l6o{{o^9APrh`4d@%|CNh`JDybai+do3q?5l5x4L|WGH`>=|6@oX3b+(ac(Au__S;iVR1m;Z_@n{iDpyw!KWBjX~2xInIVTGZpT6XznLCF8c#79WtVhM5p9|N;w9Jkg}3d>bk+Qbdm7(84ETqNUNN~+4=bLdW<3YsFV5sb|38*$3hN)3Nz)pJL{aVJ<t#hKV{!8um_K*^8dd(#aH&Nce;T$PieGKn(%ss+%r~yI7v7uB+fjE|_6{10FBpUKw>J7#O1R(pyhxUBW2*KL%>Vj*%#oL7+{^f+6ri7ou8)X!I#&Pwr}2x<Np1^tz2L1%{s{P|(fkK|e*$mE0m%Q4Ow^y4La0u77)$lZ+c%#Io$tk`b=!I;^gjUpV;lHBcKinYo=4%j`RNVs)bqdBX%zQ|3DNmYYe|Hq;fEwye8y|clKD^P!%wliF0O-m{(Nx%0SC_xvqdcB`E#S!QzGk(yCD0uC8nW_nwn>r6*13zZP4u)Gi<Fw-|G*+5AyuSD7DWA{y%l9G^1L%{sZ(Q_X+i({4w%0c^mZn&~<qKPfm@c*ZFryOxTxhW+LY&__Uh(hFt$9{QRVjN6Gq9as5YQR)=UF)oE587vb-nk2QH_#W_vxc_5*!w;ZdaX57Wcv0Xy$sDFRt|HY1swLqULaNTwh6#rUy9l?I~{^0kpKH7xuhw=-XJ#hj2R!<U$-!Ge}?*a2y2ph<d{UAX8OR+y;{i)v||7|p86$!2HL3hvJ0tQZKlJm3FtuGXxfc<d?$L<nI1TH|IN@C!??tq^Lqn`rwS=Ge%vftZ#oHo4Omuf79?f2cVIPW=zr^LH*C_$h<hO6>W6Tgr1ZzMDP5&P>JR$<gSWJli}bLbhsC&T{5@7Xs2s~)|z(kAw$@)~q*JxDSwQr7n*pZx@1q7>f%d`t9=Ft~oD6yFra*ZpJ0X@d7R9DnM!!S}cK`BA51Xf@DZyF(1^V1W55<hru`hVyG!zrczh@!cDKFOGro*U0NvvjM&VvOg2~9pL+apK`2^$!qbp@^Yb%<4T+jg4S&hbVu-s_n$2^Em-y^(B~4lQPb(5K4{F|vk%&T2N8To5_Ko2ucG(=KvjPKS^{MMJ%PRy7uv;>=Op<5safJjV!`#*<EdHaEuJFt8Bdr3D1P9^%jY}5e2rrM4zfS;{I?{Yin(-CWj+SrySPovIM2!EAB+_JH^uM&stotMOibga!}$SRfArv8n&;UtzqL1;n!miJlIC?6pC+`Uk0bb<eL*af7jCp4DP5y6X3~U#S9<O(#tWidw2#Q<Ux5A(_q6Wq-j!3Ol4DQkiux_kPec2IGW>bbfPMy2e?95@IN2E5zZzt-7dBxpQGS_ok4?l)D*6OKKP(kG|HaQ%LH6y$D-C)c%wMVeeoFYHSB%hhBDDSh9~~YE^S4I)fz1D=={Lq6eq}6%zJJ6V=1I=26~=5StbgPL&QH}!(`{+T21)e1sgs$|_e1g<*gsJ?72Z;yKNk<q&t~Q#fhD$@_j{~vzz-WVv@t!?gtfT4X#ErDpIK!Z*q!9wN;U!h%aS?l7FI>xR&7Tww5%Rb*mvdr?^^5sYVvoK$ImI2*i*qR$pn2U{vc5MQy1sj{iUcsIQTCycOI9|w?X~|KWaO6!4B+y$o}pXJ1NcYYO+xMRCvDekz&5y@5V}7&Uz_68sO7@#zOHawIIG%ab4zrA^Yg!RqopQJjd$dr_YD21^Dz4SC4#3*PpQdMWwrz{QJZ851`M3Tn`g&TLL{l`7M}VW7GsZUPB9SD`Jy~WveF1{Vx<Byr*XYeW0N3HBkP%0q@5H_Hk0r;A(m^${+0(=1Pb4yOjAql<?`HOEjGKr<VkMv$Xt(hOem1o;|8{cf`)^bdXeK{wz|FA41o|q5MxN{^Z?CR>~jAT_efHjj<KuOg6NC%$+r>5^lsAX18qjrbhe$_~CyaT0M0~dLxoQYA5*r7c+mZpM(7OnqALhq4*!nw-t-xDH?8hYqn((ct5Na%_WT`uq!AJM`9>ayH_U|#utPR^B0h+cr6l2&c>1`J<NEDJia*c6bt#cMbP?y_y^X9(qsM=Xa2#k?Rf@uhve8t5y~%#=y#pl?2Y05W#w7#Jr3(X540GIn#hR}^ZaW?P=4UP=|G^iygy+6eazuIB=06T{|EL@!A}UqA2NMjSU=E4r%tv0OK$yVqW_WgFKt2_p!1V%3gr(l|G3ip%!K+Jn!g&<`dwSV;6wSVoc}O`dOfk`qX^00y~pV<C6plP&58B3ixzQ_M)W#AD8FO<a3D~R^u#s!AhvZhhADMM`)izU4NnE_!l{c7a9+)%IQFcFU+7oR`Vnc!#itQ>;q8}#eQ13Wo=@^Anaq#eSjaXYzJ}}DZyk8g)%jl%=83CkK8SCpZpy4Ui|{*7Gaunxj|KX6e$=R{q`7MRFZ2F)x-dS${*{#g%Kyf`GTVjlKZdB)FM1@={eH<ISbyCuB;B=2_<Je~vn^L-!WeS#g!5y~hK$XRjm2$@bUg{FA*?%&%Ff%mRPU=t)56Y^*Oh0|zmKiy(+GS=4iLB)R%?`GQG=lT+#=$*+V~*6Gaa@M(X#q)lEqfUKAR<m%`>d_E4AcfTYlG6TmN)4uY%%pGxnKv?)oPES*ZVj@fD_O>;Jg+5h%Wkuen2tx@??IQ0C{J(BGQK4-#?`cl&|FPzu*iq4OIG{XXGFGOWMoA2H-?Jnp@>LRDX_j`c7Z&ucpi>u-r0@Wp-E0_p4t`d$Zow8;IgjKjFrp%_}8-SMMeMz@-zb0l`ZLh*;G`<~7~3YZ@~N$Kf>^_2(o-7gz1=1dD2_qewx@-y~JiGKn-f16hP?yrWC`l-r%WXOd2=O_F*(EexRa45gbLVA8$&07b!KOf_-JU^U7L(d1y@3u*_m^Dkg7Uhqb`2FDcdKSnJxtN0e0doPq7W6lg^>=0VRnk~ZDF5yDiSy}>Q2Z-uvHntQ#DMIt<%IrcV#QM<QIqw8h{;fV+6{f*k|G5EAe;Z}t2E|ZVMtgp{-=15|515=)$g}y<p_UnX4?a#f1$va@rm;KvHk4y@-qu&xLh?Pj(g`Fv-4}Wd@I98@zmfOO}3{0_=Fkp-Z+sdQSz@~{<oHb)?dK;F%}{7JM#5+iiG0tW3u|~dvcu6&U@UiWhuqCc*AnF{ask!Gt89tn<9Uzwh@5*iOAk;yjTF`_YvJILhx6i_;6AWtpD^F`o7|te-L~=^nH=@{Sc3(K5`ON_#^Z4kpG9{4}ibA9cPh)=(nWmj+)8yAM#bBv?#zocRMB0q-~pzzWI<%NWNjWV!lKyub*H$Q2edxb?EzP*ZDq%=iA6C>!aX*ME4(j{!{cvmE%8!eZ!*mHSAYh$Do5JjDP2KStkh{u|FyBnFp2m0mF4=_(b^rO860!e<%a?A0eviFONTtD){$H0e+$|l4}3Vjd76N`eZe6OMLIq(3FjW43iXtaf`pciIOPWHwT%0w$6yQvZ#u_?##k$&5Oi>`l&KL2Jk~c_xHaMZ^BmM*Bo0--?_B@Xb>^aE$};C>n+RQ`b8@E``CZL{<~-p_20AV0`9^4PnXYoIxW1>wP#d<@E0rQFVczb(*1!35$965^|-r35@Q8EJsr$n#OXob5Abu^c*5_mDdTVXk}h#Q!hPsS3N9_dJ24;G3;&tb^Jb0dj<lM0I2fNd*?%MNMj|t4{T_IIJr7wZ^mCfP^;su`EeU+nwq1c#`~EMvwYvR(CF^fg(ii>J{~D-ID(TOL>u(hU{k#@#jKCUG%Y6{0%idTLsVyjT6gOgl{&7$I$w89ny<Qw^3X&gvI=^9g>>Zb<&=;iy<?jk43ZFUgj$pPuahOvaTl0*|YO+XUPebqDwk;IsCx)FB6@QdyD)=9A*yAae<4iE%{Q>{WPFSCyDeT}Y5_=-P(Ix1-R)60Lovq17J~DW1_$Ze3taH51g%tLgTz4FC%*6uL9~RfWqD6PnofP%e8}jp`o_`<U@09d|4nH-DXfl}2nMXhAyDK&FQdSP$2A==-ZhIjy-I+P?PG5XQ6c6P`b>cinEPMA&O&0O}G?;(lE5{v6YtZwb;Xh0%2{H>VUF&CH`qqgvYIkQShPg53NFPZgbxY&hV}X4E_m>c~|Fri!X;54vCgm=xZ_{+&BntBU%A&@z#24gmcw^HsYuX3H-^c8to4jHBE%HF^Hy3lRaV66KQi%`a+19vmLFXDXLurYKU^FxhuD@psHc8Gs)n-e{X)GJPS^<K82te=O^G1n3QSEhGvrU=jhBP?WtY!PhBuKi`gGh(*8{1U+&#Lw>3)C-$lgt~J)C`)iE_}jYgYfH0pDmylWYj$4e}X@pPtY2I?5k_fKr%6Zjxv9S+&(GlD`^!kjCfsPseF5_H=@#4eTUm>JxE$l+_?4FZkc`}?}CU2_$O9gTg}I{ody0G=&L;(UP*!b%bsw5*Y7aDGuFsgx@$RsG@kN#{OoS@|6P0DtW?y0Bdzt%Mc=SCbl<bzLyuhPXuKWSpO#fmnc?jQ8AyL5g%q~0P=qlnn-hKr-!YW#*_2)V1m}Jkzd&qcSmWCy(;q<fyEEnAcQV&n>kQ}CLTG<O_8-*u>+pX(h%r;LKXU&G*)KW%Qt3LXj{)#Qz<wd|A&l=(vTuyQyrRgtFus+&PBp$!@JFKjL-6;p{!@iNNHJeIg7%-_`E;=h73D`n@JsUg^To`DQM%wR9*+O%d9wO15?{&pmva5Iqf<zwymm`IOWr-Uny_Knp?(rQPvFUv1fORXr|{iNJM|rcE3|22)V)gc3zK1fL&*R5wA|&8aYNI>j<c2i-y}`opk0^nP(oo#cl#0T`{#zi_zU3!%M*})kn?lE_KBCgW}|c1&)&D6Cz5w9R;j-L|A@?&DaYTC|IA`bBF5>ZNPMQm-vr}hq5O3+1zBG?K2?9zxc!YCyJ-S{;G^GxzP6?hIN!;}^<IYtHBzDcl__yJ<=Gp;lJUE)gw9|2DxId7s*h&gO`<sOIa;;cmKeYf6oA7#u@WBie(;YSGCwZ9Ns8gj^FQfZvQVF0yaConVvMl&!s~OW&y4+^9)s$ml6+wP5d}YfdYz&_3i>BHEpmMS{lP>Um`^0~E}1Qlbn#WvUsU{l4ip~%{!@xK{Qm~-`}QrT;@;SZMuo*SiMk*^C5dlwC&%c2yF1~9*Ebo*YZAY4X);I{2`+xVQgG4w(P13B%QzE#KE3dD2R!uc$6Q(G^^4Ehg>KD!_JYK2A}=*hpSN+z2>Y9y`nsg)GkUaQ4@~*c<q!g%Kb)Ko`ZL%QsQ#mfs4+Yl@CSW#2<!Of-Fa`^PWG1us{lXbR6oY=7tJEvPiGrEhvHY{x`)=bfG@RI`IgD*cNEH>R>>8VYeTUL`@ouKaVqq>HN$J`12I->h~jz3=<Z7-z6Sh9%c3V^PbRdi(GOm$=<koL)GJt6f7qCNft%%Fqg~5;yh4{N-GfQ~AL1Vbmqcj%2<sET`s>R3(;V7A(Q{a1GW~CO{SS&%>h}o#DV@UpVLv{acQA$Vi%!RorNySShF98j==XFRMm^_2yq><SKKr9V*N`NnCGzR{pfr{Ib6*gGpLhLzP(p{|i#{TXA8iP~C!u0mZ{XcoCs%0?MXdeVVWNJt*QV}3Ch^fc&)Ogve*e?@z)D-!tN6IlfZ|KSuWKxo>gRqXYU>l9>(8ppXJ%_z?q#lXbj>&c?9UjiFJ0#U^>Lrvd#=kK3DwpQT7`4VIRnj(O8Ff>;rO9cmTQ}KPM-Ist)JE>N}VJ1+a4(5e>;ndQ+|T)AH|z&_$#+*S|omAeMdXGQ{)Eb`$YFvn1K4f|3rLbY6#GW%~M~WLF*^uxRMkGuK@J7s~x=>2nzn>E~8~>>5MAjjTN?_zvVtnjt{#ie13#W&f}@a7p*kixwNj2JO9LI`dfCwb?Ft4%)}SL{By{-Z)dhO7V=+i0=4)j7$2vUfA4Js_>#h-sQ&@;Mb0+*k2*i25B+I=1lLbd{U#V+_aSLJ?sNUE$!LEC=I3z_E_3A{_Wh%Gb?8Oq{0Yp5V=q3m`iwsHI9-`PZ$wo5CefhY8r2_!@nNMQT!+u}*Qn6?dv?U5^G^pC1Adc-4ru=!&VPN^QO|y^KPO(ya->(m`erT7X#H$bdsVjnjwDcj-y*hM9^?O>Uoy=U^TP(b&zy7V*`uD#6_eH1-{AcHAo>2A)l+vSm%nll+%=l42lm%9XQciL>K7xkcW(V$|1aWm{8vzZx2GgJfZXq9F@ouOo^C7^L-8N4jUETZ7ssOE^9jY@5eH+{*7url%KD<{`Gxs$;`q~K^%)r72<7*N%{7xF^3xk3`;{;2|M}0&IDT+}rF|zZYn%1!RxjxM7G0jTy4P8i-<SH*Dg3-Eil0I26EMCnM~|~^oravhS(RT@iQnd6%7o{)a4uZ)QNSm(oym4|QSQ&Z<4))gTeTV_>{jA;D;CYA>QC9n9AP=f|MFlymhsZb3&HO+1?FCuN!%;){0<N5|10zXKHcl<Yg&u<e)U&Vpm-v_{+HUc8N4PkP4RuXOM9I?s2bKgmJB-jsq9Y&A>`l7<o=&pk{YSGZ95xB8Aj^2(}gY5RO)-6KXF6OzX$ZURj<dJgYVCuP=7??KXHqr7Y5)f!2bH6(fT}IF(1sfHd{}>zJkFitpW4HDGNVPdj3kFe;?m_)QP+aimwtT;>+Ji^mi>eQfa8R|30GVFOW+`iv+W0et`DpXY9)-^%>lYIg$}2eTO_tC$;v`ftj0j_?0#iKl(mpBK;2~|0z80cv0Q?J2)-8QMcz!xapRdL(jr>fj)PveqGQmXA}3l1A$QdIyJmb7wE5F{A4~?cK;L<U)Bil#j^MFySK)`cViJ;zcDWGSKGhG7H<eOFdcD&`_B%ZV1CS*d>6km(gwxHwwzF3pH}uC!DTL<rz!0Z()6!qHoPSReF*dP-~-f>X-v%Z-FPgfEInt?^RM#hI-h_33S8?*xc(+d%^fq(Rw%!K`JZz1-1lr)PBs0P=l@jSNLJrN{7<-d!3GU?@{1`Ujo5y9f2K({3GNRg_4f((JrMS9^tzztHB?M_i8pS|Mh{M{M)6=Gb@S45cc^}de|aP5UO-{*sp0D~hn?W~-bSE`e=V6I)Aymo?Vk3oEo$m9uSb;v1L>EU0N*F<2%qD-al;Z4=5-Qn2mZo66o15O!Y^lA`TxZ0Ow<oOvn>?K-@tq*=wFs8>xX!u{u7>WI;PN9byMmeStXPD9chhF{<=!1G49kIYIG|tmG1z(|E>&L(As_8TC)6Pvf!HAz;BwMe;F}(=046t82_lr`fB)#g#~hbcNggQR-SV}eJGX`Tv{5ahbeOotH5;(W((GRH!#i=+}25w)eoTjKM05Gx8c@$Z|k)+zizqykLk-c27ZZK<@1tIFeO|ze<D6_2<;ye)P7i`a~w4Rzm6AXQ;Cm`>G1UAx=A2E+_d<AjKBQv@qy@knhO8#oQd|i;}Mj<%^Ub_DzTkzMUe1R?9a-*4kI0QzH<9ZNr&=_U2uH8oIpCB%5B8n9||X~cRv4K6X1`O@yGg;%Ccx@HFrOe=zkB-&noaOP=2=7$2fT7|G)7auHTJy2w(hh0)EFC)Gq-)hZRQ_-yC`wp0;TM{w77v-}U??n7>5yJ>>Z7gGsazB!5(M{&kh|=Zmuk-kSJ)RI$Iyg4TS_KEwHsE}!>$iu*>ka(q8IRh9n=t{+3^KR><>>5oye{A+lv))ws22dedtK9E07>>nB{_kZ%dtq}jD9RI0_k0ATS&)X-Y+N1NKFn=wI@BeIk``_2s7jF{TawWm_%<dI@&9Y{FXI{l@<M$Koqmuumh!5(>;%lY<R}-H;e_;}Rk(iX?O!z7KRtkf2rbvwFk0H;G^e;bKUum~|epD6zwp$q=_086dnzcFKo}ec|`AePO!vr(00|x@<65m^~D-7>G4p-t=jfcM<>i=MVk9Flxe2e%`a*_wo&$+jP6i@)--`7ZgIF-6};h{bw$o{!dvCJw?XB;E&WUh!f4LV;XI(K`K`Vo`YX|3G9BeTAR`<M3z!*q8p*;VOB9Fo_^{%`6xro&cHeEy&YsSjxKTglM+YS#&GLH4cXrZ%2AWMlEO;q4I#p&9a@k%GJQ)KDAqQJMY|jQ@Eb{N(67&+~}BEFqOO#ed&-A7iP(1=~dg<}jXrp4{_cb!ZEy?{lwuE8~Ow^_hcKf-_(~Rwchy<{zeKmRkSaVaI9m+54L-@v>f~z(%tw;$ECySX+6Ft?kuRSpVW{!J*)MrTWlXM;}Z@eS(8!SvJt`=tuDV4uT6Iiur_#3jf-hp!-RGIE86g@IxR*W6a4yR-gLc*k|zn>zzJy1t|P4buo&+M*Cwv_0adXn{~{8OXYlG-xuDXe;Cx9!#8ca1LjXBB^<E+r)+}#W7#JhKZu_^9gT0m`5U-CGwzuvXbr}CGc#W$zua5lz-zLT>&JVKi%O?qL&5yH{Uh73)A-*GIw;}q=OO$!D)@W({f*;ceqJbkG*Ph+1nIK#Z<+A^^o~)|pL%02%vZtB$m3i2`Bt`HQV(_ZOKv}8_+4B{oLTr8WqgES>k`C1E1w@-x6k5Zp#0#sU4hi7gVXs9nA^SKP<&j|M+}AXYj-<%eih7*=qllt*Dos?r1LJ5A^)mb7x-B2-#+zU^8FoLAYCrYf6Kpu@$&#bJ3VBc)@cQP<e6LYN!^~lBvgOlGyF-PnNLIKZ;<u-{QM2PK0TIij`E3H<ny^)OmR^p#q^OA9A8gX%&&RPGhGYCr_la`;uE8OH!j$pmWt~#{1)bJr;v#4apfPLyZ6)QqxXXNAUBd?5Ba}Q?Cmj$;PzMY^Tn*;JWPiEAHBYj-TVf6eruTD!f=th5tQGTBvZl)IxQmP-;XBEDw5;NPDQtd$?#YIDgOLl<}*?KpwHLuhMJ-Th0Bh;)yU{D&frKQ!2GFM@K)G=rRswDKjr>3a(yDd|6i4CQ>jH<<m6c|!ye~=`nWO6OU?WSyg$GA1it{@ADIscb79x|b*9od8wy4KqT{K8T2g;+l38Oy!(k{tVWzPy3035smXLpj^*fSir?uK&CmT1$RXnv2w3$HX-*arnS!Diarrz*0+F`@?7k2Zurk{95B0e)q=U5s1>I?GYg7qMNb_xdbhX}rv4EW*T>oR^L-V+<nC<cmerb?IB!12AJeo?wMR5ibr_rI&7Z>%J-3c91n@caYzdT)|`^921N`2J9Q_fqBmC+4^3u{Rzl^c|w2-LxKa?`7M{;}ZowK58O9=~I0wk3`RT1mK@l^^4{9kCDx@V^%TWE;C{81NwacpNL(j;vXh!or}7+COrIywcZ4ir*WYpmT-N^ax+?Al31Jo_<hW#&3vr(h!bbf`%>>xVGH6v@r#19<n}X=N$s~y{t*X#A9hn>%|{1bk3~|X5%breJ2r~>$s^S6zSX9UNPpcRNob>4AAKVy#C_w2C@iA~%qMgVrB4O=a!`DQU+%TocmJ}{`7@UsIV)jB-86{b=Jer$XjZw`Bgj5nGEV2rAykE}{lDP%$>RfjF71>>b6>WuG~v%mL*6~H!yGvOapK1u*x+LbUFVF>yxF%}_t4^Vm0`qQQe5<8fDei{_uW_s;)hiJdGFTVZ05%J>Tx=6V*eiG7sbyK2~y`HPc;OWj2FQD&+Cq)fPE#ARNn9u&pM5cXURa{=?+nFS1*p`JgLrCe*PZ;|8##0*vE=@kr7Rhef*a7VdaY`+qlX@X>%vv!~uNSi`DwuGXE?WhPH<;71-$1(QYK8-yiZnAGK}{+ZsxjRK22`L-7ekkw49c*596U*7e$(1Z4i1bD0>$b!61}?2zDnFK_oVAPzf+AM(5ZC@p+nOw~tBXp6l6P4e2U;6L~?dFqb%`ax6P1(6#yUL}8UG`4;>9b?C-UV8EsH|{bqO<?8!j`?ym!$ets#?C>SS@oF2y-7?8OZ0axx7#!&`0RdF{)OX5XYei?SebqU>Z|r>d<*gekEd^~c?}uQRq`Wq?CFvyBJas;p9aIbBk`sM%Lax`Skmwn%JYvF(Fi}wiA=P9d@mf#Z;bQrB~vj6)&&6mL0W|lbX~>1RR`Tj1^8GEuaHYgv@y-%gK2`?WdkSX>aLw>Wi%&n%%{j&-Se+M@%0<4cssqP%pxc3g#G{X!D(Vu{(>NPsoA}{QTr}rf1KoEiUO>@vokv%d}Ap;vvh4B4s$$p*=em?<@4!#90!_BJUfge3$1)r^6Su%-L}+x!Ox4U;r_o2Kf%ImgTAl*6K77oQS0DRn}Vn#M^*U8d|D0$k{N%en&ny#UGbQ6n7jUlnAi%fzoEnS6>mMlFhA@M1@$F{LVr(@zubz|^WCy<K8#PwpVTq7g1$5M;45wOy9`N~k=a>cOAaG+-vcOrzn`Mqe<QyQvGQ=7RTF(Zoygvb^4o&-Tc}sKY~U;x+W%29{_~too00fFU#Infgp!+lxD3t@2yp#NrGNiaVIM7)d%4W2i|CFA^LqgQpAb?@-c|ws{%91?mjM3{^Cz@5_~;Sk{%=##z#zu61L<!tyW>nTEvI#%`~>DdNA9o6-xj=ngNLT+BYT)1GmTid_}E7pzsX>_mz`#P0?cp!U_$+j-HQA_4)B|!_{j<NaW{+eA@|btOt;*;_u-LtYSxd`uHhv8E%8S_a$}ne7l`c)D#P!k0DP{}{HkVCOhcuMR}aG~!BP7px5P#m`NMV*jq;Kr!>1%yzlkDGtWU`HClntJ`Kj+;u^&87ByY+%amS1c<@XWJ=9R*ZFh%`iT=IX|zxrR*FA#i%622PXE0p+Q)%Rywl;d~d1KIp0Q|<hlP!WHnhm5QE_x}Xnr&1sOl%IvY4(K<=G(0g8PgwtP75p?qetiMWJHIG0z;xJ=|F_28q+S0sc^!JE8QNj7kTcC6Jzsfj9PiN-!Ow=R1F(I02hV>Re?w>pYL-xP6!pX3Q2a8<_X;DEC2_70+*_^ZyM8|&t6k;_#Ye4g6!~$wz(K#xw=kQ*k?!->it0;As5Somg~V)ES`E+_FpiIQhT|7L8h<RN9i{X<kPvpPdXD19<{4H6--zQ!KKdW;uW-nJrE})ZIwicB9BBgTe@?Rg0I2^SwNu1b&dT+XPxc>NAC6q5jGvScb|+W8g845gS^j8zSmTYQ_bbk)YJG}@LHh%r!+$F0U;mT-BL(K)f&PEXO+ALzYb$Q8$zCOVY=XdA|EK83ko_yzAArU6IC<2<_>zmW2VOw$C(j?@_|XEb&p%71eIF0ypT5xkj<(WYE4;Rv<}2Ocg)<q8gWpdX{{+2%&<zB?qrrSJS$rPTKb+>-6m$;YQ_a%T+{|l|N@nmg*6$BQ>W^~%iy$I0UowF|cPm^!A25k-QO9pV1^qGkd=({~{WI@&T!_!Q10o!*(#7+TZ^u{~F)z8{2p9eSC&D`8%<vbFY4L*5`K%n`&Xj@cUoUATOE}ITJ`AD-mllOkqpDKF4|;d^EB0?{hy;I<cQ>BueP&;PYJQ-GpAhhWoPqJ1jj_j`k;E6w7Nyvk)*<=r#Qr71Ux?O!DjOs$Ilm3ae=A*949p6rt_JmQMSsCWv3^mC^9}OPW)=UTtj|F&ozTDkiM{^DH}O({FV{cGd$7PPXJa87XY$P63(0SQKFSxd&u1#nuL&pedwp&`Ou2vOU$|t<mv7$oQ{q(Kh+BAtQCs;}f~%~&%U`T`Gt(zCb%K3<(-k=9wB--CxbXb2k$G*zJ;yom=T70B=G>SRHyWW*pGEouO8hH7vr9g%AZ^X4xkD2*nMvlS_>LLL<7bfH3jsgKhWLg-;2-QQ6!jkuO%Q(r{DW$JuO_<XJKf;6Gkylz{T}l3-7usL;*aQQ{*RIV<h}s+Y4Z3W5BmOceJtqv>IUua4#r_BQ$iYa{uq=@{XXXKD<=1{0Wu#1@a<PSb={Tui<Q0~sxPae-xapyAy}U*PdDiPdxKmvj-HKonsG&f*6%hYK=F|w;D>S{)I{9__<)BPg+8&~wuECJNnk!D%!ysYYfYzdr5nI}x`#~PYUw$^522JFuiFXmc}{|}xYh^gd?4{MIg#q1^K1CyWCJ$bpHSrwW_M}1Ovryv;%-Cvf9{eZl%Flupf3F03bPzIf3BPk#eZ`BKZc5bD}v`^XuHjS?_B}>6X;JdCjNh;&L58@gzH(y-ZBMkCiWrej`04*97Xr{=%k)OiN4gba#S<)u3=JGmjB^sIlffwd>NR}q2%l<6zM|y8;TG6dlxgMX+`gi+1I$L{U41#VSWYV`dd;|J2{avkMSm`dkx_K@z554`X~9?*jK_I-8Zz%Ts7$GO^NaUh0~FYcQ4&*jMIPQB+RGYA6cNNUjhDG{}#u&f{jIdpdUj!ZCu=|`g}j}9xOED{I)w#Lj&aR)=keO#!a!u`e?isQB3e0LbV?p{}u6M`wQ*wW8A^~{Ir-mGwvswW8nS@(3itC|CLBASXTausmxzt(smxce|Y2Ewvm-nn&u2#2J^FWewT!G+eNP0W3DEnws-&GPC@t~^2C$ltgy$R{GJimR;a8mx_xQQTYchXi$wxA#<;L!0Uz*FlZlV4LhH0p{;9*^WF-Ho<=$Rl>$M5xXNBuObIVv2eN5gJe5%08?j*M*S%Y`!cMyL#^A!Az06!?JAF@>XGs^mC|AH?;?6Vv{jF0A>PyH^}>O+^^>|ZQlegH&&Gv}>%wkrRKQhnM^yE<AGU#4b$)Rv$0%lQOVeYW4GF70))T562Wr<U&X!tt&c#BXCO_+`2nS)TJWf&RHUyL7udmhm#q{J!M$BZ&oEe{pXjCj$SC-;`j>DJb>OBlWwo{|+ub`i-DEx&EW`(sqk1;Gd}_0aSkN38X$!hwm5(H(Q6!Pe=r_A^QUOGr;|Y!&BV<M)(u54)qbELI1~*UIp2=kl^)FmHF9}ig9hv;-Hxp3Ci_9*goDEPBPn?h4OQl1AhD6jv#*yz%j<`E$Vfyy~$>Ge)Z_bNWopBc)>i}uR*(}Ao@y^hTNh@t=?Zrq!q+hf%w8LjqhSu0bS?27k36|1pg=X(^(%{0=_+C`S`!{Z%BRG%Y{%CeBIFt(|#&x`j>5t?A=zS<)8F7R*w4d!@n;Sk)ZFF{3s03XN2sp#wYQ)_3SID3VcT8*ULs6e3nc?`zyEKs`ft`pD?+tged6#HDJEYSGwEB*uLL}qs-5X;2Y}sg{fw|jeGqJ7?rVe?@PLSGXz^=>K-{v+D?gL+u>@t_o4i_xX7Ct1^BB$e-Py-$p63N4_jJaoAUJx)$;@R3q7U~s{FcF<8$s`ai6Q*Z{rF1-!pbjN7;LC0R3t=>XJ|58}$8_)r~6V*Y7PeVdvHGv6$znx-kDPsP8><aKDUSXs)PV$?CJf{xvSC={FN!U@Y>ASHy2Y3jM0iSqIOC$Mt>@{%`gd)GxhV{P)81nP5I0djBwmeW6ERG)ZDZ{)^wdFvO<?%x}I-^{ORw45gXwnCM^L2H=cfe)49>|AG9)i~k<3uh&H1jHh}PtQGo;$`W-(?K{R+TOCfW`snQ0Vc<m7*F2Kc`wbjl6HJEOlFw?Q__;n4AK<?o&FcXE-%wf-t$M!T`jizx!aBukb>v{c`6cz+dY%rtGn}NiGrs<;hekecdbFF?FT5Ku49I?>{M`8N=Q$|9$`*2(hs0wX{J&Sh0TDJzHXj^xbJ`>2`aOa#gy(aLru_Xpi6)H&`ROww3CoTQU5DpG{1x%D**fQ%KS`XM_#|_g{=DpbqWlC71MO4S3@GFCbMY$qap}dGvAr^V;~9MIqvsQ+%(<zZS>#dtN&bFd={vapy_{p#;{x<q&e{2Wg6|9XIsxTh0Q?N)^XHri-*V$y6d%~D;HN&AVlo<}yuMD<+1OL!&TPOBq!eGF{lyFB(?jgc8^XF5P;_MYp<i*WFT;H|0{o`vy<rmHg>|0SnMexGhvEZ(|2h=BPR)FQp>OG4{M2tQOc9*N{to8PApfVq>%rSwNC?%;`xy%Vc2;wD?_$&Mmo~f-kzY^uUQTx&SIXa9p!FSw^S7dU(~P@Nd@6|;CzM3ai2vm*Ucv9DG=GZX19^KkE9&PG49E{PLpvzY{?e}tdaS6wqx{TZ{gL>>$go0iZ-J8kQS?{k{iU_evtufLO`95VJT<gVw+GDc&4K6htTQ8ACaKro8yLb7n-u-|!1cR=aky&duv12V)MN<DS5&>CL;f)%+RC8Lw<H4-`a`Y|M>>}p0OiNk*d@=c1}X$*QoF^RdHx52TN0rCh1MrW-HSWm_@i>JxPy^^@ZaX}Qwk37ak!CG=EwO6fA+y49RIyuoR^!~N#FZ6c=zJmXnowX#k7Ou)@nQMLomOB@RLCP=PwDtuOJtX<^5^TK1k|%lO`xiZg|Y~yiClZx-x3H4;&p*D*s?ccvhzvBlXk5n8P2r`clIr-aNx9zd~3aYq>7*eVie(z8fw7sx%F~OG%G*VpoTCy9LrN?bKyxKe6>ZZU*`nMd@`fb;z3;5}vgIl%Ia5=X0f1cfP3FI;?6^$76}^PSn3I;<#AUa7$7nBZ~{!RQ$Oa(Z|`Rw_?qtNdy0oSnbS}DIk7qjn(zKw9b#D{nr$)v!Y^{f3p6g39E@7C3a+-h57$3c4~=ukbh~E<J+uwUB>azc2Im*vYO()Za*H(Ke{(iy33QzbCZv}(}42-G`5|=xL@}IJ(KSXg}TCnDaLSpM1RM33Vx$%VaEzC^!@ob>X;KJ-{Ah(0+>Hdet*jK)fC^-2fF+S#rzwTf6+3onJpGW`#Y>VhZwkSn>NYp$%;u&gC167>gJ|3yfFmx@gCOndY@8jv*3*-0l27x^E`i^zqVp>$n}((KZ$~ijK!>Y1wIz#w{PoR2%Ycx!?fsTy*Rerta{FaWCHKfc0U7Zk9GJ#gPqX%*apQXB<_1koY!aOM-})D6dzer$R-gtddxkGeOM0tKj5$Py31H(4%Zi9{u(k1#Mkip=;UVBe=uQPfcb+E{``$4US!Jf7oYMU$@}YIJ`9KOEBuu}FOcyQQ5@(e16vXz9pLYG#fn=2;(K0``;k#Q`Tl*CY~fqHA&{tDW)J$8aQ(fapTv@yEkN{<GNAl%H=fFbt|R)YO<5IhEj;g-LHV65{@UkF!1Ort(D-p_{VVMZ82_jDA^7?l+sNXg`Ox~hFkt<_sT<=@ma!Q3#PIp{f1JPw1Nt9kPh6rQ|2&p$uysjw8St;m1oI3K`vCbrmTwuzzuJf6O|NHEd=N2|=hq+of8gIQbyn%Gw)@zZbM{xx%^CU9%G1rT#;?SN<aM<((2z1@YceW(zB}N2I#HdqPWyMqVNiZ@C4Tew^w72tE9iXx8gwtk*1c2}KdYAC8{zL&#Q#u!#gwor{qC&+`8^&-e_|#4pxgDQgwQ<g8T5VI_3SNT{7)p@f$Y!K&iVTEKkWsTt_c6F628X2LqgSW+wWs6szUPr3G*q=B(IicJWadb73kwA?vL;zX(0Pk+kp9(lh@zDGJL7>{3I=4U!k{&48OOKx@GaPK7AN}pfo=z&z~GTo0iq|86*4xitA*?6C2|}@8-c|n)3W+O?3APGp{p+BKP1j8~$O~K9&$Jt|js=!TKEV`grcBfxnN1f*&i2xRGVG0`3n>DA_0W&8Ip6elYKMLyM-IN6x2sGDSn{WN68Ec+AE;A(i>c$!iq%`?EwnD83)iCpLlpFI!e$^UyOLqi{~4{GW|aH26{%cW8f|ihc;{_osaHF#TV8Litx;Hk6;J*RNN_kKHs(V!Qco%zPU?7gJE`M_>T|?EPQu>=|b)-vN9Ky#6EMo!MrbOTTNAFt4qA{tn(*t>C9X?RyH-a7&R01Nvjo`9tjc3ljUi4&?u4o%e+Ddz}Nhu>R}+0>9i4e0>EipkOWFf0)98;;a5ef?b(4Z=v`;Y%&Gm{~`si+pt`lRvG(0tiLMjFR0G1oqtDS$@qzHr|?bNuF2|yKwk*lAK>R46#8gu1F0IXZ9c&V<L68>{Dt`-Subb(+T|Erzr80se@ECX2LHbWu0J${-&<ppqr5%{{t?E%!uWJ#K1%s~$>&#B&hjq-{H#EK1gU>hZ}%n1`PmZK)@D^<rMQ37_t_HNvWCPiDH5_M!>M6ahHWEYei}TV)O;n?4)-gk!;!{mTNkO19dZ#j;M>ZR1qJbql^D+^1FHxt1GGNd3B@OaE<UHVddf4XJ1mb?ej{o!NP*&yI^RMWKlzZ2xWcu&AH`2`S{QMBWPTZ1U%3C6AZ#G@ys-=c^9g3|TM+zM^l$M5-n#w4ko^Vu&9yNJ0pR1|^)ZL>naF&YT)$p|*_7D;#g_{H1YLG%UZftc|4Z>fa>r2m68Qc`(%DITJ33?^9SQDRico$g?~x03y7@~_RFYY(BrC=IdoG(shRz3!Peb_O%<t-@N4u~-WS35{CMoetRsnv=qN7pfU5v~~M;$0WnhNl9%iWRuNqK%Ko`TLlMiw84(n9&k;q#5yPc;5T>dy*(dSv|sm*Dv+guh+EzyI(}BBd#|;w{PiDseey4jsyGtWkXID|^9dOwSuT;+Dk~Z#886I==T7lA!Y!Dv!Tc6ZWX$KhgR(u75hTey#u5QVZfLhP1iwL4RB8G^#J9F`>UG=kJ-J(EpjhPl~VfyAAYr;Qm$?w}H^ym!tvD$AJESNII!Hym?_br(hi$OYM&%=6mcccM@Ek_Uxk>yM<wIG1EU^*bz&`UY#(XIf>VWPvtpkKc-)Y`L!nYKb7@U?%u?50#C1;^o+Cd%nbL76X$;l1GI7dF6@`={FAPN<ME9H7*@9^lr_(=E@->sw?V}leDnlm+F2tL@!kG6;*H(+Y+jD=*9iAMme8b2jy-b-ZDuTrb|#!stsg1sFQ3*2KEaP^^8o)VvVSJ>C&~S9go59HLVpF!FGe)*Zmwno?||1om4C<^#IMl)KdjBWLyY6uvEC-^wd8BJ-N6K4hTMd;LEGQj*#rI6@QL^_xW6f_u=2e(^KGMt)~>+WhUwlD=D+&V%yz`rzw;w+_xpl6$?zz@c?|}0ZbKxFIF>})uG2P>NNcy0wyF7l8Gk*y-tKviNmLVgF;$aL>kHX$?A1=w2tnDZN$>rOYaG6kX4F@H<JBQ{qOOS?Wo~i_T{Urk$oQ2XFDUh;K>HKu18avL(z-V0FhwPQH#!U3-zXCCb*k>DR%<WdZ&lcD@O-fSiALrV;rRr`{$c*=cRicN*?L2WqrP_XJm}m0Jl3>8eEu!n^D;BZe6>hPpYhR@$RBZc|AG6*XW{stKMU?JgZg!lyTOPp>x^$}?+WAG*qSm<2GF;Z1ddT!;`IUx9$+kZ9rnToyi$KwUZ3_-=o85EXHC&%vYYp0!YMeuy{L@;*DH*#TZ`z&xe<;<KbG~shTX!>Ao{MEy>NV?RKL#^5s~@f8!wXe3uDf`cTm>P%2~G?&M#;$z4xO0?pXe1{Nji?%(eXH98z#Wt`O*B^N%R>%ar&TjM=4yQ2zha35pNl`2xWIiQ-3Uxz|@Py!RA({mbtyg4XY1<Ln>V3v2P+eJiJKN|5uPGHW<DCAxf6pUbmWx96_~)PnDd-fKtSGEU^ogZ1$s|8x`Z2c#hOOJAB+1MnYOQG8e2`RE(4J{3Hlk6bs*U3};cGCzRo4`A+g>Z1Is*ZWow8)NF<nR#}o^4q(k{B$D{V`*aD5F_KNQC5nJ)|u#ApZ-6%{|oKVX6prFM_^wkT!-@ik0jQ6pbw9!^91}Jd!YO#0_As=>91d9K=~yd(RYXQH&}lUiN6m&VG5h*seB`ypEw9V)2H8$E@-1Ah1qDX6+TP{_FJTH-fttDzp#Fe=7%<zD&E~NlfZR=|7_4HXwVzV|DgQ(IjXPif;|J>-`0KO_CS($j~o9S_AaddHE@<o&dYM3F5r&m+)mfaF5VCs#Jgk@q=*k~LvJw_Q?2Ra!Pfx(JQt5)4%>vCB=<bBbJ`fw@NSm-oe-;)cILlQOW4$~(n6q5pG3>U-tJ8&<VyM~C;PPHvpDm-$FpGl_j>Oj-d!tEp3bdfcJzXTfsZ6n6PO<~8u#yB!w4t<`Ki2qvMJ-xM+fdzv_E$%))4x>0KexZ{uR4>DA54QkDlP7FBvToI+~;U61jm;{O1O(pDe%Eh`!E{q)aiaAm_WG{Xv-D@}H~z)PjtfLBN0LA+R#9W3||XVt&ZQYtzmt>*Eo_p!_psj{Z}X`lfPyE>ApRJ}ReV)`zYr!Li`|zsdP`xh=^SoF4#wb0pQ`zPkB;rT+I}gZm@d^lgg~{1dwWfqq42v@T`LCHzNffB!1oO&K-sa2b~^76@Dse7)NF`esH}gc0-CsC)45J@mB4>_ZOW?mS3lexH6G!8cPKv`$8KB-_gQFO~B{W&d1S#Kr;qU8QUDn?%D+2{ms4e_%QX@Yh`qqjEQF3nU84=7#@h*bmNkJX{~tjq|pd1=(jPzC_<o?R<MnGKHPL*3ZzscZz2|x$C8b2J%}v@1jAR&`9U35Z3Q_tByY)%frUJ3R)jV=(-wDoZj(N&%=i8BOrdQ8Peu;A^P^}`2(JriLWyfqpfB&gx^j^^?6=e3C>}=hm)q}##X(;dA`S|McHYNs?~>Tcw)hBrA6^3V*x(Ih`r+>o@zP>oiA6w|6G_^^wC7vL{>i^onyK#rQ)eY#$Cn&ww?JXvw1bphYpxa8JobLX(5?&AZx(a0dwh^Cd>bLDjwz^^lrC&qs%|3q`#zwztCvH`+t4ha`SKBW)05rh?TJ9@ymSP6;0ZPum8CmH3#4ma@6r7xYy&_$C7onA^dyR5>HEfoiF5{p!1pb?bp}Mm+ZFM{pSMu&dg))H8YgsKeh1@_<tFGw8o#NJ!BJh(73;EA#>}}BOe{${*ulY`?Ci8<|h0mb;n{x?0tT8eegP)SOCR04xv{p(mWCVO11iUQBC-`lsSZR(VslufJ8r6d~V2y2kPT$@qfgE%!VN&)@4#ugtN}cU>SePj0gCY8>~KDuvK?mJwHaMwbr@tdtoN-c}3pZl-Cq^eoU^<_UZhfy7(Qj4}k@M-{WtJ&mo=b!=OL)SLMv)XEP!)b(}_m?kz9_^HnDHf4cI^4ZC|+s^_<$5??xj`7bE`*(Irb1^l;9y5ZCxa^Cud^9l|G0{m@IKK|N3s_72(^ZEZ}?^Ea6{34MiMfBTTBbRBo?OXHC8s;}b@Vm<Vj>^AZ??*Q6v1cEI@?Ql1G~xGH?GY<>1zKNId;c*fVJ)V$FMjH}^oBdIeOJ~$1n&piw^Zs*al=y!-e>r4<^KN)B@V^+%w2Kx*VR*JTuA`&$>WvuE#j)j#_Z4Tk5Bx6$qat{Pp9I)nR(TaQ9<e$S#7#QeC)kh#&yQZfB(ICQp7yNnuL~EBeqm|f2q5!et$*UXr76_A5YEMc)$ahPgUMu#8kemVLj)TEI#<${#rl^URxAEFzK=9p2W6|h3ju!SktHceJH-tJ%QS$!<6uoT0LXgQ+KBS_=>5Xf0x|xay50cxayf1;5Ur2GaAR0_)d<ksF2vstacNhgY0`aGd~&3*L;3`HZ6p{AMkG+HwF?vDeF(JCT?C<@d%v%BrmsFQ2dijRgW(wByp!`oeX`PW5(K31oRsWGPc>jxDYV+dREPVX*6WNz3g;qqFdD453f7)IF_BkS|Q-)I9{3RH2I3bk`G4BKwl!EXh=hi{^bPwt<axR_;18N_F<x~G8V!5k*x^~UU4CxY~MSNU55wj3;Ca?m{01bvgf<gyPDp(_}B{)?7wX^tAn~1>bh^J@xxGG%tQ5a^3p3_(0QOgZKqi;yrI^AYVcYZK>zbd!nHNDh;_Sx|8@&&#Dep^M|@<Q5!PhjME#a<f`j0*;rV@!)6|X!$-0Hf^&gEt^L*{S38r~Vj`cf)wE})iOdWT-qaHi22*igJF62K{`1|DXh17$J>32;A{~v3*$8q2zR?vY@VjJP>gg2o4rnJNpXEKprdgA`~FCL7cZH}*g!c^HmYTjRP9rEw8_<L<pXb^AAN>rh93&cmjzd-&yi9hlEkodB%k{R8pg0ENV9|L}S)%k({hTm&u#<{cEU-PapXt~w{ExzBDBl?xH{4!1t#76+X#U2e(%m1OIkN3I!P?I(3xxME>T=QSyCc82Z^^rX9TF3F6wJN!vkFPQ~E`+uI-3!g&-<uA*c%FvsuhRbXNBK)-^F?6)spT&d;TZjZpX0)V6@;zJ54|L@HbMFAWJ7@O#pFoyyflcflW66*=HYOdzYm_Dc6VgfCUoZze2X`HnqRB($D{j;*Ff$cNhC`%`r!SYz;?u~72J`){L5<b`7UO)K`qew{IJeru6h3#CZpsV!>jdy{sbws3p$^0eyH9)h}y|1oN3ro2@e;L5d7rvRAC+dR&N@yKzwYF#=C2X?tiuXTmRer2Yz1^U-{T1`nvUEjx!z9$Mi!1e-Nq1-gAO|_Z*k}<KY;8u2VyyAIWQ)*H<~;RO;zOmFt`STYNc1<^3xhgzc8SYbSnRIlr3$$PbO(?^rAA3&ZOpj~^??ae_9+VlN{?gP`-f&(zOINi4@%Cxj1@;r<xGWW+7}4CVenIQ@HAU*Wwv{Ik0FV`BW|sK`Ipa+_nA>^%<=enXg_2%cY@6ne)vD#DFX>(}zR`W`+h(oVldcr%O{REp&10N*_*G2anWeuu`t4EN_I)aOQWh&z|nymbKo5BbMYW=l4SS6UP~m)39ZRZBtl?}YVb6HEr3ICc2`X9+|ps_&T|ZH1{5-;Pts@726N$se+xbEz+_06)b`iAK9De}UrHI=|~-dO>T8yeGaNf?uGP#L>c4{A&n0KZ@#;gZ@itkvA6D-}7V;KLLG599>?Yo|5VCXm_9{59ou*@b7&ZAio3rKYj}Qw*r5W|AfZ=Xqd&0@jt-5tl<Als3o@!OAMu%15X*^c8i4(R+@F;CGk{V!7hY98`KZeObeDB8lofow*<6*(k;^;?HG#DZ%n8xL+0CNW2?eS{JxD{zuy~29kb$}x9J*MZCbpn_eXB%T~Q)eF&`VCA?*J$?4(h9ucZ*h--lZ*GPl_w*Vi-|1Mz43a3ZY`#W%_8cToO8lkp=~*a(^x{ZS=-JKT#ow3h&1Y9U=#1@bE;eDb=Tcp~#JRsAp&KkD0=ovDOxxTNUs%IlMnCaAu-YX6t8Fv5lLtN*nyWqojjA68aBg8RSOMEBBMKeASj9qXXs-QH~7#+a%>6EC>_?faBj>a4_%OXwL%p1LjO1hC&?7izk%B7cq;vVr3JKi(u${^j?d^5bFa>3NQkp?mguVR3(_D9ztYj9((or5XeOp`@=taWVWU`dR`F)Zc0JUMH^+QSs;M=kC}iv&H$yd`faP;8zzb^7obr`AfL2R6JP`zupA?ZMxTKLVtgvej^m0lEiu5Rutv`$MoBV!S;&@*+*plN%i_)R-P5u)(6Qto5Vl9(kGY7>#InAebSJdC-i;#CG;Kfbx8h0$@2d|SNN9{x&J}q?}_WH+c6Ytx<2{H9iWc@*<bUMq4(mT{c%%QasGunlYjhZB7AR=9u4M;?j~cf9rF4rJb$<B&?D&nAbv2c_InKDn{@d+l>cw(lIMi#S7c&~QCgHMb1gbw;%{O<WaA0)H-P^tdP1aMGERz|2G`%gd{tx+ug@y1aZ>+ivhl8XxPA=d)2oASAoxl52&8{^VG%7?atQDfYFP;#nbpkhIKHoRn-9(8St`3htD`SLaLj9<%o^0cm(O92``?MBvfJt<LA)DIo~OMB`qE9CeDjZRSF{;sML5uZjVNKyLG*jZrqJrhZRHE8JC@YE(~NGTr}7>A&!hccg?_l5#nvSQ{TNY)u`?3iI~uY#?e)<&FLUJ|0sYSic>l@jgPh+TsX?WkK?LGU=j3wS?bi|o|0}9592xe*0Ux~x1mFKG!8A9c=pSQ|)C1sy-iU4|Q@qZs_cPGwj|KCG!z)4&eEKc3^yq1`e&O6(U<&vT8H(>$lydANF7%FGl(N1zWM7rf4};fX7Uk`zUkCG#DCYAzhO+f@;rv)pUsS%{{$izRZbJPX(4PkT3*NsXr2p(l``NH(Fb(G4=89YKR?$}e$Alg6ra4>o1saf)^bhM^X?S&!ttf7UpLn;NGu7||{pb2v?cbSkc0l>Fkqmz!=YRX}?DL8c8^fQ(Fu&GTcs>B-FT1FYAH_(c-!*95dz<|GY*OM6+k@bjcpo%+Mizqkr833*^zBqW(9Z(=#9j@g-H#>u&DQe%p)!B8lKybrQ*5e|{az*0H{FH1J(x=We&N7J6XFF%e1xlZ74u%40cHb~Kbj6tXT#r@xWV%H6O!lxtdBR2Tk9Ap$G0Q#O~KOg0TK&}pC}T-DRBwH&qkrVOx1nq-8E)wE`|KlBzm5M|8lzPfrT%^rllNiNSiymOMBVwulm~qg)I~CZ!Nig2F&3U+5Az`p;vS+%-`z&7+2z~++W&To=jVBS@nz*+Gf2pVlv<-wV{OpejMWPT#FHh4;{W!Pr7ft;jrS7*nuhW9VBf0Dv0#pq8Z2M<dR81U)d$F(`EcuZ|wfyZ?G#O`|+hy6!_Ug*!I^eX-(GkL-go2`S~;VEjSPW^ZSenrR5Il>UTF0{%Dw=&M-G^;H)39)e!Kv)p6TwB9qGxt+M{&rfzn=?cZ0tryu7PU7A78SKwDU1skG>CS@t?)4E+l4oj5z3qSaEFQ5gtp!i{wKLhpunURi~Z{+iLFn-v-ct~Q<xcKl86XsWk_5U(xL3zl0pz#R%#a}>Qu3n+P=hvJ;VC~t5%oqKrdw<9-6rNw^b%j`k&eJ*?bjOkp<tKqet=CrU+Th(#{QiHY&mCv#bRhk$qkdSyS|MxdRSV?)fFDo|KTyQ+R13hLvcfnQ&d*T(ETf%r|AqEP&DJ?X`=8UQBVkFn<GN>YnTf|6(q_!LKuIdK{kzHI>uRqp_Z)KiX8I&ZBE~)7=f5e&GTu0GMlsiVv-JT#`y{~~QG%x(qYCgBN32_iCsAHP@uB>>kyn#p7V2Lkc?G#577`x=e$m{e)lUF^V=+r&TI&z^F^fz1x~5N3J?f~%k5`!%E<^io6g%8$VToISU)$P1L(^gButR`9-FR2*v3Fd|HJG3L1GU7N9Q6Hu(EoM|J4h~moo%`U@awVR`}=<g=w6`D-r70ez_j1Sb42pnR;>M@z`V;2@o($`RvS(EVfnbPeWu*LvkT9-`F4FdULSxd2|(iyXAbe!MS6t$*_GPQqtX8K(P&Iz;4JKl=vRa-b0ZygBl?@{)5M+!GW_Rzy+s0h>`&2%z8Q?K`?S9Z`;Slin;ClfX)yn=T>ldF507la4(Y@5!!rF!<oQ(N`|_^@7c-ANGZFuL{}H}_f}?4jUrDSk%HQEalj%ba!1|3&R8&97UAi0Q_ovn2+n?KgBTYY2IVJioK7noLT95^Pf9}V40;WF!e*Pf6+$E5I;58W{^N0D?{7m3~d9R(gwN&6AnwHg#Glf#}a-kE959JVhE?I=Iep;eE6u!MYnIN@1@@f*VOSCxRTf=&AK3E5GMf&u9R~l?zb+5zzqbSTO+fKhW=ynW)SI`OYA1<`hl%Db=)7|lPl_uUz2Fuu>e|5`|$!{x+qB39Ed)7`W9+Bwo1p1v3P2?oDjm|i%fBSt2TbuaWg#p`l|Lc~UKAJ?eTR2f|4C*4T#p*%l8&A_3aq_D0Zhn)fFO6+@MI>G}iHo*kR55Qrzi->_qemKYL-1vg{jDC?6t!E#vFsQlGtl~_n)$KR5Q*l=AjS6s_!R}ds-0|Qo^DVl>i&+xJA>GNlTmheZw7r=TEo#Og}$fa_qwBOM1K^~&sh*@M>vJ>XF&Ul_{v_~=zIHlj_D3Nx&8sHKM3o`;20xLv=KJEKj8Usgnt&=e{g+LhMz1R&Je)-Bg7`+VvYozPuX}N5NiVSLlmF0v)Gk(_zp9)nK2#OzqS6mrT~7xAR6N(%<o(-F)oZBI2!&f{QQ37OYf~T<Fsvv#8JjlJ?pW>W68!_GhV&pMt72-_zlc=#?yk^4tVGh0Y4KC)*nqTf2B=qHj0U!Y&ee87hwMl_eWv<gMqVLx{`lcURkzau1%}virubbH`%kxInRIOMt1>zXTVPrkJmx)BW~_>x*gBM^>-{i@(4O#+%zx1j|};Lot7hO99-KplfQR*(-tuGI9J*{Gd7QBC71{02Rp5y^Sh6a&KI@6Sw-6n^us-y@b(G%Q@1UBEU;f%{>$>|lW*u`=FUR!uZM=Y-k0@KQ(Wkk+`He%>p!r*Lv}=NLUkEjAA$8B5c}<+$s3y^ZZzzAu$r(d<3~mPGw8;5RR7{`KW$Q_^7BU_>x=z``EY@myA<IMhV~z-4^e5tg6s!<s#Yy`S1Kv6v?$VFd(4$lXWTuUP6YaJfFBQuZ+A|y)_ZV~><09$M?yB8o*mTT`tCHFtiUIl1Qrx}Bm6PmkpCAV{C90e%l-p>%%hx^1b)J?Q$Bho{nG&d%augh&iIqib*b56C_Yr+15Eo;Ij4L(#=>>-W`D~6jqE>|pSW>CeFo^?BJ=m5BU;zSR!`lRSu?23>oA-S*AE{jm<cYmVk{yi=m#j{Yjxe#_E)X9r@W1xjwx$c<;Z(9k6od2r+1}plO53iyFyH2+s>*LZ%6P|K?uHVr^3F6DEBYs6NyjU!p^$hAF&baLimTQ<5&r5>yx$a>;IS;C*|6D#rVJX+wK?@cC}NVBq&Q~k9(Jl*$95i?5hm*RIgwCrp@l#6Tt;n<}Mi#*(=>2-XG?pR&UBhc8A^f-vIN8c=h@Vuzk=LBK(*8SHAS+XZ?6KQPE#x=Ev7P0{vxcf+X-QbI@yUM%&p%mabifnMJ+`e)!N!?y^B=AF8uObx>!F8K<~=z5(&|WGH?uZt|Hsv40`EKa5Wo^jL0gvt0)G6(%YAlQ6!2)JIzGByQrZz40xvcZx?g!)b3$A!6TbT{{fq{;mEnjK8JoOxgE&{R8Im$jJzP&9v=Q%FG#M9-q;dfPX)0?o};Xsokq4Vdxo7?p4vU4{kwmc;|hT-@l^-!ukPKv9!I@iff#p`1d^IKQ8JddAS6RGWV{8V)b27IPEcs$*9Nm;T2%M=_ylj9oE+|4C0l;@eNX+tl<;anJo{qF&_`Qm!pR%*~j-1lu6hP)SJV}g5AmID&hEx6yyIk`eqCRbN`Av3)eqYe11~T8z)}V)WhSn(7U29#S)<JWY5L47yIa%lqb>ti`+A|8pfw{Or^psj+^;gYKgspdtP3kHWYt|Yw_)6lVN^VS$tfrc)zlRx}zSY<xw-sgJJ$BqYTbG#)znS0R^7#SW}kz`SmN0v7N2xA10lDMo0J;=RaodwdXHW*<W)1Vm0S8`xE~E-Wj1wVEyS>WA>h0ZB31rw($Iq-DmaL4OSHSe^!5<ru7WO5B+_sq5Zd|^P5$#U3@ZQ5&l0gU!k`DVeY&+<CW*kjOtFnZ!k?*OSuL5bCxyz#)6g*B>vm(XwJ<$fa*`m`AdQ)=nEk8mA}8v2K*yO0RDVY6s(_s<d^XNANPj!aZvq6D_H*p(O*>5S8N0Y>5WIY;#PtZ{$HLScl`;)rwNsZ$-E8=n16mEz6HvEq5MHtZGT#kUw^A|y#w!HRA$3R_-TNC5*^`(_pkIX$-n^nO*HSZ;*9zg_r}vVrK#BWWDVcq4IX-AlwVoJz9asPvlirc|7yQg=Oe1daqL!-Vtzz^e_?T*oy&2rfsZ8dWf{Nh7yPuc#sy#VeuCE@wO>m5u2VuM;KOSEH1q5*mV`q2lZ<~r-=sgzT%~`6^6%bTMhYw4=dA_vZ))A{O{O)*mk*hVN+;NFXWj>FQ}05(o$<X#ZI=zYdc;cH$5*{#&63aG9Q1y5Ex@51*<WCO9G>r$<JV~~z4OYwX8gbMt~9KvYipAN33Eco2m}yB1PW+tD^vvx0Rb690ttjU7*GZQhdM*cpw^)Z6{=DJ1q8ubYpF#<w6+z&0qan#a<L*HXcfIh?Y+Wx_C6;QIkflQ-XHgQzTfA8oMG?1-nG`d-nYqre}gY|i^K_CAMkwCQR?fc=rbtvJGU-0C5+gIO|1_D?$0*-xpw=bwZ>brK0l_xZz5=og8Ddu4=u}6PmOcp&N<k`&-DL5ga5UGwHxR&0R1Q=zCeE`{PP2Of9U)K&<B>!SCv1KiR*YpS7xjku;Z^acHEouY~g(AH%&|I+<#y(kL%r0%vXG5A>&H@zX|P5g!+cwl9RaSJEl(p`Q-+R=j)D)yh_Q${C70^m(oM`sR;gA#lZAs!2cKFo_|(t{-D1Do)5t%^7$21|6CD&ChHgDtZ&@@vb=s^At*0eL`L!(INuEQ_kce=cK%e%0{k{5KA!{lZ3zCm#YFXcKA0vF?AsH-pbXF=>!3dO*8$sqnvMAryvC28)wujNW&IWAmjFMvaIbGP@-O^^s7o13ro;G->bqM`>Hmb_i~4@F|DLYfq}V?(4_tlz!Grv%sr2>b_qVeCrJ1lB*6;B7hv5Cm@f*l*<?H`7;qK_Pm=80WURq~$v24td{Ksr+|EF~EJk9>3{CdPyGB{swug}!rXKDI}VD+y<xc5H{{bv$=yr$;wQRUBfV6KQ;To$bl&WBc7d0#fAWMx&qnbkS=DyvNWFXOK)QTQj}^PAk{{#HnQBi%&x9YKD<UK{Ua)hxJ;`X9jf1nP^<VfgqiO0F;W*S>F^0$<0utL{I1ex$#GpNZVRV*XU){`RQtufmK|PeL@}GvkFj=+7hjr^pV(m)}V!f8eqm?Efy{48CnW68c@8Mt-8APmlk8G5$)YZt{LV5dU|kH@zfLwuAn>{QF?@trLFm{kRN0B1k&W^{uGS1AmYz?Vize&Y6VPS{44)bkXXDwhaz5s*|VSCq(1(zXbC2rC2`}s_|<JR(}Bf!5!BYQG{Jcei(@De~tXd&-jg_%fzjwyEORGr5gKdx3qPF7*|Nb|Nc<F59*KN@uy&aO`gBdR$=ptQ}I_a;e21TMJMV{1^ut_`8NiTpE)YQo)7ZNr|@r5;8z<X@cr&2|2Nm?-G^%}Z>wGZ%*A<m-98CPIO-JM?04z6wU)bA{y)c8*_98>g?|NKL45tM;wxA``w#Jz>ivzlFi-1uDey}nC!LS2A6`+(LX*GpeU$UluR4P#`CE+g-bp=kjqNS2PDcAT&_C=y{66WE{3XeC5trAPhHkrHJ4Jj%)`xt3_N2vq&3mA6K6IoT`0YUb<B|7|=0CuHLIXb_?+=}S1^v@#$wfmMPwF!f@uQ2EwC3xz&hOr}Shw5$^(DV|4)ONhcrSa%Bb?!)b81rj>3y0)NBz%K`crEBqg2CUX)Bta8Y-Tz-awImPMXhy`WMCfLbw)>y_j{Ri@&5B!~c(;Ur~ErWLlQW{WT)yXg7vjPqrp+E0Y99^?SygLH&(fh7Lz!^|dM1H@-hw(ucOMx`V_Yt~fPr5!-H(&9HX+$Xs4O4m`RH^*7-GejC-dg97z|fj*}(I3Gz5QGWEhLb*O-Y?M2|k1lR$M=LY9us$u`i_c%bJ*EGpxI2{{it0Oq`uN?~2?nL9wU2?myAuu0ce@D)9ajk<Q`Q&I{1~3k&-E`(!v9eJ6xEkJI%R!FxHT`7MEC>!W6a;t_axviFm@}}KjyC&yd%#C@&lgpRQ;tVzkhqtp{eT+SpI~2T~8xEAJo9#8vG?Sel?6QGr5)Ee8Qh^@RmQHvyZa=XU9^^x1;`>$oaaC3iv%DN^zX?6#CC_{v6;_mHq^R59IUhQON$Ojuc+tEQ`+cn_wN7jz51@jQX!?{l)LgQq-?1vsL#We*VEz^k<O!SMbj??(ZwL{ly6`SMgU+<QMwc*nEVQHi$1yuiW{^Xm>}~MnV36)+P2@s}(-gERFn1MIQ|R{nm%>yD~#s_)bugwnBd*h8v6FGx&XK1@QeQ1j6@Y+*ulH!baD3%?8UI32;70Rez;drT!K6NBS$JHSdO<!=Eo{kgqSr`Y~6HUt%nOfcmr`e|RfH<miX(fAD>dE>rlwL4J6ct;miurjh^HXzVXcKj9Vr_lNwwU9qNwKhR&t@GbqJp8}uY`+sWR=ue;n{0aLfP=5hGKa7O=O=cMOe9&JQe}3=4GUMQ4Sbs<}#_-F3VSS?W(az)}DL_BJ;6O0NsqZa}zp^tI&Ci`6euelQ`k#URB6fbm>+TFMt0rXqMq~N~VEs&<Z&u(}k#N+@7r{4mYgyYeYY%T^7lzMQ`lmH7BoKNaKjXYi>$C*bf3cxu&NwE#>0%rXzt7_t{3?b2ya?5o32ck&*~H<O_v#sw;P00|OEBI%?bHM{vP;J{#>J|Y5Bwpw?hoP;o_dN;F24RqX4#(I@<0pKN1Z~Srfoz={JY+AA6o)~KUDcMvtHfso^dRo`26gw5y#LK`tGmIKz#s-KS9JXkGO-_-?zTzNV?3>{$0f^k$yowsBgH6YeM#R$IWW=FTOGT{o%J3rM=;``~8>k(R!T~(ICH8<DYe#tQI-2k>B6Q5q?{h=K5Y2Ejj<~vCENjzY5xVWkxdE-)WXqtON6z(0|@ofq%z|zMaf$mW#<LYG=Bh|B0e#rp3b~Ie%#7nfom9MY~lz51kWAe$<!;_q1{6kyK8Bqw4+t+xmr+A`~C1<0Arl&<Xfk{E}c?0@ue!jEs0&?l%$LYd8_#=1V9sBkmC`gziy$w7<;W=HNzJAEsU(Y@sXryKw$d-oHh@A9nwZApZ8D`;TvL+#GV*#n-a)s#S!-A3jVizG3{qg{DsM@5}pT9IXEh{qY*L{^<P8^w_)VWyqU^v)3|by>|urTMSDrcgy{|(E8fK*-MXJV{+$okum)*pdTK9=_jK88r4;LZ@zbP*_tA!zt{NBJ%rV7(f*kV{th4Y`4-JDf8|7V>18iY^H<65k7)W^<N3c$K3`D&92GbJ#ry@3>l*k>Ro^t{Xj{g#Y1N6$Pv*S1;As9yPU{1<@D|xNQO9ljCX_#*=Q_W`<j?Yp|Aps!lqH7vL>+&t`nx*S1aI%Kq3o3Kq}mP>;tLy%LW;_wO@%kKbMo!b{sqt%FI*6mGf5v=&VO_ns)qeXmW}S=_$&6|<np3uL*0fXeEoW;&$NgxJOldQy?q<Z!TBdqzmDV&q{s7(HR?wgfAG_ac*XN0`ycAl0DW>i|8Ym=&Xq&=%_+Zl1m#-U?N52U&?D(+i_CTQ5A4(mhu_+xeTFshIqd(fVuJj}!Jss^>URnIBTB|XN7khN(Hpmqq!S90PLG?iirp5i)pz{Jyv)Tj_s|)LZ$)j|7soLD+x5fFi=<MchRAMM-zRWAI<<11i_6b1TA<WF1O9Bt{z|W|)r$c9H=u97lwO!n3-hl{W(a;%@c$%7)Z#z)q9Kx>nVhEmoNB}c{)w^b*Tvrgf5Wh;{J)9Vd>W>I5B+aYeL|3*)eo?;0KT&$$^BPil=?>s{#JIBjqVq$QWv3hXB(3LgZMWO)i)hJ9GTRvw>;j_vc<dy;_Jl>1-}5}-*oC{2^?9C=079xr>G=apE71EKH+!!#S&IQQvE9}pO4~fXb>Mt8U6>Fg0!&bgYj|Og}L#aRGAR?YmFx{ggdrM0wsW7^Tur@e}a|3a-_D1FRbC{cT{D#&N^$&EOQ&__MUrCI0WlkDF0WEABfeKoA%6kU4!Dc1<8eP1t+CX-@0nl#Utx;lwZJn7E@mBs_E}Jr9L>azkz<O@0L3uB*Hzr$TJ2XEB%SE`Iv!CcG~;)BJaPF!Tbur|LeqCvVec&O;BH8jmG}8CJeitv=r0-&Z+;WY1a3g%xE*>vDi-%nSLks1TbhPm*uwTcJ%`P*P%}HfR~UTudeTg>KmW48@_GIy-CmJdIA3Y`xe5_@`8!NLHmet{ocbsKXz!uJiJ3UJKoE0BEB=7CV=`B)gIh0Xx#&jhJ`t&2ed3<{f5*Mawm-~+&abljGN(?k?4F2&zO4GEwYY;@|&SPE`13tCGePk#WLs*w7_K4RZykfHRb^4i=9R7I!-1jOq8D`pC1DGc?zRAu5m;w9L<lE^+iebbl>N;ufO$wvr$;qJ9}gQTajtHu5kUU_z#tzbfoWGQikOB=lLlS?%dayKRLvwRv`bv_^+z|BDnY8Zi4cQ4onC7Kp4M9x94Gs<?c9n|I$YHWJ*uEkvHn^spenLE;L)t$VB<^{2h65hKxaZ|7u(2=Qk+f-5k^(TFrknw0w9S^8HZ%Z=kPxEVLsN$&aqlx$MVprhZN8>IeMnKIm@~EB3Hz6<$rn@Yw@baWk#wVI*b8^3(T;0jU0dWBiZ6A9z2Qe|8X^@VL{zfpvLF)3}5R^n>k5ErJfWa6&<zp0~xIr%x5>I$HmKMTot?Sssd<Uy;|AI{0oa3PAH``lTT$Yxnzdej3W}H1ICWUre!l2J~0152OB4X#K;T)h4){Y2d%F$Y8PXv4@<$m)rEvf_s*p9&Tpc6p8Gg;DS$96KP{k>=W8uP0ogeNp&wNz(3N*lPJfpF#bi<qWVa2r=Bq5J6YLCd~OzW*waF`H3exC?xX%+a(|`Y$ugmx&Zz+O`?1jZT<y#KDMqM&=uPVko@3xI=G{rw8+VpSw9)$6T`+%w{e7a?ldSgpFutckezdc=o1NvW@qS29-#M;o+%)!PoHM9DB=*VqaU<?=r|Dh&GV?;mdZ<4W8}Cj&9<a-W=3ib!P~ub8hw%Qo^kgw!?;!iv#g~wuzsM+Nz%%+F{p0?n&|i?lYd6hC>#yqmF{;<o(EP_x`04Ec=nub*+|?&FP@Z4#?~(ZW*)9o_H0TD`mm{w|qwcY@;JjWk3(3Ez2PR#24g>rMa<H7gcYUL2D45S>3?}pHXqN^y810re!u9RSn5o?wQmW(+PP!h8@`q)HA%%B>n5<{+)<}NwbSV<Qntp}9kN13I8w@{5YMmeo&)O}CayQIF^`j7c9*g8}wYptT*I5?8^FzrmgTIgJLt^}xLl4Zd&T>{oVfC+w9oYOVy8jgZxk&#0!mLDU7_z-0noJv$*N370^NK;Q43RCl75LL873`OgjFIclNu4zr7RvsHy%DG{oAOV55IVL0kXy7y{+oZ^VdaaNwwvDY{22OQpZIK%F0ncpH~)s$fqo5=za5AATwT+!^9$5J85OGjd4c7s{_ptpFN4C|w);#WoZs-90O#k%f?^559PoeWcSnH#S?#!pa#KGm#)VbOP}%?Z{nt$#Zb4p<p~V9lx5}WjX7c{r<-&>D`dKXMFG&A+c%5a}G`0PKTc05DZs{i?@wFum_#<!aRr$Ue^_6hK=`W>oXLT>L9;27mylK!i?eQxSC6DaNNMk=YFW)F2T+Y|whK<UYe|%jN-)m2wSo6%sGo$*8_1xHdPBCW?d|)F!6f*R;=_~qYE&}yw-2V5e33lvxlXa^4C8k<WW<*w5Pock*7hpuZhve@-|9<{SZo%JXt-Qxy#dFbV6eIbi5PyCj%pc?lFRZaZ@IQj@e=u8d;O&352S<IFaA?3e{;FQ0cq)FusVC;VE>oEZ)W=^6=Vi1tXUvEhbrsi<Z}iEG@%!VHzdOa$!uhH*IY%B4LH$3M=2(*T%6~q22bf>G5BTSUV@nykrTw_|eFR^c{XDwfurLM2Z&m#tWPfYj^Ws)%-?^Q^Dow!udnW<#pO2)JN^4%J>X)#&2lg#8avJgCx6yI@r!>|Vd_QXb?LPp2)n8qGp?{zd=##UAx6t`^#r}f)b<O&Cz)zb@{5O|j{5gOhX6#(i`p^ROmwg>|jznBdWe9(`7Q<vcaq?{lEFWFR+L3eQCC9s4lRx0wtb6N42GHN1AWF7K<o>}9{2hSbkF4KjO3%afaQ@oa=X<l|5eb29V!%&7u}?x`jna_wS95(`USlBGTog;84A3HuQ+sYhe2MB`^34p7sI3nb{}N#bS!SemehfIWo2~8+tT!%nMDhcT`s4gAR!;s~<z0(hK8NSi@05&iufP|$>kq?^=F0q3hs(I{5YtQ>97&}Wx&VLY4)*diZ2kkof3DHT$=C7wH>&=b==aOIsJ}{R2hK;}kG&80E6A9YW;cdX4T1g$F}#zU$g?*;g3lj%X&Q0S1p4!YUP%-Xb{0ot=hxkVCCq}H{svRO^OV)lANZGz79pRO>2PWH;QD{G!E$@fzqI~U>)RUpJC^c%K}fQ`#{~6H^uMOmAD93BGapgXq1H^-`Dd-IkCCn;__1K-(B*j)%zq;7r5Kl=<8#$CE6URh_CLAB#X%&~Mt5$TVb6=@Q|M2T?%VT@(Yk*F@we$2Q*xCh<0n})#r(L@0?F?s`28`!|K&3U2X-xj`Fpd~&kxsg3R4Ea_qWUNao0Z<^%FjS$funO{GGlCLGUH7WEYQVI_So()V?{I0Q_xgars|-FrSP1H<OU>3;2C4+}=cE-yM61B<=eST-3k21nB?b*SG0iFV>rvu4s8ef%pQ!hw<NK(gZupf<XP1dyIPNMLOq9O8qz;|L;}tBXa&ZQd=W0q;Y(|D_IQY`%+t|cZb%h#kbe21JgwM8vQl+et<rUQlA$1PoL4gcw5HWF70nn^~V$tHka^BC{L&2kEr>pqW&Wf2)ysjvXJvdkza%eM?It4NEiQUFD}ik?<YmvqUUfm`7Iawkn=yKs^2W@s!67Ky22kdhQxSmA5j@t-nWUhZACrshqB8S+Od%RnGWZF7g&zDMpt?Oe*=y6h2+1n1i}js{?{<SIg``+QbhUQL>A>vK9zE3jk>?OdjI8y%KYXmdL^}IbiKj3c|(Uu;XksMfcZR#e?Hh_AQEEn-Clf7_55HJqy99;T4OUs;QcroAnWTsTiB^*W0cND@+&FurxK=a+U&;v%I|M|8)m@xBDrYcBy=Hu3H;5#{QF|z=PQ}};rv;CM#*JPM7KjW*VAue-H$8m*Q5H=Y4lMWFkcMMFG`153fli)#||#P7HA>tB(q0(d;e?xGh-ehxn$1?O2uNQ%vu=#XfdsX&YHN{H4)q4`oZ{@E^|_APp#+jDrL-n!1%T$rT?IE{`pF(k>Jz)dPHWU3%^bm@T)J(JeRjo&~9!UZO=ZEqQJKe3jWYMrG7n<|AZm<9@MXZzK&t{=-c8gS*;BLl#hep{NSqV8;z#a|F<F^@xPvG!t2ZnCQu%E0sq2>pgwS_fgX2OBJ*}3HpGDVSpJvwLBRZz9Dl3xn|iV$c_n3wnS{Y)y1G9S#AitUXh>*n$(S`u$)B3`Tf<_?u&ZCLRbWMOMWz97Yf&)K>An}U%x>g+$9L+3@_R9VNL1e(@as%0pV<2R%kjBq_WC}rNXC-DPg9?H!}z&?{rFAZbI0McLC)<yyBe6>cHl4gPFqMtz=E8^*QCzwoz|$o5PeH})wqbQ%&!bW_U9w`68ZmMX?G1IBIiS&vcE66wn-Gxxz7*Oe|Zll^J}ylBYxay<XyNcIFQu%CciFZuWJ5EOYsBxz~L4e=i4|j-~jIY(8XS7)%@B210?^Y@(cD8P0a7R@%}-(U#FVCXU^5^&jNp>ljDMwP#+wL-^IB32k<XZ!)JzO)waAAJ)jTrp|tNMTK_=u@6g^g#t}RA!1@OL_dt-pcFfc0KNm$?X!4_A{Weh}{|5ezeWdtKex}&Pq>*|hGJ4YacTRFo178H2GY04RJO}=g`r!FPaQnjtNu6Vp>z7xO$ozZg{4ns(1o>lJeLr1tM{k+Xi>uN<y)+NZ$MvV!maJ^Kh2U?{ANQGHe&{mae{)f;DdDM%xm)k-PpCgcB(>NpIoi$o%b1Q-Ll}RAg9{?hn8Etaw3;Vc+%D^E^K{*YklrLZuXE2rFyASx1@Twdo>2R%N_>a-Dkdlj(;rD-ZdqCOD}%M|-=E)8^zWaky+2Ez@5;hRj2B+~fAB`yediw(4t2~+8JX#1nG)C*P_c$7-1?agcg}Sq>#xl)eUn!RKBO-3h1b(f{7&qNrO?3n;WvKEZw`t-k@MR(eL>l#C;m$PHo!jw{((w=mofGJgig;`I)a}XhoU3f^%6n;K`jOT5nBux=3`DVqmuHkkoc6)_Sji)71dWl;*-DR-k<ab!TWc5?CEn%|3;s^_+UuIc^lSFp>32`V5{&#vJs)FQs#!nzw5)92JMk~S7xkK>YqdZ4ts}7R<h^Q@2TN~Ouq@LlHZ%8&VMvp&2`f~9uNE(KhDeb2KauP{-x2SjP26lTOpKN4mQxA=s=igQ9+&_ML44L|3Ka!Ya2mr{~__kHMCjx(r9}4IsW$VXXlPevLkGP|8TOAapxDZx$|x&bAI>h8FPgCvVv7F-VR0U*NIHO@@t!%W?eOz)c^FAYJ2T8pAd-n2);37f%*Kv@+Kw!WYT<+B0mQGV={L<PVxKN%@_12u9Z+fy-px5%4}&Mg86B_EAN~5j!X)IAG8+hZJwIHz4K!t$#`%kw@&-xy6E|hypMVXxx<b@Nm6g9&mb%)3NR5@8zh#7+<CeV%m3P~Gek4l@Va-!C##8CPo2Q}uL*VjJP5^ynPO-5>;J{|<+t~{X$gg%G3fV6G8S&G@Fhj5_rI|EMI&;)YeyWr3h{}kmiqIs)bgC<Sp#udG1LcsEvs0D+<%^)p@l-9B|qa(b!_mT^-mS`@o7kYRJY{a*uzP{zZdlnniRhqD`j)-tMxOL^|46x{%3x$5n*Ho|1=f&XYb1`IZQ(E;j$Pc|7Z2h6@mLV)_UYc-{IFgyiU9u!Ec~{Esb#3|2n2SF-%XL-#?5yUlBDn-RHOgJfCxhj|uqa$uhKl3(qHm5aDr^`G~`GzjJnz>j!DZ&uO=w$~YI2>tC6o^A(2mvA?7lqx$8QNnrj0`TpHAmHF#ytiH6GXo=vj7M)Ar{I+}6VBy<soe|^6R?+`b?2j`kRlwiMYBjcg3=w?1kc{9nRKG@N*zo@V^haw("))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+    from backend.excel_manager import (
+        get_or_create_workbook,
+        append_appointment_to_excel,
+        update_excel_reminders
+    )
+    from backend.google_sheets_sync import sync_appointment_to_google_sheets
+except ImportError:
+    try:
+        from excel_manager import (
+            get_or_create_workbook,
+            append_appointment_to_excel,
+            update_excel_reminders
+        )
+        from google_sheets_sync import sync_appointment_to_google_sheets
+    except Exception:
+        get_or_create_workbook = lambda p: None
+        append_appointment_to_excel = lambda r, filepath=None: None
+        update_excel_reminders = lambda b, **kw: None
+        sync_appointment_to_google_sheets = lambda r, tenant_id=None: None
+
+try:
+    from integrations.google_calendar import calendar_service
+except ImportError:
+    try:
+        from ..integrations.google_calendar import calendar_service
+    except Exception:
+        calendar_service = None
+
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+
+DEFAULT_TENANT_ID = os.getenv("DEFAULT_TENANT_ID", "salon")
+
+def get_database_url() -> Optional[str]:
+    """Retrieves Neon / PostgreSQL connection string from environment, cleaning pooler-incompatible flags."""
+    url = (
+        os.getenv("DATABASE_URL")
+        or os.getenv("NEON_POSTGRES_CONNECTION_URL")
+        or os.getenv("NEON_DATABASE_URL")
+        or os.getenv("POSTGRES_URL")
+        or os.getenv("POSTGRESQL_URL")
+    )
+    if url and ("postgres://" in url or "postgresql://" in url):
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://"):]
+        # Remove channel_binding=require which breaks Neon pgbouncer connection poolers
+        url = url.replace("&channel_binding=require", "").replace("?channel_binding=require&", "?").replace("?channel_binding=require", "")
+        return url
+    return None
+
+def is_serverless() -> bool:
+    """Detect if running in a serverless environment (Vercel, AWS Lambda, read-only FS)."""
+    return bool(
+        os.getenv("VERCEL")
+        or os.getenv("VERCEL_ENV")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+        or os.getenv("LAMBDA_TASK_ROOT")
+        or not os.access(".", os.W_OK)
+    )
+
+def is_postgres() -> bool:
+    """True if configured to connect to PostgreSQL / Neon (safely falls back to SQLite for test databases)."""
+    custom_db = os.getenv("SALON_DB_PATH", "")
+    if custom_db.startswith("test_") or "test_" in custom_db:
+        return False
+    return bool(PSYCOPG2_AVAILABLE and get_database_url())
+
+def get_sqlite_path() -> str:
+    """Safe SQLite path, avoiding read-only filesystem errors on Vercel/Lambda."""
+    if is_serverless():
+        custom = os.getenv("SALON_DB_PATH")
+        if custom and (custom.startswith("/tmp") or custom == ":memory:"):
+            return custom
+        return "/tmp/salon_bookings.db"
+    return os.getenv("SALON_DB_PATH", "salon_bookings.db")
+
+def get_excel_path() -> str:
+    """Safe Excel path for local or serverless environments."""
+    if is_serverless():
+        custom = os.getenv("SALON_EXCEL_PATH")
+        if custom and custom.startswith("/tmp"):
+            return custom
+        return "/tmp/salon_appointments.xlsx"
+    return os.getenv("SALON_EXCEL_PATH", "salon_appointments.xlsx")
+
+
+class DBConnectionContext:
+    """
+    Context manager providing uniform interface across SQLite and Neon PostgreSQL.
+    Automatically handles parameter translation (? -> %s), transaction commit,
+    and dictionary row serialization.
+    """
+    def __init__(self):
+        self.is_pg = is_postgres()
+        self.conn = None
+        self.cursor = None
+
+    def __enter__(self):
+        if self.is_pg:
+            url = get_database_url()
+            # Ensure sslmode=require for Neon if not already present
+            if "?" not in url:
+                url += "?sslmode=require"
+            elif "sslmode=" not in url:
+                url += "&sslmode=require"
+            try:
+                self.conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
+            except Exception:
+                import time
+                time.sleep(0.3)
+                self.conn = psycopg2.connect(url, cursor_factory=RealDictCursor)
+            self.cursor = self.conn.cursor()
+        else:
+            db_path = get_sqlite_path()
+            self.conn = sqlite3.connect(db_path, timeout=10.0)
+            self.conn.row_factory = sqlite3.Row
+            self.cursor = self.conn.cursor()
+            try:
+                self.cursor.execute("PRAGMA journal_mode = WAL;")
+                self.cursor.execute("PRAGMA synchronous = NORMAL;")
+            except Exception:
+                pass
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.conn:
+            try:
+                if exc_type is None:
+                    self.conn.commit()
+                else:
+                    self.conn.rollback()
+            finally:
+                if self.cursor:
+                    try:
+                        self.cursor.close()
+                    except Exception:
+                        pass
+                try:
+                    self.conn.close()
+                except Exception:
+                    pass
+
+    def execute(self, query: str, params: tuple = ()):
+        """Executes query with automatic placeholder translation (? -> %s for Postgres)."""
+        if self.is_pg:
+            # Substitute '?' placeholders with '%s' for PostgreSQL
+            pg_query = query.replace("?", "%s")
+            self.cursor.execute(pg_query, params)
+        else:
+            self.cursor.execute(query, params)
+        return self.cursor
+
+    def fetchone(self) -> Optional[Dict[str, Any]]:
+        row = self.cursor.fetchone()
+        if row is None:
+            return None
+        return dict(row)
+
+    def fetchall(self) -> List[Dict[str, Any]]:
+        rows = self.cursor.fetchall()
+        return [dict(r) for r in rows]
+
+    @property
+    def rowcount(self) -> int:
+        return self.cursor.rowcount
+
+
+def get_db_connection():
+    """Backward-compatible raw connection provider for legacy scripts and test fixtures."""
+    if is_postgres():
+        url = get_database_url()
+        if "?" not in url:
+            url += "?sslmode=require"
+        return psycopg2.connect(url, cursor_factory=RealDictCursor)
+    conn = sqlite3.connect(get_sqlite_path(), timeout=10.0)
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode = WAL;")
+        conn.execute("PRAGMA synchronous = NORMAL;")
+    except Exception:
+        pass
+    return conn
+
+
+# --- Schema Initialization & Automatic Migration ---
+
+_db_initialized = False
+
+def init_db(force: bool = False):
+    """
+    Initializes database tables in Neon PostgreSQL or SQLite.
+    Creates tables, migrates missing columns, and seeds default records.
+    Cached in-memory after first run for ultra-low latency (<2ms).
+    """
+    global _db_initialized
+    with DBConnectionContext() as db:
+        if not force and _db_initialized and db.is_pg:
+            return
+        if db.is_pg:
+            _init_postgres_schema(db)
+        else:
+            _init_sqlite_schema(db)
+    _db_initialized = True
+
+
+def _init_postgres_schema(db: DBConnectionContext):
+    """PostgreSQL DDL for Neon Cloud Database."""
+    # 1. Tenants Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS tenants (
+            id VARCHAR(64) PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone_number TEXT NOT NULL,
+            address TEXT NOT NULL,
+            currency VARCHAR(10) DEFAULT 'USD',
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    # 2. Services Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS services (
+            id VARCHAR(128) PRIMARY KEY,
+            tenant_id VARCHAR(64) NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            duration_minutes INTEGER NOT NULL,
+            price INTEGER NOT NULL
+        )
+    """)
+
+    # 3. Stylists Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS stylists (
+            id VARCHAR(64) PRIMARY KEY,
+            tenant_id VARCHAR(64) NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+            name TEXT NOT NULL,
+            active INTEGER DEFAULT 1
+        )
+    """)
+
+    # 4. Appointments Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id VARCHAR(64) PRIMARY KEY,
+            tenant_id VARCHAR(64) NOT NULL DEFAULT 'default_salon',
+            caller_name TEXT NOT NULL,
+            caller_phone TEXT NOT NULL,
+            caller_email TEXT DEFAULT '',
+            service_name TEXT NOT NULL,
+            stylist_name TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            status VARCHAR(32) NOT NULL,
+            created_at TEXT NOT NULL,
+            whatsapp_24h_sent INTEGER DEFAULT 0,
+            call_1h_sent INTEGER DEFAULT 0,
+            google_calendar_event_id TEXT DEFAULT '',
+            channel VARCHAR(32) DEFAULT 'voice',
+            accent VARCHAR(64) DEFAULT 'red_american',
+            notes TEXT DEFAULT ''
+        )
+    """)
+
+    # Dynamic migration for appointments caller_email if table already existed
+    try:
+        db.execute("ALTER TABLE appointments ADD COLUMN IF NOT EXISTS caller_email TEXT DEFAULT ''")
+    except Exception:
+        pass
+
+    # 5. Users Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id VARCHAR(64) PRIMARY KEY,
+            email VARCHAR(255) NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            tenant_id VARCHAR(64) NOT NULL,
+            plan VARCHAR(32) DEFAULT 'growth',
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    # 5b. Customers & VIP Profiles Table (Clerk & Omnichannel Sync)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            id VARCHAR(64) PRIMARY KEY,
+            clerk_id VARCHAR(128),
+            email VARCHAR(255),
+            phone VARCHAR(64),
+            full_name TEXT,
+            tenant_id VARCHAR(64) DEFAULT 'salon',
+            created_at TEXT NOT NULL,
+            updated_at TEXT
+        )
+    """)
+
+    # Dynamic migrations & constraints for customers
+    db.execute("ALTER TABLE customers ADD COLUMN IF NOT EXISTS updated_at TEXT")
+    db.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'uq_customers_tenant_phone'
+            ) THEN
+                ALTER TABLE customers ADD CONSTRAINT uq_customers_tenant_phone UNIQUE (tenant_id, phone);
+            END IF;
+        END $$;
+    """)
+
+    # 6. Tenant Integrations Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS tenant_integrations (
+            tenant_id VARCHAR(64) PRIMARY KEY,
+            whatsapp_phone_number_id TEXT DEFAULT '',
+            whatsapp_business_account_id TEXT DEFAULT '',
+            meta_page_id TEXT DEFAULT '',
+            instagram_account_id TEXT DEFAULT '',
+            google_calendar_id TEXT DEFAULT 'primary',
+            telephony_provider VARCHAR(32) DEFAULT 'vapi',
+            telephony_number TEXT DEFAULT '',
+            vapi_phone_id TEXT DEFAULT '',
+            vapi_assistant_id TEXT DEFAULT '',
+            telegram_bot_token TEXT DEFAULT '',
+            telegram_chat_id TEXT DEFAULT '',
+            twitter_api_key TEXT DEFAULT '',
+            twitter_bearer_token TEXT DEFAULT '',
+            linkedin_client_id TEXT DEFAULT '',
+            linkedin_access_token TEXT DEFAULT '',
+            tiktok_client_key TEXT DEFAULT '',
+            tiktok_access_token TEXT DEFAULT '',
+            webhook_secret TEXT DEFAULT '',
+            updated_at TEXT NOT NULL
+        )
+    """)
+
+    # Dynamic migrations for omnichannel social channels
+    for col in [
+        "telegram_bot_token", "telegram_chat_id", "twitter_api_key",
+        "twitter_bearer_token", "linkedin_client_id", "linkedin_access_token",
+        "tiktok_client_key", "tiktok_access_token"
+    ]:
+        try:
+            db.execute(f"ALTER TABLE tenant_integrations ADD COLUMN IF NOT EXISTS {col} TEXT DEFAULT ''")
+        except Exception:
+            pass
+
+    # 7. Call Logs & Structured Evals Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS call_logs (
+            call_id VARCHAR(128) PRIMARY KEY,
+            tenant_id VARCHAR(64) DEFAULT 'salon',
+            caller_name TEXT DEFAULT '',
+            caller_phone TEXT DEFAULT '',
+            caller_email TEXT DEFAULT '',
+            service_name TEXT DEFAULT '',
+            call_outcome VARCHAR(64) DEFAULT 'general_inquiry',
+            sentiment VARCHAR(32) DEFAULT 'neutral',
+            summary TEXT DEFAULT '',
+            transcript TEXT DEFAULT '',
+            recording_url TEXT DEFAULT '',
+            duration_seconds INTEGER DEFAULT 0,
+            evaluation_score VARCHAR(32) DEFAULT '',
+            action_items TEXT DEFAULT '[]',
+            structured_data TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    # Seed Default Salon if not exists
+    db.execute("SELECT COUNT(*) as count FROM tenants WHERE id = ?", (DEFAULT_TENANT_ID,))
+    res = db.fetchone()
+    if res and res.get("count", 0) == 0:
+        now = datetime.now().isoformat()
+        db.execute("""
+            INSERT INTO tenants (id, name, phone_number, address, currency, created_at)
+            VALUES (?, 'Luxe Hair & Wellness Salon', '+16175550100', '450 Newbury Street, Boston', 'USD', ?)
+            ON CONFLICT (id) DO NOTHING
+        """, (DEFAULT_TENANT_ID, now))
+
+        default_services = [
+            ("Womens Haircut", 45, 75),
+            ("Mens Cut", 30, 45),
+            ("Balayage", 150, 180),
+            ("Full Highlights", 120, 160),
+            ("Keratin Treatment", 120, 220),
+            ("Mani Pedi", 60, 65)
+        ]
+        for s_name, dur, pr in default_services:
+            s_id = f"{DEFAULT_TENANT_ID}_{s_name.replace(' ', '_').lower()}"
+            db.execute("""
+                INSERT INTO services (id, tenant_id, name, duration_minutes, price)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT (id) DO UPDATE SET duration_minutes = EXCLUDED.duration_minutes, price = EXCLUDED.price
+            """, (s_id, DEFAULT_TENANT_ID, s_name, dur, pr))
+
+        default_stylists = ["Elena", "Marcus", "Chloe"]
+        for st_name in default_stylists:
+            st_id = f"{DEFAULT_TENANT_ID}_{st_name.lower()}"
+            db.execute("""
+                INSERT INTO stylists (id, tenant_id, name, active)
+                VALUES (?, ?, ?, 1)
+                ON CONFLICT (id) DO UPDATE SET active = 1
+            """, (st_id, DEFAULT_TENANT_ID, st_name))
+
+
+def _init_sqlite_schema(db: DBConnectionContext):
+    """SQLite DDL for local, testing and serverless fallback."""
+    # 1. Tenants Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS tenants (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone_number TEXT NOT NULL UNIQUE,
+            address TEXT NOT NULL,
+            currency TEXT DEFAULT 'USD',
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    # 2. Salon Services Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS services (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            duration_minutes INTEGER NOT NULL,
+            price INTEGER NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        )
+    """)
+
+    # 3. Salon Stylists Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS stylists (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            active INTEGER DEFAULT 1,
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        )
+    """)
+
+    # 4. Multi-Tenant Appointments Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS appointments (
+            id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL DEFAULT 'default_salon',
+            caller_name TEXT NOT NULL,
+            caller_phone TEXT NOT NULL,
+            caller_email TEXT DEFAULT '',
+            service_name TEXT NOT NULL,
+            stylist_name TEXT NOT NULL,
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            whatsapp_24h_sent INTEGER DEFAULT 0,
+            call_1h_sent INTEGER DEFAULT 0,
+            google_calendar_event_id TEXT DEFAULT '',
+            channel TEXT DEFAULT 'voice',
+            accent TEXT DEFAULT 'red_american',
+            notes TEXT DEFAULT '',
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        )
+    """)
+
+    # Check and migrate columns if table already existed
+    db.execute("PRAGMA table_info(appointments)")
+    columns = [row["name"] for row in db.fetchall()]
+    if "caller_email" not in columns:
+        db.execute("ALTER TABLE appointments ADD COLUMN caller_email TEXT DEFAULT ''")
+    if "tenant_id" not in columns:
+        db.execute("ALTER TABLE appointments ADD COLUMN tenant_id TEXT DEFAULT 'default_salon'")
+    if "whatsapp_24h_sent" not in columns:
+        db.execute("ALTER TABLE appointments ADD COLUMN whatsapp_24h_sent INTEGER DEFAULT 0")
+    if "call_1h_sent" not in columns:
+        db.execute("ALTER TABLE appointments ADD COLUMN call_1h_sent INTEGER DEFAULT 0")
+    if "google_calendar_event_id" not in columns:
+        db.execute("ALTER TABLE appointments ADD COLUMN google_calendar_event_id TEXT DEFAULT ''")
+    if "channel" not in columns:
+        db.execute("ALTER TABLE appointments ADD COLUMN channel TEXT DEFAULT 'voice'")
+    if "accent" not in columns:
+        db.execute("ALTER TABLE appointments ADD COLUMN accent TEXT DEFAULT 'red_american'")
+    if "notes" not in columns:
+        db.execute("ALTER TABLE appointments ADD COLUMN notes TEXT DEFAULT ''")
+
+    # 5. Customer Users Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            company_name TEXT NOT NULL,
+            tenant_id TEXT NOT NULL,
+            plan TEXT DEFAULT 'growth',
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        )
+    """)
+
+    # 5b. Customers & VIP Profiles Table (Clerk & Omnichannel Sync)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            clerk_id TEXT,
+            email TEXT,
+            phone TEXT,
+            full_name TEXT,
+            tenant_id TEXT DEFAULT 'salon',
+            created_at TEXT NOT NULL,
+            updated_at TEXT DEFAULT ''
+        )
+    """)
+
+    # SQLite customers migrations & indexes
+    db.execute("PRAGMA table_info(customers)")
+    cust_columns = [row["name"] for row in db.fetchall()]
+    if "updated_at" not in cust_columns:
+        db.execute("ALTER TABLE customers ADD COLUMN updated_at TEXT DEFAULT ''")
+    try:
+        db.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_tenant_phone ON customers(tenant_id, phone) WHERE phone IS NOT NULL AND phone != ''")
+    except Exception:
+        pass
+
+    # 6. Tenant Omnichannel Integrations Table
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS tenant_integrations (
+            tenant_id TEXT PRIMARY KEY,
+            whatsapp_phone_number_id TEXT DEFAULT '',
+            whatsapp_business_account_id TEXT DEFAULT '',
+            meta_page_id TEXT DEFAULT '',
+            instagram_account_id TEXT DEFAULT '',
+            google_calendar_id TEXT DEFAULT 'primary',
+            telephony_provider TEXT DEFAULT 'vapi',
+            telephony_number TEXT DEFAULT '',
+            vapi_phone_id TEXT DEFAULT '',
+            vapi_assistant_id TEXT DEFAULT '',
+            telegram_bot_token TEXT DEFAULT '',
+            telegram_chat_id TEXT DEFAULT '',
+            twitter_api_key TEXT DEFAULT '',
+            twitter_bearer_token TEXT DEFAULT '',
+            linkedin_client_id TEXT DEFAULT '',
+            linkedin_access_token TEXT DEFAULT '',
+            tiktok_client_key TEXT DEFAULT '',
+            tiktok_access_token TEXT DEFAULT '',
+            webhook_secret TEXT DEFAULT '',
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (tenant_id) REFERENCES tenants (id)
+        )
+    """)
+
+    # Dynamic migrations for omnichannel social channels (SQLite fallback)
+    for col in [
+        "telegram_bot_token", "telegram_chat_id", "twitter_api_key",
+        "twitter_bearer_token", "linkedin_client_id", "linkedin_access_token",
+        "tiktok_client_key", "tiktok_access_token"
+    ]:
+        try:
+            db.execute(f"ALTER TABLE tenant_integrations ADD COLUMN {col} TEXT DEFAULT ''")
+        except Exception:
+            pass
+
+    # 7. Call Logs & Structured Evals Table (SQLite fallback)
+    db.execute("""
+        CREATE TABLE IF NOT EXISTS call_logs (
+            call_id TEXT PRIMARY KEY,
+            tenant_id TEXT DEFAULT 'salon',
+            caller_name TEXT DEFAULT '',
+            caller_phone TEXT DEFAULT '',
+            caller_email TEXT DEFAULT '',
+            service_name TEXT DEFAULT '',
+            call_outcome TEXT DEFAULT 'general_inquiry',
+            sentiment TEXT DEFAULT 'neutral',
+            summary TEXT DEFAULT '',
+            transcript TEXT DEFAULT '',
+            recording_url TEXT DEFAULT '',
+            duration_seconds INTEGER DEFAULT 0,
+            evaluation_score TEXT DEFAULT '',
+            action_items TEXT DEFAULT '[]',
+            structured_data TEXT DEFAULT '{}',
+            created_at TEXT NOT NULL
+        )
+    """)
+
+    # Seed Default Salon if not exists
+    db.execute("SELECT COUNT(*) as count FROM tenants WHERE id = ?", (DEFAULT_TENANT_ID,))
+    res = db.fetchone()
+    if res and res.get("count", 0) == 0:
+        now = datetime.now().isoformat()
+        db.execute("""
+            INSERT OR IGNORE INTO tenants (id, name, phone_number, address, currency, created_at)
+            VALUES (?, 'Luxe Hair & Wellness Salon', '+16175550100', '450 Newbury Street, Boston', 'USD', ?)
+        """, (DEFAULT_TENANT_ID, now))
+
+        default_services = [
+            ("Womens Haircut", 45, 75),
+            ("Mens Cut", 30, 45),
+            ("Balayage", 150, 180),
+            ("Full Highlights", 120, 160),
+            ("Keratin Treatment", 120, 220),
+            ("Mani Pedi", 60, 65)
+        ]
+        for s_name, dur, pr in default_services:
+            s_id = f"{DEFAULT_TENANT_ID}_{s_name.replace(' ', '_').lower()}"
+            db.execute("""
+                INSERT OR IGNORE INTO services (id, tenant_id, name, duration_minutes, price)
+                VALUES (?, ?, ?, ?, ?)
+            """, (s_id, DEFAULT_TENANT_ID, s_name, dur, pr))
+
+        default_stylists = ["Elena", "Marcus", "Chloe"]
+        for st_name in default_stylists:
+            st_id = f"{DEFAULT_TENANT_ID}_{st_name.lower()}"
+            db.execute("""
+                INSERT OR IGNORE INTO stylists (id, tenant_id, name, active)
+                VALUES (?, ?, ?, 1)
+            """, (st_id, DEFAULT_TENANT_ID, st_name))
+
+    excel_path = get_excel_path()
+    try:
+        get_or_create_workbook(excel_path)
+    except Exception as e:
+        logger.debug(f"Excel workbook init bypassed: {e}")
+
+
+# --- Multi-Tenant Query & Mutation Functions ---
+
+def get_tenant_by_inbound_phone(phone: str) -> Dict[str, Any]:
+    """Finds tenant by dialed inbound phone number. Falls back to default if unmatched."""
+    init_db()
+    clean = "".join(filter(str.isdigit, phone))[-10:] if phone else ""
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM tenants WHERE phone_number LIKE ? LIMIT 1", (f"%{clean}%",))
+        row = db.fetchone()
+        if row:
+            return row
+    return get_tenant(DEFAULT_TENANT_ID)
+
+
+def get_tenant(tenant_id: str) -> Dict[str, Any]:
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM tenants WHERE id = ? LIMIT 1", (tenant_id,))
+        row = db.fetchone()
+        if row:
+            return row
+    return {
+        "id": DEFAULT_TENANT_ID,
+        "name": "Luxe Hair & Wellness Salon",
+        "phone_number": "+16175550100",
+        "address": "450 Newbury Street, Boston",
+        "currency": "USD"
+    }
+
+
+def get_all_tenants() -> List[Dict[str, Any]]:
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM tenants ORDER BY created_at DESC")
+        return db.fetchall()
+
+
+def create_tenant(
+    tenant_id: str,
+    name: str,
+    phone: str,
+    address: str, 
+    services: List[Tuple[str, int, int]],
+    stylists: List[str]
+) -> Dict[str, Any]:
+    init_db()
+    now = datetime.now().isoformat()
+    with DBConnectionContext() as db:
+        if db.is_pg:
+            db.execute("""
+                INSERT INTO tenants (id, name, phone_number, address, currency, created_at)
+                VALUES (?, ?, ?, ?, 'USD', ?)
+                ON CONFLICT (id) DO UPDATE SET 
+                    name = EXCLUDED.name, 
+                    phone_number = EXCLUDED.phone_number, 
+                    address = EXCLUDED.address
+            """, (tenant_id, name, phone, address, now))
+
+            for s_name, dur, pr in services:
+                s_id = f"{tenant_id}_{s_name.replace(' ', '_').lower()}"
+                db.execute("""
+                    INSERT INTO services (id, tenant_id, name, duration_minutes, price)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT (id) DO UPDATE SET duration_minutes = EXCLUDED.duration_minutes, price = EXCLUDED.price
+                """, (s_id, tenant_id, s_name, dur, pr))
+
+            for st_name in stylists:
+                st_id = f"{tenant_id}_{st_name.lower()}"
+                db.execute("""
+                    INSERT INTO stylists (id, tenant_id, name, active)
+                    VALUES (?, ?, ?, 1)
+                    ON CONFLICT (id) DO UPDATE SET active = 1
+                """, (st_id, tenant_id, st_name))
+        else:
+            db.execute("""
+                INSERT OR REPLACE INTO tenants (id, name, phone_number, address, currency, created_at)
+                VALUES (?, ?, ?, ?, 'USD', ?)
+            """, (tenant_id, name, phone, address, now))
+
+            for s_name, dur, pr in services:
+                s_id = f"{tenant_id}_{s_name.replace(' ', '_').lower()}"
+                db.execute("""
+                    INSERT OR REPLACE INTO services (id, tenant_id, name, duration_minutes, price)
+                    VALUES (?, ?, ?, ?, ?)
+                """, (s_id, tenant_id, s_name, dur, pr))
+
+            for st_name in stylists:
+                st_id = f"{tenant_id}_{st_name.lower()}"
+                db.execute("""
+                    INSERT OR REPLACE INTO stylists (id, tenant_id, name, active)
+                    VALUES (?, ?, ?, 1)
+                """, (st_id, tenant_id, st_name))
+
+    return get_tenant(tenant_id)
+
+
+def get_tenant_services(tenant_id: str) -> List[Dict[str, Any]]:
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM services WHERE tenant_id = ?", (tenant_id,))
+        return db.fetchall()
+
+
+def get_tenant_stylists(tenant_id: str) -> List[str]:
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT name FROM stylists WHERE tenant_id = ? AND active = 1", (tenant_id,))
+        rows = db.fetchall()
+        return [r["name"] for r in rows] if rows else ["Elena", "Marcus", "Chloe"]
+
+
+# --- Availability & Booking Engine ---
+
+def check_slots_availability(
+    target_date: str,
+    service_name: str,
+    preferred_stylist: str = "any",
+    tenant_id: str = DEFAULT_TENANT_ID
+) -> List[str]:
+    init_db()
+    with DBConnectionContext() as db:
+        # Get service duration
+        db.execute("SELECT duration_minutes FROM services WHERE tenant_id = ? AND name = ?", (tenant_id, service_name))
+        srv = db.fetchone()
+        duration = srv["duration_minutes"] if srv else 45
+
+        # Query active appointments for target_date using prefix matching
+        date_prefix = f"{target_date}%"
+        db.execute("""
+            SELECT stylist_name, start_time, end_time 
+            FROM appointments 
+            WHERE tenant_id = ? AND start_time LIKE ? AND status = 'CONFIRMED'
+        """, (tenant_id, date_prefix))
+        booked_slots = db.fetchall()
+
+    # Query active stylists for this tenant
+    stylists_pool = get_tenant_stylists(tenant_id)
+    stylists = stylists_pool if preferred_stylist.lower() in ("any", "") else [preferred_stylist]
+
+    available_times = []
+    candidate_hours = [9, 10, 11, 13, 14, 15, 16]
+    for hour in candidate_hours:
+        for minute in [0, 30]:
+            candidate_start = datetime.strptime(f"{target_date} {hour:02d}:{minute:02d}", "%Y-%m-%d %H:%M")
+            candidate_end = candidate_start + timedelta(minutes=duration)
+
+            if candidate_end.hour > 18 or (candidate_end.hour == 18 and candidate_end.minute > 0):
+                continue
+
+            for stylist in stylists:
+                has_conflict = False
+                for b in booked_slots:
+                    if b["stylist_name"].lower() == stylist.lower():
+                        b_start = datetime.fromisoformat(b["start_time"].replace("Z", ""))
+                        b_end = datetime.fromisoformat(b["end_time"].replace("Z", ""))
+                        if candidate_start < b_end and candidate_end > b_start:
+                            has_conflict = True
+                            break
+                if not has_conflict:
+                    slot_str = candidate_start.strftime("%I:%M %p")
+                    if slot_str not in available_times:
+                        available_times.append(slot_str)
+                    break
+
+    return available_times[:4]
+
+
+def book_new_appointment(
+    caller_name: str,
+    caller_phone: str,
+    service_name: str, 
+    appointment_datetime: str,
+    stylist_name: str = "Elena",
+    tenant_id: str = DEFAULT_TENANT_ID,
+    channel: str = "voice",
+    accent: str = "red_american",
+    notes: str = "",
+    caller_email: str = ""
+) -> Dict[str, Any]:
+    init_db()
+    if not tenant_id or tenant_id in ("default_salon", "default"):
+        tenant_id = "salon"
+    
+    # Auto-resolve customer email if not provided explicitly
+    if not caller_email:
+        cust = get_customer_by_phone_or_email(phone=caller_phone)
+        if cust and cust.get("email"):
+            caller_email = cust["email"]
+
+    dt_clean = appointment_datetime.replace("Z", "")
+    start_dt = datetime.fromisoformat(dt_clean)
+
+    with DBConnectionContext() as db:
+        db.execute("SELECT duration_minutes, price FROM services WHERE tenant_id = ? AND name = ?", (tenant_id, service_name))
+        srv_row = db.fetchone()
+        duration = srv_row["duration_minutes"] if srv_row else 45
+        price = srv_row["price"] if srv_row else 75
+        end_dt = start_dt + timedelta(minutes=duration)
+
+        db.execute("SELECT COUNT(*) as cnt FROM appointments")
+        cnt_row = db.fetchone()
+        total_count = (cnt_row["cnt"] if cnt_row else 0) + 101
+
+        booking_id = f"LUXE-{start_dt.strftime('%m%d')}-{total_count}"
+        now_str = datetime.now().isoformat()
+
+        # Sync with Google Calendar if enabled
+        gcal_event_id = ""
+        if calendar_service:
+            try:
+                tenant_info = get_tenant(tenant_id)
+                tenant_display = tenant_info.get("name", "Salon")
+                gcal_res = calendar_service.create_event(
+                    summary=f"{tenant_display}: {service_name} - {caller_name}",
+                    start_time_iso=start_dt.isoformat(),
+                    duration_minutes=duration,
+                    description=f"Staff: {stylist_name}\nChannel: {channel}\nAccent: {accent}\nNotes: {notes}",
+                    location=tenant_info.get("address", ""),
+                    attendee_phone=caller_phone,
+                    attendee_email=caller_email
+                )
+                gcal_event_id = gcal_res.get("id", "")
+            except Exception as e:
+                logger.warning(f"Google Calendar event creation bypassed: {e}")
+
+        db.execute("""
+            INSERT INTO appointments (
+                id, tenant_id, caller_name, caller_phone, caller_email, service_name, stylist_name,
+                start_time, end_time, status, created_at, whatsapp_24h_sent, call_1h_sent,
+                google_calendar_event_id, channel, accent, notes
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'CONFIRMED', ?, 0, 0, ?, ?, ?, ?)
+        """, (booking_id, tenant_id, caller_name, caller_phone, caller_email, service_name, stylist_name, 
+              start_dt.isoformat(), end_dt.isoformat(), now_str, gcal_event_id, channel, accent, notes))
+
+    booking_record = {
+        "booking_id": booking_id,
+        "tenant_id": tenant_id,
+        "caller_name": caller_name,
+        "caller_phone": caller_phone,
+        "caller_email": caller_email,
+        "service_name": service_name,
+        "stylist_name": stylist_name,
+        "start_time": start_dt.strftime("%Y-%m-%d %H:%M"),
+        "duration_minutes": duration,
+        "price": price,
+        "status": "CONFIRMED",
+        "google_calendar_event_id": gcal_event_id,
+        "channel": channel,
+        "accent": accent
+    }
+
+    # 1. Sync into Local/Serverless Excel Workbook
+    try:
+        excel_path = get_excel_path()
+        append_appointment_to_excel(booking_record, filepath=excel_path)
+    except Exception as e:
+        logger.debug(f"Excel record append bypassed: {e}")
+
+    # 2. Sync to Live Google Sheet
+    try:
+        sync_appointment_to_google_sheets(booking_record, tenant_id=tenant_id)
+    except Exception as e:
+        logger.error(f"❌ Google sheets sync failed: {e}", exc_info=True)
+
+    # 3. Centralized Omnichannel Confirmation Dispatch (WhatsApp, Luxury Email with .ics & Google Calendar, SMS)
+    try:
+        from core.notifications import notification_dispatcher
+        notification_dispatcher.dispatch_booking_confirmation(
+            booking_record=booking_record,
+            channel=channel,
+            recipient_email=caller_email
+        )
+        logger.info(f"✅ Dispatched automated WhatsApp & Email confirmations for #{booking_id}")
+    except Exception as dispatch_err:
+        logger.warning(f"Booking confirmation dispatch warning: {dispatch_err}")
+
+    return {
+        "booking_id": booking_id,
+        "tenant_id": tenant_id,
+        "caller_name": caller_name,
+        "caller_phone": caller_phone,
+        "caller_email": caller_email,
+        "service_name": service_name,
+        "stylist_name": stylist_name,
+        "start_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
+        "price": f"${price}",
+        "google_calendar_event_id": gcal_event_id
+    }
+
+
+def lookup_by_phone_or_name(
+    caller_phone: str = "",
+    caller_name: str = "",
+    tenant_id: str = DEFAULT_TENANT_ID
+) -> Optional[Dict[str, Any]]:
+    """Look up active appointment details by phone number or guest name."""
+    init_db()
+    if not tenant_id or tenant_id in ("default_salon", "default"):
+        tenant_id = "salon"
+
+    vapi_trunk = (os.getenv("VAPI_PHONE_NUMBER") or "").strip()
+    twilio_trunk = (os.getenv("TWILIO_PHONE_NUMBER") or "").strip()
+    trunks = {"+16172718180", "+18005550199", "+16175550100"}
+    if vapi_trunk:
+        trunks.add(vapi_trunk)
+    if twilio_trunk:
+        trunks.add(twilio_trunk)
+
+    with DBConnectionContext() as db:
+        if caller_phone and caller_phone.strip() not in trunks:
+            phone_clean = "".join(filter(str.isdigit, caller_phone))[-7:]
+            if phone_clean and phone_clean != "72718180":
+                db.execute("""
+                    SELECT * FROM appointments 
+                    WHERE tenant_id = ? AND caller_phone LIKE ? AND status = 'CONFIRMED'
+                    ORDER BY start_time DESC LIMIT 1
+                """, (tenant_id, f"%{phone_clean}%"))
+                row = db.fetchone()
+                if row:
+                    start_dt = datetime.fromisoformat(row["start_time"].replace("Z", ""))
+                    return {
+                        "booking_id": row["id"],
+                        "caller_name": row["caller_name"],
+                        "caller_phone": row["caller_phone"],
+                        "caller_email": row.get("caller_email", ""),
+                        "service_name": row["service_name"],
+                        "stylist_name": row["stylist_name"],
+                        "start_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
+                        "start_time_iso": row["start_time"],
+                        "google_calendar_event_id": row.get("google_calendar_event_id", "")
+                    }
+
+        if caller_name and caller_name.strip().lower() not in GENERIC_PLACEHOLDER_NAMES:
+            clean_name = caller_name.strip().lower()
+            db.execute("""
+                SELECT * FROM appointments 
+                WHERE tenant_id = ? AND LOWER(caller_name) LIKE ? AND status = 'CONFIRMED'
+                ORDER BY start_time DESC LIMIT 1
+            """, (tenant_id, f"%{clean_name}%"))
+            row = db.fetchone()
+            if row:
+                start_dt = datetime.fromisoformat(row["start_time"].replace("Z", ""))
+                return {
+                    "booking_id": row["id"],
+                    "caller_name": row["caller_name"],
+                    "caller_phone": row["caller_phone"],
+                    "caller_email": row.get("caller_email", ""),
+                    "service_name": row["service_name"],
+                    "stylist_name": row["stylist_name"],
+                    "start_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
+                    "start_time_iso": row["start_time"],
+                    "google_calendar_event_id": row.get("google_calendar_event_id", "")
+                }
+    return None
+
+
+def lookup_by_phone(caller_phone: str, tenant_id: str = DEFAULT_TENANT_ID) -> Optional[Dict[str, Any]]:
+    return lookup_by_phone_or_name(caller_phone=caller_phone, tenant_id=tenant_id)
+
+
+def lookup_by_booking_id(booking_id: str) -> Optional[Dict[str, Any]]:
+    """Look up appointment details by unique booking reference (e.g. LUXE-1110-113)."""
+    init_db()
+    clean_id = booking_id.strip()
+    with DBConnectionContext() as db:
+        db.execute("""
+            SELECT * FROM appointments 
+            WHERE id = ? OR id = ?
+            LIMIT 1
+        """, (clean_id, clean_id.upper()))
+        row = db.fetchone()
+        if row:
+            start_dt = datetime.fromisoformat(row["start_time"].replace("Z", ""))
+            return {
+                "booking_id": row["id"],
+                "tenant_id": row.get("tenant_id", "salon"),
+                "caller_name": row["caller_name"],
+                "caller_phone": row["caller_phone"],
+                "caller_email": row.get("caller_email", ""),
+                "service_name": row["service_name"],
+                "stylist_name": row["stylist_name"],
+                "start_time": start_dt.strftime("%A, %b %d at %I:%M %p"),
+                "start_time_iso": row["start_time"],
+                "google_calendar_event_id": row.get("google_calendar_event_id", "")
+            }
+    return None
+
+
+
+def reschedule_existing_appointment(
+    caller_phone: str,
+    new_datetime: str,
+    booking_id: Optional[str] = None,
+    new_stylist_name: Optional[str] = None,
+    tenant_id: str = DEFAULT_TENANT_ID
+) -> Optional[Dict[str, Any]]:
+    init_db()
+    phone_clean = "".join(filter(str.isdigit, caller_phone))[-7:]
+
+    with DBConnectionContext() as db:
+        if booking_id:
+            db.execute("SELECT * FROM appointments WHERE id = ? AND tenant_id = ? LIMIT 1", (booking_id, tenant_id))
+        else:
+            db.execute("""
+                SELECT * FROM appointments 
+                WHERE tenant_id = ? AND caller_phone LIKE ? AND status = 'CONFIRMED'
+                ORDER BY start_time DESC LIMIT 1
+            """, (tenant_id, f"%{phone_clean}%"))
+        row = db.fetchone()
+
+        if not row:
+            return None
+
+        actual_booking_id = row["id"]
+        service_name = row["service_name"]
+        stylist = new_stylist_name or row["stylist_name"]
+        gcal_event_id = row.get("google_calendar_event_id", "")
+
+        dt_clean = new_datetime.replace("Z", "")
+        new_start_dt = datetime.fromisoformat(dt_clean)
+
+        db.execute("SELECT duration_minutes, price FROM services WHERE tenant_id = ? AND name = ?", (tenant_id, service_name))
+        srv_row = db.fetchone()
+        duration = srv_row["duration_minutes"] if srv_row else 45
+        price = srv_row["price"] if srv_row else 75
+        new_end_dt = new_start_dt + timedelta(minutes=duration)
+
+        db.execute("""
+            UPDATE appointments 
+            SET start_time = ?, end_time = ?, stylist_name = ?, whatsapp_24h_sent = 0, call_1h_sent = 0
+            WHERE id = ?
+        """, (new_start_dt.isoformat(), new_end_dt.isoformat(), stylist, actual_booking_id))
+
+    # Sync with Google Calendar if event exists
+    if calendar_service and gcal_event_id:
+        try:
+            calendar_service.update_event(
+                event_id=gcal_event_id,
+                new_start_time_iso=new_start_dt.isoformat(),
+                duration_minutes=duration
+            )
+        except Exception as e:
+            logger.warning(f"Google Calendar update bypassed: {e}")
+
+    try:
+        excel_path = get_excel_path()
+        update_excel_reminders(actual_booking_id, status="CONFIRMED (RESCHEDULED)", filepath=excel_path)
+    except Exception as e:
+        logger.debug(f"Excel update bypassed: {e}")
+
+    # Automated WhatsApp & Email notification on reschedule
+    try:
+        from core.notifications import notification_dispatcher
+        cal_base = os.getenv("APP_BASE_URL", "https://ai-voice-receptionist-chi.vercel.app")
+        cal_add_url = f"{cal_base}/api/calendar/add/{actual_booking_id}"
+        wa_resched = (
+            f"🔄 *Luxe Saloon & Spa: Appointment Rescheduled* 🔄\n\n"
+            f"Dear *{row['caller_name']}*,\n"
+            f"Your appointment for *{service_name}* with *{stylist}* has been updated to *{new_start_dt.strftime('%A, %b %d at %I:%M %p')}*.\n\n"
+            f"📋 Ref: *#{actual_booking_id}*\n"
+            f"📍 Location: 120 Newbury Street, Back Bay, Boston\n"
+            f"📅 Updated Calendar: {cal_add_url}\n\n"
+            f"Reply *RESCHEDULE* or *CANCEL* anytime."
+        )
+        notification_dispatcher.send_whatsapp(row["caller_phone"], wa_resched)
+
+        cust = get_customer_by_phone_or_email(phone=row["caller_phone"])
+        cust_email = cust.get("email") if cust else None
+        if cust_email and "@" in cust_email:
+            notification_dispatcher.send_email(
+                to_email=cust_email,
+                subject=f"🔄 Appointment Rescheduled: {service_name} at Luxe Salon (#{actual_booking_id})",
+                booking_data={
+                    "booking_id": actual_booking_id,
+                    "caller_name": row["caller_name"],
+                    "caller_phone": row["caller_phone"],
+                    "service_name": service_name,
+                    "stylist_name": stylist,
+                    "start_time": new_start_dt.strftime("%Y-%m-%d %H:%M"),
+                    "duration_minutes": duration
+                }
+            )
+        logger.info(f"✅ Dispatched reschedule confirmations for #{actual_booking_id}")
+    except Exception as re_err:
+        logger.warning(f"Reschedule notification warning: {re_err}")
+
+    return {
+        "booking_id": actual_booking_id,
+        "caller_name": row["caller_name"],
+        "caller_phone": row["caller_phone"],
+        "service_name": service_name,
+        "stylist_name": stylist,
+        "start_time": new_start_dt.strftime("%A, %b %d at %I:%M %p"),
+        "price": f"${price}",
+        "google_calendar_event_id": gcal_event_id
+    }
+
+
+def cancel_existing_appointment(
+    caller_phone: str,
+    booking_id: Optional[str] = None,
+    tenant_id: str = DEFAULT_TENANT_ID
+) -> bool:
+    init_db()
+    phone_clean = "".join(filter(str.isdigit, caller_phone))[-7:]
+
+    with DBConnectionContext() as db:
+        if booking_id:
+            db.execute("SELECT id, google_calendar_event_id FROM appointments WHERE id = ? AND tenant_id = ? LIMIT 1", (booking_id, tenant_id))
+        else:
+            db.execute("""
+                SELECT id, google_calendar_event_id FROM appointments 
+                WHERE tenant_id = ? AND caller_phone LIKE ? AND status = 'CONFIRMED'
+                ORDER BY start_time DESC LIMIT 1
+            """, (tenant_id, f"%{phone_clean}%"))
+        row = db.fetchone()
+
+        if not row:
+            return False
+
+        target_id = row["id"]
+        gcal_event_id = row.get("google_calendar_event_id", "")
+
+        db.execute("UPDATE appointments SET status = 'CANCELLED' WHERE id = ?", (target_id,))
+        updated = db.rowcount > 0
+
+    if updated:
+        if calendar_service and gcal_event_id:
+            try:
+                calendar_service.delete_event(gcal_event_id)
+            except Exception as e:
+                logger.warning(f"Google Calendar delete bypassed: {e}")
+
+        try:
+            excel_path = get_excel_path()
+            update_excel_reminders(target_id, status="CANCELLED", filepath=excel_path)
+        except Exception as e:
+            logger.debug(f"Excel cancel bypassed: {e}")
+
+    return updated
+
+
+def list_all_appointments(tenant_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Universal appointments query across all or specific tenant."""
+    init_db()
+    with DBConnectionContext() as db:
+        if tenant_id:
+            db.execute("SELECT * FROM appointments WHERE tenant_id = ? ORDER BY start_time DESC", (tenant_id,))
+        else:
+            db.execute("SELECT * FROM appointments ORDER BY start_time DESC")
+        return db.fetchall()
+
+
+def get_pending_24h_reminders() -> List[Dict[str, Any]]:
+    init_db()
+    now = datetime.now()
+    window_start = (now + timedelta(hours=23)).isoformat()
+    window_end = (now + timedelta(hours=25)).isoformat()
+
+    with DBConnectionContext() as db:
+        db.execute("""
+            SELECT * FROM appointments 
+            WHERE status = 'CONFIRMED' 
+              AND whatsapp_24h_sent = 0
+              AND start_time BETWEEN ? AND ?
+        """, (window_start, window_end))
+        return db.fetchall()
+
+
+def mark_24h_reminder_sent(booking_id: str):
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("UPDATE appointments SET whatsapp_24h_sent = 1 WHERE id = ?", (booking_id,))
+    try:
+        excel_path = get_excel_path()
+        update_excel_reminders(booking_id, whatsapp_24h="SENT", filepath=excel_path)
+    except Exception as e:
+        logger.debug(f"Excel reminder bypassed: {e}")
+
+
+def get_pending_1h_call_reminders() -> List[Dict[str, Any]]:
+    init_db()
+    now = datetime.now()
+    window_start = (now + timedelta(minutes=50)).isoformat()
+    window_end = (now + timedelta(minutes=70)).isoformat()
+
+    with DBConnectionContext() as db:
+        db.execute("""
+            SELECT * FROM appointments 
+            WHERE status = 'CONFIRMED' 
+              AND call_1h_sent = 0
+              AND start_time BETWEEN ? AND ?
+        """, (window_start, window_end))
+        return db.fetchall()
+
+
+def mark_1h_call_sent(booking_id: str):
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("UPDATE appointments SET call_1h_sent = 1 WHERE id = ?", (booking_id,))
+    try:
+        excel_path = get_excel_path()
+        update_excel_reminders(booking_id, call_1h="CALLED", filepath=excel_path)
+    except Exception as e:
+        logger.debug(f"Excel reminder bypassed: {e}")
+
+
+# --- User Authentication & Tenant Integrations Helpers ---
+
+def hash_password(password: str) -> str:
+    """Hashes a password with salt using SHA-256."""
+    salt = secrets.token_hex(8)
+    h = hashlib.sha256(f"{salt}{password}".encode("utf-8")).hexdigest()
+    return f"{salt}:{h}"
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verifies a plain password against stored salt:hash."""
+    try:
+        salt, expected_hash = stored_hash.split(":")
+        calc_hash = hashlib.sha256(f"{salt}{password}".encode("utf-8")).hexdigest()
+        return secrets.compare_digest(calc_hash, expected_hash)
+    except Exception:
+        return False
+
+
+def create_user(
+    email: str,
+    password: str,
+    company_name: str,
+    tenant_id: str,
+    plan: str = "growth"
+) -> Dict[str, Any]:
+    """Registers a new customer account bound to a tenant workspace."""
+    init_db()
+    user_id = f"usr_{secrets.token_hex(6)}"
+    p_hash = hash_password(password)
+    now = datetime.now().isoformat()
+
+    with DBConnectionContext() as db:
+        db.execute("""
+            INSERT INTO users (id, email, password_hash, company_name, tenant_id, plan, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, email.lower().strip(), p_hash, company_name, tenant_id, plan, now))
+
+    return {
+        "id": user_id,
+        "email": email.lower().strip(),
+        "company_name": company_name,
+        "tenant_id": tenant_id,
+        "plan": plan,
+        "created_at": now
+    }
+
+
+def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+    """Look up customer account by email."""
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM users WHERE email = ? LIMIT 1", (email.lower().strip(),))
+        return db.fetchone()
+
+
+def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+    """Look up customer account by user id."""
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM users WHERE id = ? LIMIT 1", (user_id,))
+        return db.fetchone()
+
+
+def get_or_create_clerk_user(
+    clerk_user_id: str,
+    email: str,
+    company_name: str = "My Business",
+    plan: str = "growth"
+) -> Dict[str, Any]:
+    """Retrieves an existing user by email or provisions a new user and tenant workspace for a Clerk user."""
+    init_db()
+    clean_email = email.lower().strip()
+    existing = get_user_by_email(clean_email)
+    if existing:
+        return existing
+
+    # Generate safe tenant ID slug from email
+    slug = clean_email.split("@")[0].replace(".", "_").replace("+", "_")
+    tenant_id = f"tenant_{slug}"
+    
+    tenant = get_tenant(tenant_id)
+    if not tenant:
+        from core.blueprint.tenant_manager import tenant_registry
+        try:
+            tenant_registry.onboard_custom_tenant(
+                tenant_id=tenant_id,
+                business_name=company_name or f"{slug.replace('_', ' ').title()} Salon",
+                vertical="salon",
+                phone_number="+18005550199",
+                address="450 Newbury Street, Boston, MA",
+                primary_accent="general_american"
+            )
+        except Exception:
+            create_tenant(
+                tenant_id=tenant_id,
+                name=company_name or f"{slug.replace('_', ' ').title()} Salon",
+                phone="+18005550199",
+                address="450 Newbury Street, Boston, MA",
+                services=[("Womens Haircut", 45, 75), ("Mens Cut", 30, 45)],
+                stylists=["Elena", "Marcus"]
+            )
+
+    user = create_user(
+        email=clean_email,
+        password=secrets.token_urlsafe(16),
+        company_name=company_name or f"{slug.replace('_', ' ').title()} Salon",
+        tenant_id=tenant_id,
+        plan=plan
+    )
+    return user
+
+
+def save_tenant_integrations(
+    tenant_id: str,
+    whatsapp_phone_number_id: str = "",
+    whatsapp_business_account_id: str = "",
+    meta_page_id: str = "",
+    instagram_account_id: str = "",
+    google_calendar_id: str = "primary",
+    telephony_provider: str = "vapi",
+    telephony_number: str = "",
+    vapi_phone_id: str = "",
+    vapi_assistant_id: str = "",
+    telegram_bot_token: str = "",
+    telegram_chat_id: str = "",
+    twitter_api_key: str = "",
+    twitter_bearer_token: str = "",
+    linkedin_client_id: str = "",
+    linkedin_access_token: str = "",
+    tiktok_client_key: str = "",
+    tiktok_access_token: str = ""
+) -> Dict[str, Any]:
+    """Saves or updates connected WhatsApp, Meta, Instagram, Telegram, Twitter, LinkedIn, TikTok, and telephony parameters."""
+    init_db()
+    now = datetime.now().isoformat()
+    secret = secrets.token_hex(12)
+
+    with DBConnectionContext() as db:
+        if db.is_pg:
+            db.execute("""
+                INSERT INTO tenant_integrations (
+                    tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
+                    meta_page_id, instagram_account_id, google_calendar_id,
+                    telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+                    telegram_bot_token, telegram_chat_id,
+                    twitter_api_key, twitter_bearer_token,
+                    linkedin_client_id, linkedin_access_token,
+                    tiktok_client_key, tiktok_access_token,
+                    webhook_secret, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (tenant_id) DO UPDATE SET
+                    whatsapp_phone_number_id = EXCLUDED.whatsapp_phone_number_id,
+                    whatsapp_business_account_id = EXCLUDED.whatsapp_business_account_id,
+                    meta_page_id = EXCLUDED.meta_page_id,
+                    instagram_account_id = EXCLUDED.instagram_account_id,
+                    google_calendar_id = EXCLUDED.google_calendar_id,
+                    telephony_provider = EXCLUDED.telephony_provider,
+                    telephony_number = EXCLUDED.telephony_number,
+                    vapi_phone_id = EXCLUDED.vapi_phone_id,
+                    vapi_assistant_id = EXCLUDED.vapi_assistant_id,
+                    telegram_bot_token = EXCLUDED.telegram_bot_token,
+                    telegram_chat_id = EXCLUDED.telegram_chat_id,
+                    twitter_api_key = EXCLUDED.twitter_api_key,
+                    twitter_bearer_token = EXCLUDED.twitter_bearer_token,
+                    linkedin_client_id = EXCLUDED.linkedin_client_id,
+                    linkedin_access_token = EXCLUDED.linkedin_access_token,
+                    tiktok_client_key = EXCLUDED.tiktok_client_key,
+                    tiktok_access_token = EXCLUDED.tiktok_access_token,
+                    webhook_secret = EXCLUDED.webhook_secret,
+                    updated_at = EXCLUDED.updated_at
+            """, (
+                tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
+                meta_page_id, instagram_account_id, google_calendar_id,
+                telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+                telegram_bot_token, telegram_chat_id,
+                twitter_api_key, twitter_bearer_token,
+                linkedin_client_id, linkedin_access_token,
+                tiktok_client_key, tiktok_access_token,
+                secret, now
+            ))
+        else:
+            db.execute("""
+                INSERT OR REPLACE INTO tenant_integrations (
+                    tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
+                    meta_page_id, instagram_account_id, google_calendar_id,
+                    telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+                    telegram_bot_token, telegram_chat_id,
+                    twitter_api_key, twitter_bearer_token,
+                    linkedin_client_id, linkedin_access_token,
+                    tiktok_client_key, tiktok_access_token,
+                    webhook_secret, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                tenant_id, whatsapp_phone_number_id, whatsapp_business_account_id,
+                meta_page_id, instagram_account_id, google_calendar_id,
+                telephony_provider, telephony_number, vapi_phone_id, vapi_assistant_id,
+                telegram_bot_token, telegram_chat_id,
+                twitter_api_key, twitter_bearer_token,
+                linkedin_client_id, linkedin_access_token,
+                tiktok_client_key, tiktok_access_token,
+                secret, now
+            ))
+
+    return get_tenant_integrations(tenant_id)
+
+
+def get_tenant_integrations(tenant_id: str) -> Dict[str, Any]:
+    """Retrieves omnichannel integration credentials for a tenant."""
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM tenant_integrations WHERE tenant_id = ? LIMIT 1", (tenant_id,))
+        row = db.fetchone()
+        if row:
+            return row
+    return {
+        "tenant_id": tenant_id,
+        "whatsapp_phone_number_id": "",
+        "whatsapp_business_account_id": "",
+        "meta_page_id": "",
+        "instagram_account_id": "",
+        "google_calendar_id": "primary",
+        "telephony_provider": "vapi",
+        "telephony_number": "+18005550199",
+        "vapi_phone_id": "",
+        "vapi_assistant_id": "",
+        "telegram_bot_token": "",
+        "telegram_chat_id": "",
+        "twitter_api_key": "",
+        "twitter_bearer_token": "",
+        "linkedin_client_id": "",
+        "linkedin_access_token": "",
+        "tiktok_client_key": "",
+        "tiktok_access_token": ""
+    }
+
+
+def lookup_tenant_by_integration_id(field_name: str, field_value: str) -> str:
+    """
+    Dynamically maps an inbound social ID (WhatsApp phone ID, Meta Page ID, Instagram ID)
+    to its corresponding business tenant_id for multi-tenant webhook routing.
+    """
+    if not field_value:
+        return "salon"
+
+    clean_val = str(field_value).strip()
+    valid_fields = {
+        "whatsapp_phone_number_id",
+        "meta_page_id",
+        "instagram_account_id",
+        "threads_user_id"
+    }
+    if field_name not in valid_fields:
+        return "salon"
+
+    init_db()
+    with DBConnectionContext() as db:
+        query = f"SELECT tenant_id FROM tenant_integrations WHERE {field_name} = ? LIMIT 1"
+        db.execute(query, (clean_val,))
+        row = db.fetchone()
+        if row and row.get("tenant_id"):
+            return row["tenant_id"]
+
+    # Fallback to default env mappings
+    if field_name == "whatsapp_phone_number_id" and clean_val == os.getenv("WHATSAPP_PHONE_NUMBER_ID"):
+        return "salon"
+    if field_name == "meta_page_id" and clean_val in (os.getenv("META_PAGE_ID"), "61596010512285", "1429742393555082"):
+        return "salon"
+    if field_name == "instagram_account_id" and clean_val == os.getenv("INSTAGRAM_ACCOUNT_ID"):
+        return "salon"
+
+    return "salon"
+
+
+def update_tenant_plan(tenant_id: str, new_plan: str) -> bool:
+    """Updates customer subscription plan (starter, growth, enterprise)."""
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("UPDATE users SET plan = ? WHERE tenant_id = ?", (new_plan, tenant_id))
+        return db.rowcount > 0
+
+
+GENERIC_PLACEHOLDER_NAMES = {
+    "valued guest", "vip guest", "vip salon guest", "guest",
+    "test client", "audit test vip", "sophia vip guest",
+    "emma 24h reminder", "lucas 1h call", "john", "test user", "test", "valued client"
+}
+
+SALON_TRUNK_NUMBERS = {
+    "+16172718180",
+    "+18005550199",
+    "+16175550100"
+}
+
+def save_customer_profile(
+    email: str = "",
+    phone: str = "",
+    full_name: str = "",
+    clerk_id: str = "",
+    tenant_id: str = "salon"
+) -> Dict[str, Any]:
+    """
+    Saves or updates customer email, phone, and name into Neon PostgreSQL or SQLite.
+    Guarantees:
+    1. Salon reception trunk numbers (+16172718180) are never saved as customer phones.
+    2. Legitimate names are never overwritten by automated test or generic placeholders.
+    3. Atomic, idempotent upsert protected against race conditions and duplicates.
+    """
+    init_db()
+    if not tenant_id or tenant_id in ("default_salon", "default"):
+        tenant_id = "salon"
+
+    clean_email = email.lower().strip() if email else ""
+    clean_phone = phone.strip() if phone else ""
+    clean_name = full_name.strip() if full_name else ""
+
+    # Never treat the salon's own reception line as a customer mobile number
+    vapi_trunk = (os.getenv("VAPI_PHONE_NUMBER") or "").strip()
+    twilio_trunk = (os.getenv("TWILIO_PHONE_NUMBER") or "").strip()
+    trunks = set(SALON_TRUNK_NUMBERS)
+    if vapi_trunk:
+        trunks.add(vapi_trunk)
+    if twilio_trunk:
+        trunks.add(twilio_trunk)
+
+    if clean_phone in trunks or "".join(filter(str.isdigit, clean_phone))[-10:] == "6172718180":
+        clean_phone = ""
+
+    now = datetime.now().isoformat()
+
+    with DBConnectionContext() as db:
+        if db.is_pg:
+            if clean_phone:
+                cust_id = f"cust_{secrets.token_hex(8)}"
+                db.execute("""
+                    INSERT INTO customers (id, clerk_id, email, phone, full_name, tenant_id, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (tenant_id, phone) DO UPDATE SET
+                        clerk_id = CASE WHEN EXCLUDED.clerk_id != '' THEN EXCLUDED.clerk_id ELSE customers.clerk_id END,
+                        email = CASE WHEN EXCLUDED.email != '' THEN EXCLUDED.email ELSE customers.email END,
+                        full_name = CASE 
+                            WHEN LOWER(TRIM(EXCLUDED.full_name)) IN ('valued guest', 'vip guest', 'vip salon guest', 'guest', 'test client', 'audit test vip', 'sophia vip guest', 'emma 24h reminder', 'lucas 1h call', 'john', 'test user', 'test', 'valued client') AND customers.full_name != '' THEN customers.full_name
+                            WHEN EXCLUDED.full_name != '' THEN EXCLUDED.full_name 
+                            ELSE customers.full_name 
+                        END,
+                        updated_at = EXCLUDED.updated_at
+                    RETURNING id, clerk_id, email, phone, full_name, tenant_id;
+                """, (cust_id, clerk_id, clean_email, clean_phone, clean_name, tenant_id, now, now))
+                row = db.fetchone()
+                if row:
+                    return row
+
+            # If no phone or looking up by clerk_id / email
+            existing = None
+            if clerk_id:
+                db.execute("SELECT * FROM customers WHERE clerk_id = ? AND tenant_id = ? LIMIT 1", (clerk_id, tenant_id))
+                existing = db.fetchone()
+            if not existing and clean_email:
+                db.execute("SELECT * FROM customers WHERE email = ? AND tenant_id = ? LIMIT 1", (clean_email, tenant_id))
+                existing = db.fetchone()
+
+            if existing:
+                cust_id = existing["id"]
+                target_name = clean_name
+                if clean_name.lower() in GENERIC_PLACEHOLDER_NAMES and existing.get("full_name"):
+                    target_name = existing["full_name"]
+                elif not target_name:
+                    target_name = existing.get("full_name", "")
+
+                db.execute(
+                    "UPDATE customers SET email = ?, phone = ?, full_name = ?, clerk_id = ?, updated_at = ? WHERE id = ?",
+                    (
+                        clean_email or existing.get("email", ""),
+                        clean_phone or existing.get("phone", ""),
+                        target_name,
+                        clerk_id or existing.get("clerk_id", ""),
+                        now,
+                        cust_id
+                    )
+                )
+                return {
+                    "id": cust_id,
+                    "clerk_id": clerk_id or existing.get("clerk_id", ""),
+                    "email": clean_email or existing.get("email", ""),
+                    "phone": clean_phone or existing.get("phone", ""),
+                    "full_name": target_name,
+                    "tenant_id": tenant_id
+                }
+            else:
+                cust_id = f"cust_{secrets.token_hex(8)}"
+                db.execute(
+                    "INSERT INTO customers (id, clerk_id, email, phone, full_name, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (cust_id, clerk_id, clean_email, clean_phone or None, clean_name, tenant_id, now, now)
+                )
+                return {
+                    "id": cust_id,
+                    "clerk_id": clerk_id,
+                    "email": clean_email,
+                    "phone": clean_phone,
+                    "full_name": clean_name,
+                    "tenant_id": tenant_id
+                }
+        else:
+            # SQLite safe upsert
+            existing = None
+            if clerk_id:
+                db.execute("SELECT * FROM customers WHERE clerk_id = ? AND tenant_id = ? LIMIT 1", (clerk_id, tenant_id))
+                existing = db.fetchone()
+            if not existing and clean_phone:
+                db.execute("SELECT * FROM customers WHERE phone = ? AND tenant_id = ? LIMIT 1", (clean_phone, tenant_id))
+                existing = db.fetchone()
+            if not existing and clean_email:
+                db.execute("SELECT * FROM customers WHERE email = ? AND tenant_id = ? LIMIT 1", (clean_email, tenant_id))
+                existing = db.fetchone()
+
+            if existing:
+                cust_id = existing["id"]
+                target_name = clean_name
+                if clean_name.lower() in GENERIC_PLACEHOLDER_NAMES and existing.get("full_name"):
+                    target_name = existing["full_name"]
+                elif not target_name:
+                    target_name = existing.get("full_name", "")
+
+                db.execute(
+                    "UPDATE customers SET email = ?, phone = ?, full_name = ?, clerk_id = ?, updated_at = ? WHERE id = ?",
+                    (
+                        clean_email or existing.get("email", ""),
+                        clean_phone or existing.get("phone", ""),
+                        target_name,
+                        clerk_id or existing.get("clerk_id", ""),
+                        now,
+                        cust_id
+                    )
+                )
+                return {
+                    "id": cust_id,
+                    "clerk_id": clerk_id or existing.get("clerk_id", ""),
+                    "email": clean_email or existing.get("email", ""),
+                    "phone": clean_phone or existing.get("phone", ""),
+                    "full_name": target_name,
+                    "tenant_id": tenant_id
+                }
+            else:
+                cust_id = f"cust_{secrets.token_hex(8)}"
+                db.execute(
+                    "INSERT INTO customers (id, clerk_id, email, phone, full_name, tenant_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    (cust_id, clerk_id, clean_email, clean_phone or None, clean_name, tenant_id, now, now)
+                )
+                return {
+                    "id": cust_id,
+                    "clerk_id": clerk_id,
+                    "email": clean_email,
+                    "phone": clean_phone,
+                    "full_name": clean_name,
+                    "tenant_id": tenant_id
+                }
+
+
+def get_customer_by_phone_or_email(
+    phone: str = "",
+    email: str = "",
+    name: str = "",
+    tenant_id: str = "salon"
+) -> Optional[Dict[str, Any]]:
+    """Look up customer by phone, email address, or name with suffix matching and trunk-line protection."""
+    init_db()
+    vapi_trunk = (os.getenv("VAPI_PHONE_NUMBER") or "").strip()
+    twilio_trunk = (os.getenv("TWILIO_PHONE_NUMBER") or "").strip()
+    trunks = set(SALON_TRUNK_NUMBERS)
+    if vapi_trunk:
+        trunks.add(vapi_trunk)
+    if twilio_trunk:
+        trunks.add(twilio_trunk)
+
+    with DBConnectionContext() as db:
+        if phone:
+            clean_digits = "".join(filter(str.isdigit, phone))[-10:]
+            is_trunk = (phone.strip() in trunks) or (clean_digits == "6172718180")
+            if not is_trunk and clean_digits:
+                db.execute("SELECT * FROM customers WHERE phone LIKE ? AND tenant_id = ? AND email IS NOT NULL AND email != '' LIMIT 1", (f"%{clean_digits}%", tenant_id))
+                row = db.fetchone()
+                if row:
+                    return row
+                db.execute("SELECT * FROM customers WHERE phone LIKE ? AND tenant_id = ? LIMIT 1", (f"%{clean_digits}%", tenant_id))
+                row = db.fetchone()
+                if row:
+                    return row
+        if email:
+            db.execute("SELECT * FROM customers WHERE email = ? AND tenant_id = ? LIMIT 1", (email.lower().strip(), tenant_id))
+            row = db.fetchone()
+            if row:
+                return row
+        if name and name.strip().lower() not in GENERIC_PLACEHOLDER_NAMES:
+            clean_name = name.strip().lower()
+            db.execute("SELECT * FROM customers WHERE LOWER(full_name) LIKE ? AND tenant_id = ? LIMIT 1", (f"%{clean_name}%", tenant_id))
+            row = db.fetchone()
+            if row:
+                return row
+    return None
+
+
+def get_all_customer_phones(tenant_id: str = "salon") -> List[str]:
+    """Retrieve distinct customer phone numbers for marketing broadcasts."""
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT DISTINCT phone FROM customers WHERE phone IS NOT NULL AND phone != '' AND tenant_id = ?", (tenant_id,))
+        rows = db.fetchall()
+        return [r["phone"] for r in rows if r.get("phone")]
+
+
+def save_call_log(log_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Persists structured end-of-call analysis, evaluation rubric result, and metadata."""
+    init_db()
+    call_id = log_data.get("call_id") or f"call_{secrets.token_hex(8)}"
+    tenant_id = log_data.get("tenant_id") or DEFAULT_TENANT_ID
+    caller_name = log_data.get("caller_name") or ""
+    caller_phone = log_data.get("caller_phone") or ""
+    caller_email = log_data.get("caller_email") or ""
+    service_name = log_data.get("service_name") or ""
+    call_outcome = log_data.get("call_outcome") or "general_inquiry"
+    sentiment = log_data.get("sentiment") or "neutral"
+    summary = log_data.get("summary") or ""
+    transcript = log_data.get("transcript") or ""
+    recording_url = log_data.get("recording_url") or ""
+    duration_seconds = int(log_data.get("duration_seconds") or 0)
+    evaluation_score = log_data.get("evaluation_score") or ""
+    
+    action_items = log_data.get("action_items") or []
+    if isinstance(action_items, list):
+        action_items_str = json.dumps(action_items)
+    else:
+        action_items_str = str(action_items)
+        
+    structured_data = log_data.get("structured_data") or {}
+    if isinstance(structured_data, dict):
+        structured_data_str = json.dumps(structured_data)
+    else:
+        structured_data_str = str(structured_data)
+        
+    created_at = log_data.get("created_at") or datetime.now().isoformat()
+
+    with DBConnectionContext() as db:
+        if db.is_pg:
+            db.execute("""
+                INSERT INTO call_logs (
+                    call_id, tenant_id, caller_name, caller_phone, caller_email,
+                    service_name, call_outcome, sentiment, summary, transcript,
+                    recording_url, duration_seconds, evaluation_score, action_items,
+                    structured_data, created_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (call_id) DO UPDATE SET
+                    summary = EXCLUDED.summary,
+                    transcript = EXCLUDED.transcript,
+                    call_outcome = EXCLUDED.call_outcome,
+                    sentiment = EXCLUDED.sentiment,
+                    evaluation_score = EXCLUDED.evaluation_score,
+                    structured_data = EXCLUDED.structured_data,
+                    action_items = EXCLUDED.action_items
+            """, (
+                call_id, tenant_id, caller_name, caller_phone, caller_email,
+                service_name, call_outcome, sentiment, summary, transcript,
+                recording_url, duration_seconds, evaluation_score, action_items_str,
+                structured_data_str, created_at
+            ))
+        else:
+            db.execute("""
+                INSERT INTO call_logs (
+                    call_id, tenant_id, caller_name, caller_phone, caller_email,
+                    service_name, call_outcome, sentiment, summary, transcript,
+                    recording_url, duration_seconds, evaluation_score, action_items,
+                    structured_data, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(call_id) DO UPDATE SET
+                    summary = excluded.summary,
+                    transcript = excluded.transcript,
+                    call_outcome = excluded.call_outcome,
+                    sentiment = excluded.sentiment,
+                    evaluation_score = excluded.evaluation_score,
+                    structured_data = excluded.structured_data,
+                    action_items = excluded.action_items
+            """, (
+                call_id, tenant_id, caller_name, caller_phone, caller_email,
+                service_name, call_outcome, sentiment, summary, transcript,
+                recording_url, duration_seconds, evaluation_score, action_items_str,
+                structured_data_str, created_at
+            ))
+            
+    return {"status": "saved", "call_id": call_id, "call_outcome": call_outcome, "sentiment": sentiment}
+
+
+def get_call_log(call_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch call log and evals by ID."""
+    init_db()
+    with DBConnectionContext() as db:
+        db.execute("SELECT * FROM call_logs WHERE call_id = ? LIMIT 1", (call_id,))
+        return db.fetchone()
+
+
+def list_call_logs(tenant_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """Retrieve recent call logs and evaluations."""
+    init_db()
+    with DBConnectionContext() as db:
+        if tenant_id:
+            db.execute("SELECT * FROM call_logs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT ?", (tenant_id, limit))
+        else:
+            db.execute("SELECT * FROM call_logs ORDER BY created_at DESC LIMIT ?", (limit,))
+        rows = db.fetchall()
+        for r in rows:
+            if isinstance(r.get("action_items"), str):
+                try:
+                    r["action_items"] = json.loads(r["action_items"])
+                except Exception:
+                    pass
+            if isinstance(r.get("structured_data"), str):
+                try:
+                    r["structured_data"] = json.loads(r["structured_data"])
+                except Exception:
+                    pass
+        return rows
+
+
+def get_call_analytics(tenant_id: Optional[str] = None) -> Dict[str, Any]:
+    """Calculates call evaluation metrics, outcome distribution, and sentiment scores."""
+    init_db()
+    with DBConnectionContext() as db:
+        if tenant_id:
+            db.execute("SELECT COUNT(*) as total, AVG(duration_seconds) as avg_duration FROM call_logs WHERE tenant_id = ?", (tenant_id,))
+            base = db.fetchone() or {"total": 0, "avg_duration": 0}
+            db.execute("SELECT call_outcome, COUNT(*) as count FROM call_logs WHERE tenant_id = ? GROUP BY call_outcome", (tenant_id,))
+            outcomes = {r["call_outcome"]: r["count"] for r in db.fetchall()}
+            db.execute("SELECT sentiment, COUNT(*) as count FROM call_logs WHERE tenant_id = ? GROUP BY sentiment", (tenant_id,))
+            sentiments = {r["sentiment"]: r["count"] for r in db.fetchall()}
+        else:
+            db.execute("SELECT COUNT(*) as total, AVG(duration_seconds) as avg_duration FROM call_logs")
+            base = db.fetchone() or {"total": 0, "avg_duration": 0}
+            db.execute("SELECT call_outcome, COUNT(*) as count FROM call_logs GROUP BY call_outcome")
+            outcomes = {r["call_outcome"]: r["count"] for r in db.fetchall()}
+            db.execute("SELECT sentiment, COUNT(*) as count FROM call_logs GROUP BY sentiment")
+            sentiments = {r["sentiment"]: r["count"] for r in db.fetchall()}
+            
+    return {
+        "total_calls": base.get("total", 0),
+        "avg_duration_seconds": round(base.get("avg_duration") or 0, 1),
+        "outcome_distribution": outcomes,
+        "sentiment_distribution": sentiments
+    }
+

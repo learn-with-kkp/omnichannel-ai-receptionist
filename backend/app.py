@@ -1,36 +1,569 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from pydantic import BaseModel
+from typing import Optional, Dict, Any
+import logging
+import time
+import os
+import asyncio
+from pathlib import Path
+from datetime import datetime, timedelta
+from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "KKP-ENTERPRISE-VOICE-AI-2026-X99F-AUTH-SECURE-KEY").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
+
+from backend.models import VapiWebhookPayload, VapiToolResponse, ToolResult
+from backend.database import (
+    init_db,
+    check_slots_availability,
+    book_new_appointment,
+    lookup_by_phone,
+    reschedule_existing_appointment,
+    cancel_existing_appointment,
+    get_tenant_by_inbound_phone,
+    get_tenant,
+    get_all_tenants,
+    create_tenant,
+    get_tenant_services,
+    get_tenant_stylists,
+    get_db_connection,
+    list_all_appointments,
+    get_excel_path,
+    save_call_log,
+    get_call_log,
+    list_call_logs,
+    get_call_analytics
+)
+from core.tools_catalog import CATEGORIZED_TOOLS_CATALOG
+from core.notifications import notification_dispatcher
+from backend.reminder_service import run_reminder_cycle
+
+from backend.routers.voice import router as voice_router
+from backend.routers.chat import router as chat_router
+from backend.routers.messaging import router as messaging_router
+from backend.routers.tenants import router as tenants_router
+from backend.routers.streaming_voice import router as streaming_voice_router
+from backend.routers.auth import router as auth_router
+from backend.routers.testing_suite import router as testing_suite_router
+from backend.routers.knowledge import router as knowledge_router
+from backend.routers.oauth import router as oauth_router
+from backend.routers.calendar_routes import router as calendar_router
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger("SalonVoiceReceptionist")
+
+def is_serverless_runtime() -> bool:
+    return bool(
+        os.getenv("VERCEL")
+        or os.getenv("VERCEL_ENV")
+        or os.getenv("AWS_LAMBDA_FUNCTION_NAME")
+        or os.getenv("LAMBDA_TASK_ROOT")
+        or not os.access(".", os.W_OK)
     )
-    _s.exit(1)
 
-try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-pPJd011|8a_&lkdP2Eka++BDFOw0+IkAD3WN{=0VNX&2?;`gAOQpwiwc4jP>Z0Vf&(&CMH#B1#Wtd%wN?fPP(Z9$6$Atn(Ni2+<+t`unA-C@&%O7#f3Iinz4lt)dcXJmhQ(Ydv-bZ<ej}9;ys6C#Z~V;N`_-JTu{5`nzP*(T#8>Dsym0@*gr{K(Wm^iRRQ5AF)~nCE|FeNzu%@^2BXNgWywn5VuDBUNL2NIOQ^_xF7-h)jKcZ;`>T{Kxuy%`;T<ynolDjI7;6O2-NccW3EyH1~Q;XS=aP%$l%b(5T<yx}~evMkR?=P7OBw}b@unyBb=0Mn<RPn}$Fourg+L`VXwra3W+cOs9#l4Qa3e>e>d-B$(>OSJ)E9NnDSK}JLVl^drbB2QZ@9PZpA^iPEQS8ES-AKBm(;|`Th^-E~pGL%I9|$mE^e>Q<A@@FBMc83o)<0X-iMC0iB2TQn6Uz?F%km=-wmAFLV~hS+$;nKt@1YS|h{>`=mg8UFPv>Yi?+rBH*y}F6z;F30m5>)b(8KU-GEbo*nN`BJNJikVZCWgKEQYoVeJMYjydy#PL8NG6MX79X?ZR7WG+{}b0!#1rQeL2TzD|?nCto%^@60$VdZ4E1|L>)v_c=^!|HS|Q!AVi_&1%HAoY|fwh0ybHhUYhj*N+&<t}$GwZpd0ymxe6f_9lqH9ElUvqgx&(;c_*V6YGzy_P(9K3d+h3WFkf!WwnUz*GQ{f2}ddks#b>9Q;V$iZ`){w$SL+SaqOGxU5CDrk7VbqEqq7eT~~Ne+1M(<9)bPhO@{&(I#xyb)KNO0Ze(AZ*Y}RXZ6Kx47hr2tw^OC&&9_WYtpCI=ylC3>NW#fqQ`0+(e#s(5Xv5C%zn@BA=N(ioH16?Gz0=nAtfy|bt{kGt8%WV~YvXgO)^w?F_NK)IL^((D9e(6t95FxPyL%MBMvF*6xc^r9b@j(Vn-8r+nY^4UD@E=;5=PCB-#>!#X+)!!Ei$fU{;p;D=N$|PAoh4jPNA9~PORVd6dS76zfN=~)!t|80~@ZmJWg~D`P*{|CO4t}tyA!APF$!nx=wN@6@h!yhUSVN&XxY?-tjQ~qs*iqpKz3|#2Bd?znxj^EDhXT>`gQ7b_mL)-WrTyw_pb<MTAa9l6Wru+|pK!J+I(^oXQ^lSW`>AHW*IZt*z-bVxLfe@0(r_J<yQT^R{^r5kq#%a#7d*h$iH%IWofJZH4FeqpDG0#>*<;Qym|Es?nkE4Q`-qR{r>yrEFM+2IJ#lcT?@fc?bQ>5Z`;zUh#__YjGFD5BE9o8c2~+H^!?^!2A$fG6Io^elpm<uAwyXpf#9ZNCP^I>oEI*s8N9B?c3~yAdJQ=1kWEyVDDDek1&Iq(P2Jr7N><bQnC8~f8yeuJL}%P71X@Mnx{sxCX&kn@O@^h8Y@0iz%zI3`D$@JzGGC)&RcWtXgVQFVH50NnW6e6ffIOUlOL6%pWm1UpQWrCqAT7J;)BD($HDqp@k(lzAQ{ie@_NMXd<R*B_2C{A@10d-=$!ed#rM)hPR-!^q<#<0Nz|RE5_(?v;a5hot9Z1P-u_uZ`wC5{%xCtzT;r}$4JCi_{NbIx-T02{s5y03yU_aj?DZM$e_jc5s}9P~AaR?BHey@4j(j`9%y;{NB>-Q5{qS1{QmMPv4D_;iEzCHvvt^z5wt($h1m;g2bn)pjY8q6_HicI`A}TKlRtl|=r<8X$+6(eBlvwKI`P;SnXuFB{8bvE`pl8UgB#?QJ^yg1pYkd1*4CltGig6=xC;nqkTV%az0-sRN7J1i^i+b0|_9m1)B_?)StmQh;_4v89V2LSV*p*RcdVN%jEpV-ROyOlw68X0DD(1}yoH#E7jWj8rr>Z6Ozm7KBt=8%PPvmTRMs+(@BHWy#K%qvXLhC5ay$RFsX_0Yd(A|wv&!RRTl*y>$G9CK&d+Vut*3`Vw<D(0<KKO1V8^5nOj7oUn#;8Dc^v2){Ch(DGYgMJX>C6x`X9t>*hdp??<jxmq>|NOJ->|~6EF;DC_*2S)jWkh7VJJ~P>fuv|Y9EfVytuZahbI2#{N23EkX-}ev>fGyCmdme?Mj)urOx+k9408c%^yj9>LNSq+cdZVm$mBLVTw;H*+yl}Jn7r$j0rlF9Y_%OxY24YTAoR;`K#+kO!WQ(eL>ctq5Axiv6zPFcjvt)b&sWi|1W%tkhL=Y`FsVkc@+Boxp5Bfe}CUf*@R6H&co@Lcf!#@`?Apl=4%f@8NX}Hfs~hUv5zRa%m~x356V)wxdd%Qel$mLe%4<7{=5xUT`^5jPT;G4ed8ph{LbDDxGhTE69lipd?tSB?W4JB1wB`N^f`t5&OF}R4PX7w?=v&wYkCR6ofGp%k%Mygc$tx^9VDgr->yc}vNb2l>Ehdr1neB+AH(iMTH(v<6P#t`&eAe$*XZZ+UmT9VrSV#bF;*V_o2~XN=Y-@P;v?z(5xhKpagCZ?kbL|Zk<p=aS^zx{?1$ZaXt6N~;MaRZ_oxpwC%Wd1f;7fSkl8FaDSV)D<Qe#ZvXr#H8o6q-`uj?b_d9$H?@N4*<Ze1PeP0fr${umCddJ^$&ViMmaQGyQA3O)kO5fYgOn~o38i3CbejJI$+=#CEKvdoq%?USkJGgPwH5kSRXuO_WG`KD#M-A|czg;O>W$Ca#<+1O-*EaqJ<2&^H;CkR+`<@X2KCZS*aM}|4*vnmeye@X(XPw5Yb6j6HOTH)z*nTYR%Pa_=0lu|ulm->uUy4HX+j;%T`_C2LSBE_dAIy(@Zo4cMx#+#cS%9zb_n*1b&YQMC^9!$fO7!j!&7mjo$Hg~nUDFT$gn;J{{9Erjqr8ZL=R`@Cd5qj{_Bqu}0n>BKzNKLQ?1Z_*&esv_T@H`*{~v0L`%!h%mbi3#v61ITV~#!*_>RX8tjvh-o|&j_k)o-K@U_C*u^eG@)?$KXzdP+u<693`khUhCs3h_m%-2)bg;rY>*h-L>-$3iLKn3{IkudBY^~($qLH~bMzE{3TMog?9SfAG$Xct%2^mCM#7%O94E$StA?WWeZ&hod1skjE-$)`lmR!Y1S@CWAIna@9sw#-rM4imYZ7Aq|sefRs`jKCl^9fa+F8Njchc-b!XkshX~!Q95nmVQQc^9yNcUOr~YM#KI(&<n%MK8S)ljJ0Ar<59m>4JY{LEA%BBw_qiuRvmr7|E#HbX%u#a6d4TgQGR1JmD{{GaJKllO>iCMT5n7+@XsejDOd0*YuUDAM)3Y*hq9J#F}z>4HL>i2ljv8G6YRer|Cm#})R^!hN_pO>v&P9WGrpo%ly-}dqFTO4C%PYLhB#56K+<~L1h4QN!)b)f__7y7Q5Jr!*cD&x_uJRxz+LwZ^G7!HX-#)qZ+}S>x1-}^HvSj<iZ$HH^}A^L`(rKkhFbTA#of-FvuY9jq;IjB>RWQa&z$|nMs|jOzc-D(Dg4}sNY<=KP&wkO{qIL|5jzUSo(g#WHwV{~vQ`y-pm^T^{A-r+DHZ&G2ZFe)XC5>irGHF|-K*C10sFIE>1|_K7XtQ=^=M*$^!BB!A418qylg@|EKbSpL`b;%3jL^rZVyQ*ZpUjad23?zh)LqFoaJFo^pi_($J$FaXLzGfl@XR*(E1r|RUdv1+o#IW|Csn@G)H(Q+mC4ZqnBZQ8&WFXScyArQ$jotqq6&vEMCq%gk~e)2e0HsKWi|%J&S%;z~{>iStYsqN$BdV14`hZ9ObX<M~|qeTO(>J1%y6wBv<RElif`-^WA(9@S}1}%zmDpA5@Q^gq@URuAT8IREaMY_zx+8J?cU`WN~LSTy#c#bco5z`YcguXL?qCJCYOFTpEZVy!24kqg%()WZ4P2O8ekO3oTRYq7yZ0$++gzVN~YGTyGtr`?v!=FKXadqNoM%4=r2g+o)!F=44`m;Qb|Zzg|bkPyFK;-*S)OQ?j1FkbSoo%1Pwml+=23_mOa`2F<y4l(-WU!<z%_<MBq^(vkx{sIaOy!9_~<ktjm8`rJE;@`M<@zzloBzaX6GlYc0XLVn?5HEP~6nksL^9)F8dUR6X39sQ51Zcgy0Zg;_9a_gw}qwSjN=X7x!XQfb0*DblG!HQek)}dy<cHvd{7xif<xyqv>X1rWJ%nyTZuAZ{L3#gX9<!rzohm53P|9K9qO4W^2iC<np0K^ZL)sc2oB#E|%*FR;8F9j!uxXqe|Z$r*ApXX==TEq8$$y|an?$<w`O5Ytj_#I@wj^s$}3E?g^)hBNoCP-YW2K>EnIEIsz+V>7e+NzktaAwxgcmEB4wCFwRb00#zuUaGvX}%}qjZvW+ns1`<<gt0Gx>@~yXmDF#eht~rB7D`-n~_q_g9Tnx@gqn1MZnLKaMxDV{D}~Ep!Mhb?iv>FKsMSQ_sC^&1-^60fnH!;^OA-+VZiqZ{)KqqD5{&?)fcg<!CL?Rl|nbG8d33Lr-UP=fkfkHcD%Zv=1~o9PjcZ?mZ-t&3zH4}aamg=;OE&CMo7QAPd$16MF-68RS!qZgt^OX$Zqrtvb%{4ZpJOr)cZq#{q<9L?-=XEYVUH3vnV&u1Di}x6Z4Z0GZTS+<!*OhCw74KW3bb<%wRKWxvSs@{_jttS()*L;Qb9|DJt998G`$fK%Zt95eTmq2}((uj>y?NSJ%8XVrPN(r}*#ZKG2}Wn~M2M^!R7sw;xP`uQI|zToJH-5$0uw5m@C2^}%_A57(LIC!QNoc(-y=yglaEi@P*F<lipO=2D;80sYYOW3oJJmF|fNsYH>)UBuOKAIudY8nZ)@)P4uaNgVip+^+Dd5o+*N+Q-Xm>9z7k0Y|pw9>Pko#Y^%Xb#HGx=c2akIYH5YjpR9S;qONrE?w`+?sJvb5xZV%_4*{Zkr3}?VO%4;r=|)zj$?d7e%I?0VBZNB+iBbeI?!Lp3z8e3d@MXvI2-n_wU|4D=^t%Z*FR>7I=p1$Xx~j#*nWXNVg5l@)uHY`T#xAv9W0f^Z%uJp;LJQhz8}j@pVI$3E(-}e0w(9j9}l?`NenntvX;nx<AQlC+494jRf9GIzp{Lq(Ke~pv+HE-TI$lgL+DRn{za+nO*OrtIr^0Db7_MA*_j7z+8MY|&);_DYfN{zmi5vUx9Bmkdj7qP`%Qu3e~ky^Wy+BdzcTRad6$P~dwxsNisx9JQ$5!6Yk$B`B<D%Z2L2xQ<rTAJy4~!0$+cKcx}IM~@+!#Py=sX6{>74AotWR;WXS%otVj0Tvq*z}D2Mp<{~9*}=POR?G{1W3oz#i<M=S*Twkn+VP5k-i6Z++K@a+hEVBX%PD90CbxfRH!Y9xI}QeO{K*k~Fpv;h94QG+qvTo4A~oAfBD`}Levz<(d+D6bOM3LNIwh_9t`gg@`}GY9%dQs%Db-;XlVEwcU<5B%GBY@^o9cT3ww6s?@@eRNjqpu@t<<kA6Fa3>w@<$%sm-hudOIl#|KvgQZ;orjW-8eMfGC{-gS#xja`LVi<275}oyk3bmqp#8<)|5D4kj4c}$EpD(36WGy5RlfjzTXYX0h4CNgb9-|B>Z2bNq;2?=5I1B!eW$aNcw4p?;<F)pL21za;q~lq)>OQ~;X2SOEx*E_kLprm(3c;e&B!Azm{CegZyMnnTQGkJzfvIkyQeWTZR|Gihgsb{4w$S}7e<_9&GeWcwf7TPzeD)Q9(EN}xnJu|BQ`7;cuy3(qsQ^IKI8N|k!)VUeNQU=dF(=i|Fs75ho84#UI=Qp<;XT=Du`iKNt5IH_(Y2LqS@mc?kwl5%FC4ESfeghUDL*4e#ofu-2>zIS`vB8)^c3?w{icos{4R{7Tpwj{<{a@^O8RYV{p3?4j&65<dEW7uGo6PU2AE;p-jb6RR2QBMLgg)?8_T2Pd*RuckU$q`_z%HzmAa|ust_o!f&yPA*cAiPrR)*=k3e%GZ+6ni<V{D+NYJ(s;fq3^I9ylDi6!|)M8gGSpP6$$d7T9di0&)80h^lzvYH3V2*~}O<jh(lIcYy)O@0ke|)qx>IVbAhyCvgj`-(WC@NvtQC8vi^Qe}VnONV>5#3el{YRI^5>ZqbN(TH$a30k$D#2`BQv>Y3nWN=eAkP^Ur<(~cUz^ky6;ATOiS<!CK>R*k$_4+AqnFR)mXbOLwAkx0$DeYPmlbP-E{wXMyUv_|t%U(5guXaW9qHDQP-?d3c;ze=_<!Kv>Q&cMi9uNh<W$)te=Sh!{sQ_~u{^{Lds=+YS{l6Xz!EI$NerzPeg8-_IZspdn4)ZEBv9vID@6~Y!2aC-uk)LT|M->^!uv~m&cFFE?xW2bU8S6mgN~6p&#sEPp*G|FvR{E`luq(H&G(gt|A*!;Kzo+#2mWiw&AT*c=SAdn`=INBu5F|uY7X#F_Wf>)>(R{*tyfLAABaC;#ry6lP^=z1?_3JRZ+3*&KMrG0`sWG$G3X*Wi)<SEeAZ>|allWuc*INH=qDv5Ur3Qz#l{HoBU`~Zzx~BJ-1Sv8e^C@I^hmCQZ~5f;(d(}X`!x}_ny!>;iSJc6H`0WS*U+;=I$UJ6=$0ev2)oq-ABbV?1n|87DRHB-WzeC60bC29?~akWhcvX^%ChICq`N6Fzgl-c4UNw&RQQL~ECl>!55&K~`Tm>z0sLZ=M!@IK55hm7KesELJpuorH3I%*(5Gu5{7hi)b{ISY;j61B%#Tpe`~y%H<!*v9LifFm^c|W)==|fO!z?UyevQ-lJ#T--<odhBNax{e{EAZvJfM$E*pD2&>t+?*)|hU!E*YT`#@zg<F7%UuH#8VTNg*7cq@6=G4QVk2*55xdA-rUStLYBo@@uigpk`?PhWH?~e)VrC$_}fQss&Jd4BEd!KRkGz^@`B>bOSld`pAfpxRas{4)?zx>T)J7y$U^F{*j=R()Cyi^jG-^4LZMc{>1*?!gx;VKU`LFef#X-R<aFN%h5?6#}b9j-Dpo_&sWM^Vt2m;vw20~2cmbYU<KFO<oy&r_QrYFQCjXn{IhSwOxA%;vW!~R&YZUY27EcHIXp6vpLjjPKA`Wf!|igYA3^cnnMHEvdcXR|_;Pk;RLvU{?t#)P#C4XA_922Q-dD`?Tv{G0t6%b4?+Rj;^FTksyES;F@JsAzVVBm7*O)(f{-E`nclmGUW5=yP0_vGN<tcyvjQw%LR|gfRG5C3H3KadNy`%zJG!%_%h^ZK7igFNW7@yv2(ZRp$38aRVsy%hHet(!2vMqV=JJ`Pn9L&c3?rt>aoyqbtf#Rp7#!bVixNGyK^#6N$32Ng1=#YJlIpDUa2gaGQ+l-Yy&L-pjtzTQ2Z95pS)cCn$&?{tnzm~H(yt0o-Xrn|2J6MkUJ=jPLF8S~H;$>$J#jhcJK&!-mxQKISwZ3+cG}vD3A%rxbKUR47PVNuZqI`k!ETVf<Vw$<8^f1x41)t(G-Ty)FFGIGxSWjzMT-Ha7Xuv1SY#2Jy*}v@%%)j4rM3)&Uu?w(Og5B21Gsk5O+M4H_;CJZte20+t^6P12-z^0SEOS^LR!is_TY=r0RDVqRW!B&DhtuyUtRpuA{`*~c)ng*3&qB*xWPF;Q;~W}%Xa^5V{XQ<V)^bm80=wJ&!v&rZ*q`aoPsKN|S!>R}VG>?5lK8f>t5tgvXiG~9`BdN1dD8Qg&ZpXt!f;)$g7$Ly`nK_Lh;nD?QS|-tIo!*@zJNaEgmLFHb*K`s|2c;E^<QRPuQZr%R+YUoBIW*fd>V@<-H1D9@PG60KQY1i56P=hB8`X0ytBA|{r{JTP3a@oP~;@O%<q1^kzHV2|CmVVU?ePCKI^1kqlS%Z&Ily3pW6t|lV;+JhiQ%Qda7hne~$9@=TGp54tgxSKgFL&C3!p6ny_EQ(O>ay^rjN7Cs#iT4ed})uAlGrHo1vq_g9h%^Suv~2nB1-O`jjMz8Qg3qZf9xJ%HcI*#$`zy(qChzcbB$K=I|E=0_3#H~%u?BGjS!M^~C=Ef@s+x{(6>EApghR}3R$Tjml1`=tlv{}ul+TPvD_tfv--Gh|l_mZE%hX~-VQ{x>uHqxYo!69{9Ae9rSH^_Q@Tlp?gTd`y23K^1I16c{k8$6fZP*K@Ew4T9WDBJZo_aeTKa|Ky|iDVFsL+x;k<esRsIcSKwcCz%hvFK<-SmR>3HBa=tx`RJ%E6+pju9e+355}Xgq1fL83cWhvN5(wez2jkA6L_!YmUj*^biYTGm{NwWLYI|sZh{UI4Q9b&>a6)k7S1^7l=a4O7{f$K&$niI4KZ;vkOKm-(WN)%QaKnRe)k3?>4p-@WAL1`<K{!;ogHJuN`QdumH{pl-0RIupAt%7`6SQdSAuojEQ<tDu@}ipQ@m<`Pd!wF7zl<+Gwbs_InY>}I$Np*u>MrYwx1j((Vx(Vk-)sL0`&at8iWM#kF2!2DGHp8IByV&*_rXNgZiw&QPsjQeW&4>Sx^0C2?fuWW^J2?SueJTCb(T8EeymmU$zj_^l`L+SMH1Z!U!}Ueei`!o>93s}f2OPV&mX?B*!iMw?y)dJlerB!!F$xN5uDGT_5M4wmi*g`b%0+EoE6cV@E?Qos}nWbg|4kEU%t@oXU6L6`TbWy9ghnRHh-ypH=j?A@;~Vd&KLTZOa-v7NPT<_vvc+F=T5Rq3J<E<xEj(2ysXVep0+=;(sSoOz2&>`|N8w2{yZ5UNnljT8^6XPTiY;1qet_A|J{Fl(*Bgm-YzC}vM~(;j7w>>=Qg5TT=!pgll*K>hzFz2uTe`Cm+!?$#XW939ndc^xQm)<eSQx*KlEE#4B)rRO#uI%{Qur5|Kiv3HNyvfe)LOj?X3Rcc=4ovAUiXvg*Q?eOG`4r_}fW-35}CFERvOW*!M=oTC4!*7bI(ptUT*qJN^8Tt+6$-Yw4k^<`O>w^|hNuH*0tP^z)g(_<rgASTLR`qmlc-^ONV-bn5)OVtq0$EJhOhU4j3-HyBO1mUMoAF1u<QE1VDWmt~$snO;N$#82^nUt=4Re;TKV-ch2hqG0<qc6wCnM>4MdSWpqPzY_3+`1;2Z#tC}NGVLs#yfu}OzGZ(P!m=^~*EJ3QA57v?sGy`kK{F{$qK%q&_eSBid_6dAeIa}X=M&-=5$EwY9<Ik^#t$?vB)qbS6Fc~CR~h0vSd+0>)}($rHcQ-zkCWN>K4F%4NQl2&HpDNXarth|5x{S*5R-wvsuJGPNW_~;0{!*z<zMoV?vVbTt?EEKk|P2CYLB4#U)k(OVxMr4on6w|Gnbhee;D|WEBN(NSO0UW-<%1aS$laX$9_9uuIYn&E9klL58vtY^C|uZgbz|}1tl4?xt|Yzy5gMz-ap&HWAOj2h2qcc8)-{7=g7H0-!totVE$}<afB*uvWTTR(ocpI%NfC&^!y^GmfZYsovdJuZk)!uWga8YnqLUIZ!HxZD)B+0{*0kjkh_M~F?VTx{2(PXU?M}^u~7U>Dm=6!6!OoK^RwXisP*w)isC*xPVC|TllZ3dSF4V;$yuyNwm$Xf)^QDPYr@gP@chULdVZphzx2mpUQxULilSyl>G^x2(1URy?5=AtV$*Ik)?~<zSApv2(+2MdKh?(yz9azn$$cMkHy!JlTZmaAD|c0%B<(z+r4*<K4C@2)-vmZrPR(K?tMU}u1!VJ>#xl$G#E20+2g-l@jzRgS(7kZ}W}f6C2Am&Rw>6wUw+L56;B-NIT!}u7zo7xX8u&Go|0<UVuMiS8&eK0{n7=+g8_u~rZvgQ7cFy`xTkJV~`~l+U03Sz}Liw?5TloE`IH?<VntfFLo6-fJpUlMLeK_wHJmBXjo!<?u6;IDU9c8tcOJm^}{rey2`47M+9JeGV6h-WIl~kaLesqBI_b6G1eto9KuR40y@^(V!OI!066?~Zi;pc1mjZ}<iOLiE6(1!=l>+%2e>vWjExLQ>QwS{wp%{S2q@^gDl{p>cqetHV{w?(3G(SP~>6=nr%D*B1s9I=gTk^kYvFn@&pzu#SR9@YNPf!B~+{{|rh`cOD;{yBN0R>IHAHu9wQ*vsq4{X-gZmfk;Dt@Uv;u2tQ%wc?fB!$9#J$~%7NYX|vd7=N#F5<(s58UF1NR34Zg5%FS?sKTP@Vf;s%!|R72|K&(_#h#Yj-Dn^DO)(!8QWYmH;{*J}<!fu+=*MlWYNdBKhN7E`L%AV({SDc#TGvhtyFy8zCizzf-Tay*K9mt?;@Ah)&lm9j;L8!m`{?3M+Zees@-%(7GffEe6&xQeMK-+(XJ#pn4l%@8UN$~%^h#Od*BD-YO#l+nqhFtO>|JZ2`h#XpqA<aG9GnjW|AXV}oiEauV1AW;gbwsdZ&%Ao-@CE)KHIYW0)W1-8a3{E8ud~B>iVawum+_Q)s{X^zo(({_7(6JvWLIq>d2S$`t&VP*-A+S{AL^l#ZM0HRM1fUu9~x`mR@_ytThjhp~TJTIJv{@D#QHwD5EiV$weNFAK_IWII3pbIIaV#nwbIV&zvQI|G5ZrXLXHg^!6Wo70SQOuM4^xjzwN>TTBplQ5Wj{>mKcqArn6+|7C+c?R`Uy)$`-gMWGi^O@BEpYe>*lGQ=JD$Y2K^&@XnO27EE_i!bu6&y6#}u9&Z<I<qebTeZx<yjw6nd6%I&^!ypD&oxGpk26lEKVR9QNY(`ZlI5=g{N1~Q6D8E2Uxu*cKoF7&@cR|#mumh08*#6YlEjOUCxS}mN`v;b8T2u^yDu8MS#$K6lTRn%@8{25aMHBtQ8+C}r0bI~vMg3ot?|`<_g8TA|JUR0tuyNCOOv;N^Ao1$e{`L!Z6n(^Yfl=1Q5pf|&nui@|4;Dg<iPm_zq>%6<Yxl?He~1hC$@WR9X&^_$G>RrMKHcP@wOE6O-%I9!}+I*0ZaY+%?<qT7J|!s5r@*pU$WL7?{o6LYOzwN4T11snP*l3k7Y9C#yEp)sd2*WiKrSuc|V-QZ@vA~``vi8h;IG)ev1%Z1?y|dz96}#h4O=#B~bo-^xs`$>*S4Cn4c2jgDvo<f^M#svYWR~=~Ku*74{HFC5q)Cb4)UXT~qpyqOWfO{08v%8ThELZvp&5k3WNNDT*f29OhK~0;*qf@ySJZ4QS=}V0>;c50g5hbks?GS_<KJ_iKsimV~1t5=<6^@A#Ui>ru3&c@JjJujY-D_!=iJG-27e?EZ2xZ(mIyo;+kf&A&tWMd1JEpOW9wK>Q|<fE=19fWJSDUqSftI07f$QtX2Q{7h7fxpObtY<C2}zv=vkmzC{>Ck%T4{?q(02Df#pK21L^$_D((4Dgdui}nExcAxWP{KB`&_kJXnyYGOM3f@0u|I_%(O${q(-(D{>QuiXCi@Z%o*0aA!&^-tI-*zo;4u4YrcoJW`OW^z$CM%+%m*Ablw-LD0F9h9*pr#iUF2S+-+@}3Mk$;7-7S?Bv)1mq=z#pObvU@W)A6e7pcR>c}pECy(DEeqD?iK2{(Qs;>vg`vftYg`vzC;#fhtjA(f7Q+Ef26@>+P<tr@j6YHbKU7W<>Od}cpL10{|(2#^!P>LH_*d)4h#st7(hQy)UWM$8f|$|ee{EgpFw{Me{*Je<{SznIKH%%o<|n-#&8-Orr8JNpSar&@ldF4m(W`Lo$Ajf`F9F${>=DQaG7cQkvRG{D{6WPmX|mwAuibJ$@(#qo`r&3<LhH-)a}4O%;q*R<3b(6XXsza5oCYg2F&h+BO@k>?dI{z>`Zhd*#2%B>{nmEX#M>-@c*PpxkE_3ymdK8c;=uVp74E~-~y`k>E{st1J5@QBUN+w<3V>L0e`RYGVy)s7zEXK8t`i(K5oEoIg;_rjxrU0CHh`vBy+W{6^8siRR86In~{G2=hq2eLvGSymTo$@)Zd~MEj^04e<X&w+xqypk!lM*($m4ee(8-=T0mX~nuL1hth|UUg6l`2^@W~K@jt9;a1C~X{a0BW=D9rU$Ip4)3;sCkhb!{(z$S$}MrC~B!|u3AQTbj>`F}hP+n35F%9eRnc;DH{GpCr(wS8tIs^h<HaS$~GSG+ai^a1~`4H(~e1Ms_T*<LtSxw-5NzT=@oaGv|oN&#Vv5Gl6z-z#d=SP9|rD%igtb@=~be)@6P{#29S?{*iITHF~0{AS$`us%x?!u27MX6ZS_DijLv&r(uT%{q48nzDZ2pT!@C+H!Qhd*(_2fA=DV>E}1R?xXBg=idVVga-UOWPB?AHtHg)z_$bZxENpYp2*FjXsK%7pM0+Y|Gq6d&?MyhI7%)0_tz_d{}~*g?cIQ$V>OAN0N-iP=F0!1w7lNH+`U>iLP&({Tkjt^f-MC+IKGvO?tU20-fa8myGeWj`~*5*YjH+n^Q0G$MZ+<&Yqm9SX~B)06yZGISIm-FqToP|0!1{$-{-7?@lp1(BF@LctOnQ*#<Qd_Ksu?9LK{BmtNcXPVHU}Coi)DdcDk8oRyO(z)D!T3{Gq2B=C{^c`-t3DMT$&of5G>`*I2~Q6?9wAAJ8#7<_=z+GkJcKLY+;|L^WzLfIkBN`3&}N4`cAxY!6(Wzv{W|;wZdR!TP7XFA~pGthcxCp0#S!zo<gtSN8dM<J?vKE?(rQ$@42WCqJ5_Ifd!$i@-E27-&tOmOqh(KAIWd1o&v=*Up$@ruEgwry3vF%p3>$x|Okx3;c^$Nh%^Z?-q$0^3q<SL-&tr5xZ@BD<!;!*(p%|t;weF7UF0@D8gtoE}{(4J(MOZ1OCYfllA3FZx72Fd83AnI99+jC%gdsh1We0ZLt;L=N#@W#>NHH<7?>eXXyJS|A@bpdIWuk+<(zQUZ95gozi8&%=ld#ZIsmgJ`MQS(;3tAM-$_*-j&quiqB-1wYo=y#sBSj==)B%tkino-+xxlTjS2C65rBbSeM#_kbV%9xp(xc*%1E|Mg#vMoabM(^lrMD$=>hzzIKCiWp#>ON0JTr*G`U?I?%om6)HJ!eGh9aiSuf&J@LHkKr-;3vTF>0e<mjb?`||s%euQBh58S`2k3byzuQ9-!}tote;hq{S%slUM)@pRxkc;imC9n<8TnCY{xkCj8+vE_Kho)M@onqD4>->Tr5iPYp@aS3|Jwh5#Ls8gPpxl9EdIYe5AzE*d__>n7t+OzcjJKnh*KZMw)d_#y63dJ7w>(Gm>9CiqMZJZ_s<@jp8s1sIsW^keIy?qqRHQx$M^tz5w)cf7jN3>2i1>i&f=T@(BQs_1^URlffOC<VR8ZJNJd~@hQfd2^!Yty2RD;qLX#M$<qx9m#oIELq7XCfkJo}u5GMJ$9<e_n)o#mJLNh71^f`m<7<F(1`szavp~oEPJHS8g#!4e#|6Cd~BY$q-_o&}o1rcz5x8EK2mjAOspD}~4F(7^UMtgrbj+ft-NF$7T5WfGi<AjWupICEJNq8`w|K+bXQ?*Xu=RK!^bwh`Vic}w<e}Mj`iq9NcOd-7Zcij1aKYODn4TAIijNndVH#TARVZUqP6wiI%ian?D!_fSwiYBXAAH)B9=M*n7HJKc5oQw}TFo1uD`SV%=VRVtaV&VR=D8MfYhk$-W&xwQhd8?M?e<mZ4sIPClGp6;P+&_xe=7RtA)l&23`al}ug`@nHoq>N;eyV7~x>4E2)j>Og7=bx$8!_ZDx0LUwMV(swR`tcokHmLOV|?8FU(0_>1^T@KjbXla=e?q|4s4)gt|@!MWK7j(St7Q;_(EQM&a~s<XEXB0HL7McM*_`Hd@)W|PipN6XTr}XUZN!Noh|DHcQ;A|c?Sa)8b5RM&V}{qF7<^T;^KGM6(Md6Fn_y$<cHQ&w9l3{kz%mZ_4&;8g}%QW;NQs*FurtKNuX+4e89TmjfnJ$li=-OKAr~E$2Gp0{{E@;hwIbQf&YT@Ph_7u%JrvdHkVUMhm5?hm?g(9!XFpjT?f~{5eWaW5gc}Jdbm#Szbvwre#$~)k1|J~_%O^b(9(;uiW=1Pt?>gbEJdTm8Ww}uZpfb)_#LvnH=J^Bdi|X0Hl)vLLQy8b|DQK)8BQd86JFoLQof_d`7FRz$=Wp-d{H6a#PNj-RR1*`O}iLT(MQnpKkf{E>Rs>NJ)j}vE->(0p*6NnvJ*A^{7=L;oRn9Hlj{quAEXZ{S*SZNw44V1`4JQ^XW5MWnF;w%H%%$Nqfh(MUd_24Bi!DA$#L|g|3fx|^QYhcPDYaV9Lvo>e;C$B&#x;)vTkeLh!GTDklD<yQQbhn`|l;bGS}xYs_BsfdoSScBF`(v2{LE%@t`(mDkBT3FB+UH{gL0=<G{>M{JzJ+r;`y4`<L7Esp$ub<y1#FK63qa6nOu%{KV=kZ~LUfWg8a$`)Abp+<(3Q)$89U{0o2oXoEifbkYy1Kgm0&^bcuSl{#~LLO+1-*GO?DV`NyrZNNhDO9G+UB86%rI2Cn00xLcP$M1l?@@*c~V0R~9>@kvVSFV@2(=!17W-QHz^M`YJP<_6Zw%1|s!M`F$=LaMuOv|q#UVJ)}e;fKU+EdMf3uf5wmNoV7%q-h2lDO*G{i4TdG=ZUihg*i(eIyc-pZLeSiT*4Izi6V8o9qCesu}nz?g03w@2|n|igI{Vmr^_YdG`l{>&-J)RgVxzZxkL>I=xag=^y$(6V*{$jszgSQU3_>14X2d7C$pTY^bkJIsS$zYi2nvOK>>3v^7?`baOU(HuJ>-N!hHTKcX?aKZf-IV>J|i((mszG=nf6YdPcp8A)Pi6TSZ2S16}3#t4-2%8q-9)Lr2H1o0)MikjrVPu`l&(d&!nbC;b#HdTewvJ)N-OWNGu+N^OlIn5l6utHR3EWxn<<05>j_YYA02%$?6=<Q|-@Z$?<D1>j0&lY)~G;M#lT6WO-z*82tfo~J&z`h{S>sv9`v>fMi6!2pWE-UI~C0^EHtL6dz;(I@p<FogczQ4ebA73}6f2)J;r{V;S*U+9Oujh&CD9shq@;h<|Mz#DN6hF8XZ$>;ZH~0gDkFxFR`XNGaE5~J;f0)fB54+O7Gi@G)<NuXNRVPgi^g%WA?ivpF5a9RX(M6(@$mX#`v)uSo)AHvfaD3a#WFr0$&S{y-PZ?JRJ&2(2!2I;_TZ@*yX!3OZt_uME)3fBjVl(i(;0Wr@y>-m|RW;M%3wP4(7w^lFQ&Bx0g0s9$N5U}|V|3#{zeD_gT6}>pI!|&D1>=|c=rfKI;z$4Rf3Q9+#$Ilsc(&`~)0F$M6yL0F$iAb2zHhFW1NX03h+AzV1=h$@Q4h4_K;WN^O)3rbVT8?J4g3Pvr-jV<S9Q?MWm0x?{bDnqpXEAi>*!~)t%*>4a7TcX8Q+j!|EW+xVD~Q+7~*^C>Pnzr2vGk=HMLk{?wOMV^B-E7#l6?z%mQbqezzIFoM*?Z^4kfYZ$C5g^H05X#?4huhWK-%MHIxJBzMxy(qa1o_E{PP^anj}O<@lK*UHd_*jPgGFKOVW5-+OnbDK~dX(yaNo63(oX5P~np6{`fT(oK#UV*u`rlyyoY_*LOBw51!5$T)u{(rJRuB|1o?~NSsp$tCIXGye+$c~yQYEJT_Y5RLWk`cHo+Y15Z$7<1CPgml$Mx2{AKDqwT^QOO#!SR{b>0dtKB=hz9F~l>!#LFxc!sjJ-1`{wh*TMM>O7xNh?{?+gI4RI)Yl-aPkL7jlzX5&)^y@PPls}2JGk?Ma`Vid;<6kUgbWZo^3SvX}z}wm4s}!}$)gOwFNCP+TK^vKs+jy7quMdTz_oxS+QWT9~eIk6{>-jI3AK)j;>PY?Y`9J)`f)3>eERg3cruT1v`A^l)nMbNT@Z-r(W%JYpI|E6O{{0iGA2lmbRy`qzi+n$w74Cmd)u<%~cHDybH?YrX^+9_7;d?g~C(LRSdYX(mdLO00`f4@YpQLo5CYWB3v<k>Uxj_Fho_*}!rF{d{FGtrv^{t#_Rix!facg=AcU!ifIr9m?N2os4GHXrY2bQW4A0~DN``5N&+0^=c-aWbjo0mNBfi2FmikB~->jZZrvA)HH;Czp{EUPECjsyP={40^$ZXW03;9n(fTP_vm?eQW4|3f>BZ+Yfmnz`zDKatm9ZsX%ROBZrKU4m@9H9f!mo#(-upKW|SU%CoC|JyY$y`0jIo!(&Ue%)+g*GFA{r0V1UR#)hWDjOfb?;?mxOG*OG5Tj~Am2vk|r)7gtHNzrN6IKhwccY;GfSejRhS2X}HI<+IMAb&p`~P;0lzS*66zDr}ehJ;M|2bTV^6X?p3Or`%RE^G1|Fj>LHDtH!73$7Y2l|eriXJ8p(tjRs{usl{KEO92yolpfpjuw6V;8s%9+SZM=s>DhwNBJWLH)H*{}AP3((w;$dTz=;`m<)l{~Bg57tWbqE5EI^;_aL0&nI{HZy@AG6}}+`H`=cCaiAOeZ!<kngt1BgyQ*dYA!~%<m)O%$*U~w{Glk0#gy&@5Ib`>!HM=OHrq9Xq3VMY;KBF<>=511NKY2G#@ExgjFh-V{JTMY8iSMluR{XpS6AJl-o$@?lM~~A2=y?&hfs;UWXXt#3H*&lW9pIUW|8Vp<kMDT=ne2f2hiUzFcj93Gj5Dd8Uf%=72NU%5TQmDZhGPi3mDK|Z#)%X?|8M*nv$Xk)mpS2<3-3GAjxlZUq&@-s|13(szfvS(a7w>@-$NHe`K=`1YI!U0@7p#>aqMA_P{41;>=C)iC#U(ZTN<|Swi*S?xIcwbOTG5gpf9X$lcMRiOr7YLaPs2K89qqFXteYPqt-qxCqLpm6h9Lr@fYDQC~rh@cqJvg0Fyx%L4`hlHSco9=fUk}`uyfDE!y|W&QKhy#$9j$-|<L`EwFv0ALrXLsz@a^jNnb(p(y&09aMi-nTFjOePYCfl$!$Am-@G*L-pf+CSaUiL2iAVz~1$-ZiE5VfAc(i$3B7Tm$M7_H1cz@cNreyN0a@1ll66tw=k~c;YE^*m`hOpHA44<$!Rr@gW|8ME@v!v+d)2-^(0PIX?*9QgH`^jfge4kSx%6CI^=)d#!35QcRZAz0Qlby_4lkgS4mM`QhcV=Vk?8%!WrVcy|91hy`QL0eQOll3gwUKl_G%u0h<m6pitfOf=*((YxME6iTd0r|NUR^YcjsmSQ1Dy>G@bNswk?Ev$t!GJ|}Xstk#R?;Kx<JXjr0>!T_$p|MYC2<j$<GNM(qN0RBPmFP-84lVu+8{;<LPP(-ugdCW7WosXl~*ON;}h&+I=P<>^{{YacAzz-Jd5qVj?>F-aq9~H#bj2O`k{a5r7*ZH1VIe?%48E07k0-!%AiY=x|!bQM-fB%{o2>EYfxtn(-rgbPmmY-<APpJ*Q9*RFiZ!TVHPAI3V>X0py{(VM&^Pa^x(sLJ0sd@LqG|a{1Q@xY-Q~2IZ#QEmz1^lMRUUQVv{aRv~pKzj&nAky%5xT+gMXYGcPOyGJ|CJ%{y$GjlRzmZ82hDH(kK(o!WS$;B4E0HbZ0mF5G+_fi$&CNE`nzL1eSg&8NfD{Tbh#MtOZradP(%Jb7WaxbJ{WD8s~+fLiyP23KJ#bS3vNbGeRqQWnKk600{GP%CEJr+^F{>hKVD^HSqt<j7OAg)a2HfqGz~e-x}01;WaQHU#kcS^zHJ*ram}~%{p)pr|2cVNY7UPO2(1>=-;cIqJ_G)pKlDt?-fjCsM*2#qKgJ0UpD!PP&w+;i83Vtg%Q`0RM@XOM-yEU-L5Tmdl)qX;^5)^sF>h$eL0N73`t?%Z{f7MMWPQ0lKLXV^LHG{cUx3R>Jl<>My<NO<0pAh$CtGw-QMQq1Xpd{C4qd44KX_}XA2L2AZPQ|W&gk=xR^Op6J&mRVetCl<Y_(6~F5-``zrEUSYJLtK{n7MYQ3FFFWdqj6$JykhsCXSw{7su&AAh94`KRRiSJ3|@(Gz_2_0uJVe0_ZtKkG;;eP4XV5J8{6o#c0h{uC&`2=wibLpVhfCtAOLk&J*mgZ}u=ymROu<7tGTtirWsMk5Y_GM<57J|}R2{Q&)RLVjgA%`+eBuda-hoSoJ5a2@8d^T08QKK=vzN3)v6D{7-~je9<o*Q4$m^1npxZOU??hwm$9pIvCmX5imV%8?Qs`L`EPe*3SBQo=4jC#IJBel6f1h+{blPg(ibsBwPo$vJcN@s|$t`cOMYm0$5E(%^01@^IunL;VA8UwqkHBk!DLHt`9rr&YJLkbOlVQI8h!M!(vb593!43D)0k_*3%RsrJ74P<_GhTyOpQ0DSCa@v_WT$ZV$RQ&f))ua5tsHO%2is-b_y(!=sX(6w}X?&iILDzDo0tXH$TN1^!1;0L1e3MmEf&sWUbS_<!17$3e;)uX%b#h7i6gw97N1Mc4x-qf&>m*42?58(b5s6Ghz|5k><e(enRhYY#0;Q5Igl1iU2#ak7Tf_ZeE-wkW2;r<FY)+<WOUr~_%{cd{yJrY@z?MF3&@~6D!7b}=q$>)wqC;CI^InMg`qqlfX>tCRVu2HlMXXXj<ok+8Qyn_m2NR^kc&Zy{VIA*u<_`BJv7E%gS-{H3>m9uo)LB&FLUlQ#g71C#!@da;<xNi*o%?AJP8B)sR){!qA(U|T?DC;!}YapfgXtDLaZRuFVwnIFw;rv4WE2aXhPZmB|=!*PF_`n$p<>!KcKK1zl_1kcaWkbTzJ{$q?w@|HBHFSSP@PT44GsK9Ctb($4qJACduQ1?WVfzT&l&M$<>C<WVw|H+i^vB$Z)%VAv`W@xa{Vi!T^E2||IGV7z0F7mpL-8TNPjLm4`q$2ET(0jwnqEK9Vm){)%(Bs9jc^fnjCni44C<es8Q(sJ3hv~rpt>5L66x_T(3~*rNc#cb{7j35&JV?>)gm#(4d7F=1~YlT$t&po3+Vk&|Ab<Bs2%=PP>Hn^nO~s963ZO~CvmrW)zJ75UEIxq?k^b^+z%%PmK5{B`H5XthWhQH12I48N5DT$%<SLtFx00&{NMWYG2lNf;-qdU9l*~}7Vr;9Mz`bQ??}yWkgH0=e|#6}*@TDckE>KSQbU#<I<Ul43f->*_@RNHd)=Ze*Y~#wm_eKOd6|(aVg3rmSHA-Mft%%JL#9Lh5kX{MU|)v#ck{#b_^lB&Cq>?^=73-LZV}(oPzB98KP))E-lO{ZQ3L+DQ9Uecm>JHY>KuT7A^QBlAIqtEYB>K7>@UIVx!Jd0E+O8(%n$|`;{R#vyzrwRoMe~yQ2o?6s@N5_FVBsJ{<;bOJV4Q^tg)w=xpP>7n|68w`*ibuHM?^#0=j=?geij8hX?Z;O%`0=Y9I89*fgBRF0ejcNmVt`;-pSM9~CPd;x}an28n-}D?NkhKH_h<|6{9SagZziG__bu^=UrjMJAM+N$U}SpE+((*L*-(!uvC!KlduQzU7g^T2l9DI62Gp=o2J8SK%;qKh(Vdq}gbS$-AX{$I`IbQ2v*mBa^dYQ7^5!WPaq<%XFzvtsy?f%1`*NhZzFaUu0{1ChE2ZKb=3<OzKxdegnd<4!C|`Qhylg(~_08vvsJy)xSXZ7ig+R^zmU2d`-Ze1P*R8zB}!Hq<2t%7nHyLgf0GcGCtWnx{|UrxgO5Hco^<45>4jEChL37PSz*D_^iJl!(Ms@(f!(<kQY-?P9iPt`;JPp-@E!hp6>C@N8|rx{d-*WQT%VuC;#7SrO??@r_6CidT%cF2K<;nIAz-T9J)WI?71+0qJQwF#!R&DAeu2%e_OET_y+`3-$M4Vs+ZkO$0DcZzkfiBDF{CS)dw->tX;r7DZHIZ;bmo`8MJ3}6*~0q4_pl2e@BTX5^3YIn;Mv3BUycMyh`+M594LK69%rcRF?@cR6G{=uULlg*S2^jwcnoh2Y)*MN}?r9i;o%JU-6l2Q$ocfj`A|BugX6;i(&<C%an8fHRLWhNqRRJO{!J@G!F1X<Qd|D-z5h2W8fc#`X*YYR)79r{%fdTl46*{E;!&{UK{HFVE=6~`vMgI6qIDZ`_HSex-+~EcQFy@e@xbA@cj<*RtZ+T?*!1tr6!Ux<LhI3el-nW1QYk4{dfPNzyD*RerwYazUgjFMK4A10iVJn`afotq%#6HAJo@Jo;PiIxX!yF2#zmv65;_q!~pz9HctOP_V)0yz97ON+<$*T(wA-~tONWcq}0n0f7p?5ZX$kyJ>lP`ri!x*`Bak{2WdTSe>IYm6*KUh!)>riiFGkP8T?p_4&Ho#Po?+UdH-psFMe71iL8^coNEroM>M9QyiA3me;@G6g<DtEJT)Th4hHybdWLypIZfQWV=>MWia+2xMx$llt1Eg%;Q(KQ7vXc`My)6G16pzs+3`q&ZGrO#S4>l6*4Qeb?>GV54)CD<{$L%sy*G`JpV)UyqQ`ghDu9n@&s~QWBZ<`jzfD_*(#Tnf_3Z?}FH%(2_=)@ylwWZ5emYs-L*M~?u$%|p->9bWemS_95>^$*enn~>&~mck>xUGgE5=FKH19F;ja1BH_<oGigoF>??Z-amocZLhlRTr6fKLte4;YyLLH3!8?tUqm7GF_M)<;b9pS+3sYpA|Y=ldAqr&IW1$j|EYdke5fC2d+ZetLd!Dn1GH54%owS3vd5E~Jpif7(lHXYHMiPgC`O1yT}o$j<u$vSU=j$y`(OffLr?70nHws^6fRJ-6Xi!1V>)NylH&RafXA8}Ml=|8)q})VBff-^uvtB>$fL{$zhLRNtAvxFBhZ44uM9<6FHkw5<3)jv>Xr+Cuv8f}~`szEM^W{Qu{snO`4%LJ@sSisw2o;QHQ3fL|zL`9fta|35F1*bRc?eJoY8LbQ?XpDSzEuthnA)A|Rd*MEgf@b~HYMW}wlU_bi)Ch@*+Nt5?CC1Ufn0|OM{4Te?_0oCs(G6Z=O@heK#EA2<$tUmXF71m%L#$ROoldx4YIe%U)q5IxM{q{Svl`==<Y1JNBUresg^!;UO%_=3WGxu*=e%^)ZfVv=T{ba(vr=M?;s#7tC9PVEQ_&-&A=0JdILVry9e?>e`tB)TU?pJbIdJ=hU)B%cry@T$@vkCF=*BMRbuMGL2bo#EuvR(`N&q^<uyU972-xU=oQDUGkDoooSu9xjtRWZy_!1*7V;r^BXt*;IK2k>)p_t@%HgV-(5{Sd4euG;s7{JJ_suw{RsiP3WxdM%-AIEubWbGXOI&k(<W?hl+8*GwOu;<sExQFbWc53#&jOy`i(GJXCyM>$6g>w|P@$fnFNB%|C-bPjp{MHIV1d;Eimtb3V_($=a*a>beDd7xkk7V&3XXdS6(cm+m}KfhYUhdG#!2i$O`1?L?^6B*Aurs6|j{&0NAqz>>uD1YQfGJa+wtH5>-rA^B}=<$INbSOg(=0~9Ps5brJE-MQdJSrmX4sbKx;D2Z>#Bc94kOV&EtaVU*mAmh~Pv2C|O#}Llyg~K^v)y@~w($Yl)2A+Jb`O8xnv=M}_Dy||(H@0heZm*8{R&FH<zY?6+-T4FJ(K-K50u&vYy5koVppf2?Fan0pFel=u1D`b?jYZla2WF6%B3M5mO9^JrI|G6fSf8m9JfkG?(R#Y?t<#8f^TzDLKZ>&Iq&;VYYE3j3R%r}<DTw+Glf5?WE*U)3hHk+)L$*H1^ykHpY91=4DknZ>}mNGtrf5N4%(Xee6G(co7UG_=I#U?q|Z33L)@@6P=9Lc>J1s5)9SC*4fayP;QAm~-%3|)&Q#!#Jy88t(_j?)@>c`L+{KqD06+Z?0e(*4l^j@tB@aX6U9U8_%vF&6Eq+)@{?`<LV1x`ihQjfeFSo>3jEFW|F<mLNf$wL)1m!^WxuwPu9j55YdK}<qQ2nD>B-M(kliksheT%Z8`+*$2YDrzMoxB@t-6(xO82V>pVEc#9mxi_jb*B%i52>kS39p(ahuD}NWy0}0c-%u;0p$lN`D@Nq`Vkr#TFbe{mA*ITO0ms{0?ookJ%TRcn@86zgY})D$s$%bZ+^Y_TBI4Gqm74RRl@qDT5o@|f?EiYqB-~sS=-lCF?|2fyGYbHzhy9uo~u09$KrJ;T&dQ`Q>5P`X#RP7*CLp&?YzhNTTjhdHi(^ezs6L3Rq14Y(Dr5JB>$XNA8so>N^S=HYfHlUH>m0L*Wz7=yod-$e^2Q1>HT*aGvTJ4a?hpZpUkLF%0b6-olP?QS|iM${2P@y2J|WA&R`m*Wk&r;Ng^#MqcC70`Q=wq9lB*eOWO_M%k=fZ&8RPw=O@+lI(au*r1&H(8<#h0iGka8@KBDA=5o)I{?>nITrazp##p-L+qDGpm<#18|3O7EHh=Ze=L-5Yiq;b1KX+s8xtnwNR9X2t<U4-hku>V=@WbsWMH4#7O6xg}-M%nbapTr(&5ZiCAsVj*6BFxUc@)ZTLjMQ!Z=``g7EJZm)290OL#E$PdMt==#VncY@vkT7Ez4m4VzqJ0{{fd6XG#"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+async def reminder_background_worker():
+    logger.info("Starting background reminder worker (checking every 60s)...")
+    while True:
+        try:
+            run_reminder_cycle()
+        except Exception as e:
+            logger.error(f"Error in background reminder worker: {e}")
+        await asyncio.sleep(60)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        init_db()
+        logger.info("Salon Multi-Tenant Database initialized successfully.")
+    except Exception as e:
+        logger.error(f"Error initializing database in lifespan: {e}")
+    worker_task = None
+    if not is_serverless_runtime():
+        worker_task = asyncio.create_task(reminder_background_worker())
+    yield
+    if worker_task:
+        worker_task.cancel()
+
+app = FastAPI(
+    title="Universal AI Voice & Chat Receptionist API",
+    description="Enterprise Multi-Tenant Omnichannel Receptionist for Salon, Dental, Automotive, and Medical verticals",
+    version="2.0.0",
+    lifespan=None if is_serverless_runtime() else lifespan
+)
+
+@app.middleware("http")
+async def vercel_path_rewrite_middleware(request: Request, call_next):
+    try:
+        matched_path = request.headers.get("x-matched-path")
+        if matched_path and request.scope.get("path") in ("/api/index", "/api/index.py", "/api"):
+            request.scope["path"] = matched_path
+        return await call_next(request)
+    except Exception as exc:
+        import traceback
+        return JSONResponse(status_code=500, content={"error": str(exc), "traceback": traceback.format_exc()})
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    return JSONResponse(status_code=500, content={"error": str(exc), "traceback": traceback.format_exc()})
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Mount Omnichannel Routers
+app.include_router(voice_router)
+app.include_router(chat_router)
+app.include_router(messaging_router)
+app.include_router(tenants_router)
+app.include_router(streaming_voice_router)
+app.include_router(auth_router)
+app.include_router(testing_suite_router)
+app.include_router(knowledge_router)
+app.include_router(oauth_router)
+app.include_router(calendar_router)
+
+# Mount Static Web Studio Dashboard
+web_dir = Path(__file__).resolve().parent.parent / "web"
+if web_dir.exists():
+    app.mount("/static", StaticFiles(directory=str(web_dir)), name="static")
+
+    @app.get("/")
+    def serve_index():
+        index_path = web_dir / "index.html"
+        if index_path.exists():
+            return FileResponse(
+                str(index_path),
+                headers={"Cache-Control": "no-cache, must-revalidate"}
+            )
+        return {"service": "Universal AI Voice Receptionist", "status": "online"}
+
+    @app.get("/site/{tenant_id}")
+    @app.get("/tenant/{tenant_id}")
+    def serve_tenant_site(tenant_id: str):
+        """
+        Renders custom customer-facing website embedded with Sofia voice receptionist,
+        service catalog, pricing, and omnichannel launchers.
+        """
+        tenant_site_path = web_dir / "tenant_site.html"
+        if tenant_site_path.exists():
+            return FileResponse(
+                str(tenant_site_path),
+                headers={"Cache-Control": "no-cache, must-revalidate"}
+            )
+        return {"error": f"Tenant site template not found for {tenant_id}"}
+
+    @app.get("/vapi-call")
+    @app.get("/call")
+    @app.get("/vapi-test")
+    @app.get("/test-vapi")
+    def serve_vapi_web_sdk_test():
+        """
+        Renders the dedicated Vapi Web SDK browser testing harness for WebRTC audio calls,
+        transcription streaming, volume metering, and in-call message injection.
+        """
+        test_path = web_dir / "vapi_web_sdk_test.html"
+        if test_path.exists():
+            return FileResponse(
+                str(test_path),
+                headers={"Cache-Control": "no-cache, must-revalidate"}
+            )
+        return {"error": "Vapi Web SDK test page template not found"}
+
+    @app.get("/widget.js")
+    def serve_widget_script():
+        """
+        Serves the universal plug-and-play embeddable widget script.
+        """
+        widget_path = web_dir / "widget.js"
+        if widget_path.exists():
+            return FileResponse(
+                str(widget_path),
+                media_type="application/javascript",
+                headers={"Cache-Control": "public, max-age=86400"}
+            )
+        return Response(content="console.warn('Widget script not found');", media_type="application/javascript")
+
+    @app.get("/vapi-sdk.js")
+    def serve_vapi_sdk_script():
+        """
+        Serves the self-hosted, resilient Vapi Web SDK script.
+        """
+        sdk_path = web_dir / "vapi-sdk.js"
+        if sdk_path.exists():
+            return FileResponse(
+                str(sdk_path),
+                media_type="application/javascript",
+                headers={"Cache-Control": "public, max-age=86400"}
+            )
+        return Response(content="console.warn('Vapi SDK script not found');", media_type="application/javascript")
+
+@app.get("/api/voice/vapi-config")
+def get_vapi_web_sdk_config():
+    """Returns public Vapi Web SDK configuration for browser calling."""
+    public_key = (os.getenv("VAPI_PUBLIC_API_KEY") or os.getenv("VAPI_PUBLIC") or "").strip()
+    assistant_id = (os.getenv("VAPI_SOPHIA_ASSISTANT_ID") or os.getenv("VAPI_ASSISTANT_ID") or "").strip()
+    marcus_id = (os.getenv("VAPI_MARCUS_ASSISTANT_ID") or "").strip()
+    squad_id = (os.getenv("VAPI_SQUAD_ID") or "").strip()
+    return {
+        "status": "success",
+        "publicKey": public_key,
+        "assistantId": assistant_id,
+        "marcusId": marcus_id,
+        "squadId": squad_id,
+        "assistants": {
+            "sophia": assistant_id,
+            "marcus": marcus_id,
+            "squad": squad_id
+        },
+        "sdkLoaded": bool(public_key and (assistant_id or squad_id))
+    }
+
+@app.get("/health")
+def health_check():
+    return {
+        "status": "healthy",
+        "service": "Universal AI Voice Receptionist",
+        "version": "2.0.0",
+        "timestamp": time.time()
+    }
+
+@app.post("/webhook/vapi-end-of-call")
+async def handle_end_of_call(payload: Dict[str, Any]):
+    """
+    Asynchronous end-of-call webhook from Vapi.
+    Parses structured data, summary, transcript, evaluation rubric, and call analytics for CRM synchronization.
+    """
+    message = payload.get("message") if isinstance(payload.get("message"), dict) else payload
+    call_obj = message.get("call") or {}
+    call_id = call_obj.get("id") or message.get("callId") or message.get("id") or payload.get("call_id") or f"call_{int(time.time())}"
+
+    analysis = message.get("analysis") or {}
+    structured_data = analysis.get("structuredData") or message.get("structuredData") or {}
+
+    customer = call_obj.get("customer") or message.get("customer") or {}
+    caller_name = structured_data.get("caller_name") or customer.get("name") or ""
+    caller_phone = structured_data.get("caller_phone") or customer.get("number") or ""
+    caller_email = structured_data.get("caller_email") or ""
+    service_name = structured_data.get("service_name") or ""
+    call_outcome = structured_data.get("call_outcome") or "general_inquiry"
+    sentiment = structured_data.get("sentiment") or "neutral"
+    action_items = structured_data.get("action_items") or []
+
+    summary = analysis.get("summary") or message.get("summary") or "No summary available"
+    transcript = message.get("transcript") or message.get("artifact", {}).get("transcript") or ""
+    recording_url = message.get("recordingUrl") or message.get("artifact", {}).get("recordingUrl") or ""
+    duration_seconds = int(message.get("durationSeconds") or call_obj.get("duration") or 0)
+    eval_score = str(analysis.get("successEvaluation") or message.get("successEvaluation") or "Pass")
+
+    log_entry = {
+        "call_id": call_id,
+        "tenant_id": payload.get("tenant_id") or "salon",
+        "caller_name": caller_name,
+        "caller_phone": caller_phone,
+        "caller_email": caller_email,
+        "service_name": service_name,
+        "call_outcome": call_outcome,
+        "sentiment": sentiment,
+        "summary": summary,
+        "transcript": transcript,
+        "recording_url": recording_url,
+        "duration_seconds": duration_seconds,
+        "evaluation_score": eval_score,
+        "action_items": action_items,
+        "structured_data": structured_data
+    }
+    
+    saved_res = save_call_log(log_entry)
+
+    if caller_phone and (caller_name or caller_email):
+        try:
+            from backend.database import save_customer_profile
+            save_customer_profile(phone=caller_phone, full_name=caller_name, email=caller_email, tenant_id=payload.get("tenant_id") or "salon")
+        except Exception as e:
+            logger.warning(f"Could not auto-save customer profile from call log: {e}")
+
+    # =========================================================================
+    # Sophia Salon Voice AI - Post-Call & Escalation Engine (n8n & Slack Integration)
+    # =========================================================================
+    escalation_result = {}
+    sentiment_lower = str(sentiment).lower().strip()
+    is_frustrated = (
+        sentiment_lower in ("frustrated", "angry", "upset")
+        or bool(structured_data.get("escalation_needed"))
+        or call_outcome in ("escalated", "disputed")
+    )
+
+    if is_frustrated:
+        # 1. Dispatch Instant Urgent Slack Alert to Marcus (U0A57CPCBRC)
+        slack_target = os.getenv("SLACK_ESCALATION_USER_ID", "U0A57CPCBRC")
+        slack_blocks = [
+            {
+                "type": "header",
+                "text": {"type": "plain_text", "text": "🚨 Marcus Urgent Alert: Frustrated Caller", "emoji": True}
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Customer:* {caller_name or 'Valued Guest'}\n*Phone:* {caller_phone}\n*Sentiment:* 🔴 {sentiment_lower}\n*Service:* {service_name or 'General Inquiry'}"
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Call Summary:*\n{summary}"
+                }
+            }
+        ]
+        slack_res = notification_dispatcher.send_slack_alert(
+            channel=slack_target,
+            title="🚨 Marcus Urgent Alert: Frustrated Caller",
+            message=f"*Customer:* {caller_name or 'Valued Guest'}\n*Phone:* {caller_phone}\n*Sentiment:* 🔴 {sentiment_lower}\n*Call Summary:*\n{summary}",
+            blocks=slack_blocks
+        )
+        escalation_result["slack_alert"] = slack_res
+    else:
+        # Happy / Neutral Customer Flow: Post-Call WhatsApp Review Request (after 2 hours simulation)
+        if caller_phone:
+            review_res = notification_dispatcher.send_post_call_review_whatsapp(
+                to_phone=caller_phone,
+                customer_name=caller_name or "Valued Guest"
+            )
+            escalation_result["whatsapp_review"] = review_res
+
+    # 30-Day Retention Cold Email Follow-Up
+    if caller_email:
+        retention_res = notification_dispatcher.send_retention_cold_email(
+            to_email=caller_email,
+            customer_name=caller_name or "Valued Guest",
+            days_since_visit=30
+        )
+        escalation_result["retention_email"] = retention_res
+
+    # Forward event payload to n8n Webhook if configured
+    n8n_post_call_url = os.getenv("N8N_POST_CALL_WEBHOOK_URL") or os.getenv("N8N_WEBHOOK_URL")
+    if n8n_post_call_url and not n8n_post_call_url.startswith("your_") and not os.getenv("TESTING"):
+        try:
+            import httpx
+            httpx.post(n8n_post_call_url, json=payload, timeout=4.0)
+            escalation_result["n8n_forwarded"] = True
+        except Exception as e:
+            logger.warning(f"Could not forward post-call event to n8n: {e}")
+            escalation_result["n8n_forwarded"] = False
+
+    logger.info(f"✅ Call Log Archived: {call_id} | Outcome: {call_outcome} | Score: {eval_score} | Frustrated: {is_frustrated}")
+    return {
+        "status": "success",
+        "message": "End-of-call metadata, escalation, and post-call workflows executed successfully",
+        "call_id": call_id,
+        "outcome": call_outcome,
+        "evaluation": eval_score,
+        "is_frustrated": is_frustrated,
+        "escalation_engine": escalation_result
+    }
+
+@app.get("/admin/call-logs")
+def get_admin_call_logs(tenant_id: Optional[str] = None, limit: int = 50):
+    """Retrieve recorded call logs, evaluation rubrics, transcripts, and analytics."""
+    logs = list_call_logs(tenant_id=tenant_id, limit=limit)
+    analytics = get_call_analytics(tenant_id=tenant_id)
+    return {
+        "status": "success",
+        "total_returned": len(logs),
+        "analytics": analytics,
+        "call_logs": logs
+    }
+
+@app.get("/admin/call-logs/{call_id}")
+def get_single_call_log(call_id: str):
+    """Fetch a specific call log by its unique call_id."""
+    log = get_call_log(call_id)
+    if not log:
+        raise HTTPException(status_code=404, detail="Call log not found")
+    return {"status": "success", "call_log": log}
+
+@app.get("/api/tools/catalog")
+def get_tools_catalog():
+    """Returns the comprehensive categorized enterprise tool registry with parameter schemas."""
+    return CATEGORIZED_TOOLS_CATALOG
+
+@app.get("/admin/appointments/excel")
+def download_excel_sheet():
+    """Download the current live Excel spreadsheet containing all appointments and reminder statuses."""
+    excel_path = get_excel_path()
+    try:
+        from backend.excel_manager import rebuild_real_user_excel_sheet
+        rebuild_real_user_excel_sheet(excel_path)
+    except Exception as e:
+        logger.warning(f"Excel real user rebuild warning: {e}")
+        if not os.path.exists(excel_path):
+            init_db()
+
+    return FileResponse(
+        path=excel_path,
+        filename="salon_appointments.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@app.get("/api/cron/reminders")
+@app.post("/api/reminders/trigger")
+@app.post("/admin/trigger-reminders")
+def manual_trigger_reminders():
+    """Manually or cron-triggered scanning cycle for 24h WhatsApp/SMS/Email reminders and 1h automated calls."""
+    stats = run_reminder_cycle()
+    return {
+        "status": "success",
+        "message": "Reminder cycle executed successfully",
+        "stats": stats
+    }
+
+@app.post("/admin/sync-google-sheet")
+def manual_sync_google_sheet():
+    """Manually triggers real-user rebuild and styling on the connected Google Sheet."""
+    from backend.google_sheets_sync import rebuild_real_user_google_sheet
+    success = rebuild_real_user_google_sheet()
+    if success:
+        return {"status": "success", "message": "Google Sheet synchronized with real user appointments"}
+    return {"status": "error", "message": "Failed to synchronize Google Sheet"}
+
+@app.get("/admin/tenants")
+def list_tenants():
+    """List all onboarded salon tenants."""
+    return {"tenants": get_all_tenants()}
+
+@app.post("/admin/tenants")
+def onboard_tenant(payload: Dict[str, Any]):
+    """Onboard a new salon with services and stylists."""
+    tenant_id = payload.get("tenant_id")
+    name = payload.get("name")
+    phone = payload.get("phone_number")
+    address = payload.get("address", "")
+    services = payload.get("services", [("Womens Haircut", 45, 75), ("Mens Cut", 30, 45)])
+    stylists = payload.get("stylists", ["Elena", "Marcus"])
+
+    if not tenant_id or not name or not phone:
+        raise HTTPException(status_code=400, detail="tenant_id, name, and phone_number are required")
+
+    tenant = create_tenant(tenant_id, name, phone, address, services, stylists)
+    return {"status": "success", "tenant": tenant}
+
+@app.get("/admin/appointments")
+def list_appointments(tenant_id: Optional[str] = None):
+    """Query appointments across all tenants or for a specific salon, surfacing only real user appointments."""
+    all_appts = list_all_appointments(tenant_id)
+    real_appts = [
+        a for a in all_appts
+        if a.get("caller_name", "").lower() not in (
+            "sarah connor", "elena fisher", "automated verification test", "test client", "david beckham", "alexander hamilton", "grace hopper"
+        )
+    ]
+    return {"appointments": real_appts}
+
+@app.post("/test/quick-booking")
+def quick_test_booking(
+    name: str = "Test Client",
+    service: str = "Womens Haircut",
+    stylist: str = "Elena",
+    phone: str = "+16673070119",
+    tenant_id: str = "salon"
+):
+    """
+    Minimal 1-click test booking endpoint.
+    Instantly writes a booking to SQLite, Google Calendar, Excel, and live Google Sheets.
+    """
+    dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT15:00:00")
+    booking = book_new_appointment(
+        caller_name=name,
+        caller_phone=phone,
+        service_name=service,
+        appointment_datetime=dt,
+        stylist_name=stylist,
+        tenant_id=tenant_id
+    )
+    logger.info(f"⚡ [MINIMAL TEST] Quick booking created: {booking['booking_id']}")
+    return {
+        "status": "success",
+        "message": f"Appointment {booking['booking_id']} created and synced to Google Calendar, Excel & Google Sheets!",
+        "booking": booking
+    }
+
+
+class DirectBookRequest(BaseModel):
+    caller_name: str
+    caller_phone: str
+    service_name: str
+    stylist_name: Optional[str] = "Marcus"
+    appointment_datetime: Optional[str] = None
+    tenant_id: Optional[str] = "salon"
+    notes: Optional[str] = ""
+    caller_email: Optional[str] = ""
+
+
+@app.post("/api/appointments/book")
+def direct_book_appointment(payload: DirectBookRequest):
+    """Direct 1-click slot booking into Neon PostgreSQL, Google Calendar, and automated email confirmation."""
+    dt = payload.appointment_datetime
+    if not dt:
+        dt = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%dT14:00:00")
+    res = book_new_appointment(
+        caller_name=payload.caller_name,
+        caller_phone=payload.caller_phone,
+        service_name=payload.service_name,
+        appointment_datetime=dt,
+        stylist_name=payload.stylist_name or "Marcus",
+        tenant_id=payload.tenant_id or "salon",
+        channel="web_portal",
+        notes=payload.notes or "Booked via Luxe Saloon VIP Schedule",
+        caller_email=payload.caller_email or ""
+    )
+    try:
+        from backend.database import save_customer_profile
+        save_customer_profile(phone=payload.caller_phone, full_name=payload.caller_name, email=payload.caller_email or "", tenant_id=payload.tenant_id or "salon")
+    except Exception as e:
+        logger.warning(f"Could not save customer profile: {e}")
+    return {"status": "success", "booking": res}
+
+
+@app.get("/api/schedule/availability")
+def get_schedule_availability(tenant_id: str = "salon"):
+    """Returns visual schedule matrix, hourly capacity metrics, and booked vs open slots."""
+    appts = list_all_appointments(tenant_id)
+    hours = ["09:00 AM", "10:30 AM", "12:00 PM", "01:30 PM", "03:00 PM", "04:30 PM", "06:00 PM"]
+    stylists = [
+        {"name": "Sofia Alston", "role": "Master Stylist & Director", "avatar": "💇‍♀️"},
+        {"name": "Marcus Vance", "role": "Balayage & Color Director", "avatar": "🎨"},
+        {"name": "Elena Rostova", "role": "Medical Aesthetician", "avatar": "✨"},
+        {"name": "Chloe Laurent", "role": "Nail Artist & Spa Specialist", "avatar": "💅"}
+    ]
+    
+    # Calculate occupancy stats
+    total_slots = len(hours) * len(stylists)
+    booked_count = len(appts)
+    available_count = max(0, total_slots - min(booked_count, 14))
+
+    return {
+        "tenant_id": tenant_id,
+        "hours": hours,
+        "stylists": stylists,
+        "metrics": {
+            "total_slots": total_slots,
+            "booked_appointments": booked_count,
+            "open_slots": available_count,
+            "occupancy_rate": f"{round((min(booked_count, 14) / total_slots) * 100)}%",
+            "active_stylists": len(stylists)
+        },
+        "appointments": appts[:25]
+    }
+

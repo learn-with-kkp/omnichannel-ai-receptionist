@@ -1,36 +1,294 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+"""
+Customer Authentication & Account Management Router.
+Provides:
+- Customer Signup (/api/auth/signup) with automatic Tenant creation
+- Customer Login (/api/auth/login)
+- Account Profile & Plan Status (/api/auth/me)
+- Subscription Tier Upgrades (/api/auth/change-plan)
+"""
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
+import secrets
+import logging
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, HTTPException, Depends, Header
+from pydantic import BaseModel
+
+import os
+from backend.database import (
+    create_user,
+    get_user_by_email,
+    get_user_by_id,
+    get_or_create_clerk_user,
+    save_customer_profile,
+    get_tenant,
+    verify_password,
+    update_tenant_plan,
+    get_tenant_integrations,
+    save_tenant_integrations
+)
+from core.blueprint.tenant_manager import tenant_registry
+
+logger = logging.getLogger("AuthRouter")
+router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+
+# In-memory session store mapping token -> user_id
+ACTIVE_SESSIONS: Dict[str, str] = {}
+
+
+class SignupRequest(BaseModel):
+    email: str
+    password: str
+    company_name: str
+    vertical: Optional[str] = "salon"
+    phone_number: Optional[str] = "+18005550199"
+    plan: Optional[str] = "growth"
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class ClerkSyncRequest(BaseModel):
+    clerk_user_id: str
+    email: str
+    phone: Optional[str] = ""
+    name: Optional[str] = ""
+    company_name: Optional[str] = ""
+
+
+class ChangePlanRequest(BaseModel):
+    tenant_id: str
+    plan: str
+
+
+class UpdateIntegrationsRequest(BaseModel):
+    tenant_id: str
+    whatsapp_phone_number_id: Optional[str] = ""
+    whatsapp_business_account_id: Optional[str] = ""
+    meta_page_id: Optional[str] = ""
+    instagram_account_id: Optional[str] = ""
+    google_calendar_id: Optional[str] = "primary"
+    telegram_bot_token: Optional[str] = ""
+    telegram_chat_id: Optional[str] = ""
+    twitter_api_key: Optional[str] = ""
+    twitter_bearer_token: Optional[str] = ""
+    linkedin_client_id: Optional[str] = ""
+    linkedin_access_token: Optional[str] = ""
+    tiktok_client_key: Optional[str] = ""
+    tiktok_access_token: Optional[str] = ""
+
+
+def get_current_user_from_token(authorization: Optional[str] = Header(None)) -> Optional[Dict[str, Any]]:
+    if not authorization:
+        return None
+    token = authorization.replace("Bearer ", "").strip()
+    user_id = ACTIVE_SESSIONS.get(token)
+    if user_id:
+        return get_user_by_id(user_id)
+    return None
+
+
+@router.post("/signup")
+@router.post("/register")
+def customer_signup(payload: SignupRequest):
+    """
+    Registers a new business customer, creates their tenant workspace,
+    and returns an authenticated session.
+    """
+    if not payload.email or "@" not in payload.email:
+        raise HTTPException(status_code=400, detail="Invalid email address.")
+
+    existing = get_user_by_email(str(payload.email))
+    if existing:
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
+
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+
+    # Generate clean tenant ID
+    clean_tenant_id = payload.company_name.lower().replace(" ", "_").replace("&", "and")
+    clean_tenant_id = "".join(c for c in clean_tenant_id if c.isalnum() or c == "_")[:32]
+    if not clean_tenant_id:
+        clean_tenant_id = f"tenant_{secrets.token_hex(4)}"
+
+    # Auto-provision tenant manifest
+    tenant = tenant_registry.onboard_custom_tenant(
+        tenant_id=clean_tenant_id,
+        business_name=payload.company_name,
+        vertical=payload.vertical or "salon",
+        phone_number=payload.phone_number or "+18005550199",
+        address="Commercial Center",
+        primary_accent="general_american"
     )
-    _s.exit(1)
 
-try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-oa(d0bQ1o+k!KNCH{NPQnt32oz}Frwh~t2q7#An3aTt1R+R}5Cki3PXud3DdGYxxFCxQ737I%(E-%daU3=kP&NfCf`Wh`WeRGm%)K`dY+pN{&-{Hq_uO-S+jluvVNc|`R0KE0kT^#>5-6}y4{15}(a=uZ!Q_$i!j#)~N&YO`xh;LMG;VHjC<azWlbj{=&pL0a-c<fOQ>e#!tymXwBK+<)%9`8^<fn{hPV7_MLltU^{T}D$OeERZL>|lTf_2e$yy%;bU<&NzQZcapnJ7kX^x5}9K{qXy?PPZGlSA&yg@t<qvA9=>I~ri^V=laV(N_m$yf)+pn!VXo!Tpa?F)f!?!|1b4{?lJHk0#@CRKWhCo0uB1o$d9o#&n6rtvm@ja&VP@eQ@U!`%QNoj?a<(Z(AjDz2MctA}Jm?-%bMIm8+nZR9Ll?dPqGy2IJfjtW&s~UR562N%Yk{V);gt_^qr%H;(SG)TdUxFc-CBkxB=8bx@N#F)ZghKMY}?dq4xaaB8E){^Sc4%&1Q5jckq6g|G)PWZ$gE$fb+{ADe0CuHWHyN3>@u2)r(2EY~TdHsVeUO4M>`tDE!7RsOZa{4;*;mw5+%p@=$>iBcAKF1=?bGyGttDSPEGus>qW;12QuhpW>#UJEi&q=DCjbnL>w&gIDvUN1fQH#9ZlDvN`g8Y*o3FVHti9YU_j9<K-9?^^?h4Z4U+;Dz(g<zMOKEV3uHPS&J$78VvnhV3d#q)fy5r^J{%Rb3}J_$@6t!pVI4lOlHsET=%e(qzgbAjkBlhtbSd^hkvecaxTu;7HAo-c!>=xmByJaIfsuXG#6DPMh=&BNYhVeOi>rn^q}mQ=`(4X9SuuCOm9<xrJw3Y;~Ip-s2Uw2x)X~$Q-?B2UD;+pSRL%(2H~0qItmZKFs$gW}3j-wocd=i%CCzG8iM>2kejg^OK!R^HpcZ=$yAC4co=CO4g*Jgcm+$u|;KxoElvJ!<|t5xJg@(@w`>&N<l{~+U@4+FdTg{QP@E2uS_I;r@H!@sc7e?30UZhVNauJ;o0AX;zVOh0~?5~XXf8$>unMPyr^eCxw4MJ%_)dv2bDQXE(7(ajmT0p+_s6hN!w_vb*l*LR8oY+1(Ck;ecn+0yKwZrh5xx!*@legsOVM7M=BFWQ-3glQRT`mw>oyt#WHh!{S{BbkVTrp#k5lJSc3`La{}cf-{(i1_U!sW#W<j?n-==(u_;PN(>b93P@I<HV1n70)7oi5_k@O`|9GYX=C8MkQZ9==x$OnVLv^_{>C>exrrR>)g+E2p^CRoun=^FSG!8!GDgE}wRJVb{9Ju*ZqN)zo^=g}&ZsWB{1n0o2*Z>#jYDLdFp3Oi9k}VouDy~EAKC|8O2$bJWW=g<vvnoZFJ6d$~HSoM_ndCaTcWmR*+~_ltVYn{j#uXYMe=Ta1X!qe@tMD?@z;bN&n3`0d+VI*1S17j+a5t|O79%9EmJSJuKJKBuX5BfgK|gfJdTSzWCd5WkXq7=v+yh`uy|l=Hn)D^l#rqpRk&OcR7y1JIi!t`kIT;!8b0TV*^YiR_tNet~jP$Q=<6;ARLh?ipRpd>%-$WtIXJR+kkop_fGj&M=)#*5(z6B2GTJhrkmy1hC_eOUxA36Z>`RYR2x=450dHVZxOhHB|4?}MA;GTuIOgSviOs)EF8=)TOhJor+OXM6qx`kps?5(a_vKSvdK2~YJ7Rb-8RN#C_0`sL4{{?sUS8zU_d+zDqZlxrrguJ6(0s5!qL@*Y2HF4`HLi=buH3!U3lFpAs)J6mAyW52A-5rd<^gD^K!*`$ITI8$Che-1G^Z6_GH0JN?dPLV#jZ04S*&e)K8!d&cT6R6S$Cnb2dlDvr`j^l@rl#a8N+%Zcb7vhbyuAa6-#)*U)u`T??b07p&X1Xh#tCTxH|ljTzWo0vkWz3{K6Zx@El)V)J*v~E!l3!!g}o@dzs))5U?UO_d*ui8U*Rw7sQIbq-kK(N5|bn@pI;1bOJ)i#A73L8-C6EmXVEnj$I9DW*DbWvDeR%|H^<RLg?SQ!>yuTSI%NOM_NAFImCs;`cE?11TF9Xguz#~pZUWXPQzp2_%HdL=|A+CMTaKv_ZrBV#@0Swo@x6YQHiOQZ5<+ti&|i+D8A2exi4q^%>rwYKr1b2=t1V5&eW3jOMf|}0n9*N;EUWc?G!)0kjXU?+P5Kj;wQYrMt?0gnxV><1q>t!EBIy*deMF5u>Ua~#uMQa>3C@=`K0U0sN^WU8>|{CZ(l`}O&W%3Zj^K1Vu+W;IchGz+F5n;l{D{mkYa80Rbbs7070Z3wNl6lS^F2U)IKjF)P`-xz+#BC%soPXAW-5J4i4XtV^S_5n+kyFEjjWU11LkLOkw3!bZ|jE`q&pgF&KM^OZ(#e!{?G5D+Q(uTd(>w;NrKz7lmKhnYF<w)8+LlP98Dj0mF*+7&I+ad4x>Ln{lj*GRf@X!Hle!<xMbHC9$|l5-+TQmU@z^}HD-^VY)9SLTt0wT6w5;)eC=E3$S=;=49w32Qm>|FKx3z0U-jNi&}Ow!z_QH<zYCo2Kt>?eb><^^E%MONKP~rZ>jtfO;Qs$TKChmrnYv9+ZrLdGA~*6n;oRms+wft!JdXFLW6S)({X0oZlP`9=pe_LQtAYOq{eBDvmYpR>(O<DbYry#VL-PeZAIHVEBIv&R7h$>r2tWKAEc?fR`ij2xo}ug}ZH)l;pSO$2%gS4gh$^w**ARjEE^7ti6J-nZmvRMr2Fm}*%ut-`m?yBmH@BlcspS;(ei}RTdFWO<&Q)cT6DBO9fV&!sKlbsNf1-f=58@2_1Lw;wrs!k_mrWS<f$&poa}?-bc|aF!V}g^FVf~{8atdNRaa#kj{~&x*$)@r-6HzxmRqA6qOFfc~=jyT~0REr@8mwEN?1(s|t$!~kWLw4aoM@HGd!9VEg9Tx1@~oGC0~%N#wSWEDIa6vUb4R2jy56Kn0lohTZh95JgmCx<RDVB+3DEw$>Y^T`V>m}Mk#NzthwrrMotbEgF15ab63~TAlDSZ)>5q3YeTxfZY=9psO1Z61;;FftN8Z`6?_yIUJh2A;kbPne8!_y|E=9JSQB$D!ia`G2Zd<1)N@wy5j|XC85WXKPcZ2YsDb^8^*c$qE|MnPKz<(74z!?*Xl2Y!m|8kS&Y8xt;3LPdk+}`ZEB2P{7-F=dv7J=~v_{9$D{?w|96{@L^1H(MA5Pnz`?hPiJOc8|*OZu;_3~qBDnE>VsNsHDxUR=|+4j<5BSYLc)Ni$HtcO3^Z4EXUG{CwDhSUaG9!V$3kRh(Ml@bJc^I?cI3Diz4T?F#f+afgP1%`FZ_(<)<Dg5Qs})2pfn5u8>+oB=<;{>TVMn-3@M%KFEMK83DJX&AIo9KfbUc-ftgdmO{ybls-%rDdM{azy)!&t#>^BV!anvxSDOVb+Fqx?_TOXCe{QL6&S9@nBX%-LrLM5+m(Grcky1oltyt=Oe9f<FSD?b`M6?%)2S)-XH>-t=8LV#B-P|2!BER^A^{U`v1r;+2_OhwpsEo9}YCf-PnZ~3@IGYSZ1nEUlB*&!lw8+QtRn$ThXGHL!oTqOroq7(K6){u8%1hGw0m~=93TSo%I!HeKh+Y!%qBCMC%h5dXDPckdUJ%#7ewEzE6kd!(k4BI8OAhMfO7TY2=E~_m-Jf>TWe9?TAMD>b~8AAx?VGZdlxVvV+&;SvP4azhxJ1s||TaF7kAS-|UM-m`%6}Yr~G6auewt&kf-SIcZ@3G>CgN<n-bKF5G5@sJOz_opF=hO)MXzQ*X;v(p4c1^arsLc2+?!#&yO+T7zr__^V$1uL_E7D>gQgWmiMUcc%zi4kMMod{R$^58n7{^)(3JTj?x`qwSouT}=zWyf+j>G~mlY7qCBo=eKe35v<QEmG?Dd5rBWdd~+w2!@Gv!EpKeEpQNz$Kz_W;E-UZzah$w|jMYd$KY;b&DlPrG;hEI8+xlyz52!!3F~hS@$l26EC&iBd|1ivdh#v#<b$<PfP&3AqPe4Ub_gEr1bJO`wL;ub5V+)AC{Q>`j1x>VA$pU}g{k^HNKN2x{>a&vw|F?u#nM=e4*{yXH--CUtEvdh_N-Mm(hExm#zX$RED{NKR11&AIYj>~>?WL>W9j<?NC+?f*(-k&sogyW|-s~dvu(7_DD}nj+FdlOtw(528LViO!W5}G#C!(;FVQ)$Uv9O#K)br`<8-8Zrg)YZxxt)go=s?2p&%OC2Bwcw3`GBVCHAQ+0$Jz|=V_<#>-CE|)H;>PXb1x{s{O}>VVJ|B0X^83B#i2OHfU9&$1LzBB6B@#AC2R94?Deo7cT0Y51~lK<CGh4mpGm*jR0Z&#w-zaaRczz;q5hfx@Wa6(bL;76B;mJ^{+S_Pai2fmFRq*teD`b;=TP*;=Qg~b_^A;-v>!zG5*GJYZPEFwnsQWeb`0P=3-d`!S#vy(YvVfZ8d)1sb7sDN4E^zWts(>9m)R$_ka6R#(sJ+idHn;%KQ+?b^l3=n*Tk^w@68FcK_@7FTJ*uRhNohPpT$K(`(M&hFT<M*Cvs{@E#vDcdI*1^`3>Q_gwc|ZBGX?G*Ob5?&1x+3JR6?biCP>t2tH#^VDdLcLi_*hC%bf=<8ap+*GoZJx11B(trG;SFXs?NThW}O=TK;T33(-?-_W|v*Iv_ckJIMy%RQ1`oF}K4m!wdpNOzuZVC1Eao`vQo_?+6NM)LuE<r@z4#}TtfqyMDjJ5;{L^V(_a$*yKq^xHdWlB}X&bJ@U0k*5${zl$lEnyOh5VgKU#qCH1LF%ee{_`Db&d$x<|bzu`9AJEi@gwcjwr8&m>mwYw<eR?st|26^})UR_;eSq(a4e<|pMsHG+eRX@yvGnI2vYaJ%Mz-;qp!)AgL$1J3tHYbrDD3ef89Ay%B?J8jx3!~jRpUZI8#YbqfUSyakFg8VJ(R#P6Ca7M$P1g++wM<3Hfa{1$EMk(LHsNd-gGI7%p7*|uQThN(x8m^K=!aZFSrlHr{!=I9`<r6zcgq8|3G~Q@Jq|Ou&3but3qsCA$@jeW+%Ea<=iw?d5iinq;K*+g7_`ky39#Z&b>1O=qqFYu0q!a_qczu`9@h1ojeTj^Q!HZnVYY@aT7FC<I!6qC&)z!Oi}i6jxwUf$*%_0KH$PQ5MBCQsO*+6)VCOZ^EK2ziXXXMqdTSFtLg>`!EZ5u{$f@K^*SMakDLsI<IgYXt5%0=Z}9B*iiP)`gR?VzeV0|HK=Tibf87|<UoQ`dp?-CY{aB3@?JnYmn9sQSpCt`H2lU&D-|GSxI%+)I9exQ>%ppf)pY$^~=+nZ{9nwS5^>5(HZtBOx`TB?I1K{txDL@~Km*lB{`r>r))1=PWi*cQ56N`tpV0IA@zxWeB`xM}}YVto@?jb>ar<ua`l?ykGF7_v&9}M-e1&4da;*=AAs?;*_6%CVgUJKII-v?W@uGlcYS2CU_Y<LURS6=kLCfz{(2F&l%yexMs*ny%*w(Y+X{id;95dV8VXd-IFy4r#Kw98$}XlauG`fi1!bjk2bHEN&Zj|ToR&rjjT`7%Xn9omV>bNr=3?B8a$PT)g(w>Y0lmICv$_o+tq&|$P6FTZV_EYKjYOS?Xfv^3%ar*$-jkqf+UqP$Df(2e}0Eeel&m0&qd>K)W9{VuiY^#}c9I3LizKKyHlt|@2Y!MLjDZo)Qvs%;!p-)3$DuhlsEtPfDXKR?;YyXkReQcSx*jb97Zuhvp<6x0v1Ui?z;#@Y3D`;)55!20$g!|9+uLkq30^@G8Bz5Gi<3U9@mT$2O*;A=f5Ub2if8`ZPTnSC-N5&_^lIKLkzqYr8d-rLCZ1h>WhDhVYc#ytFLNrj+(P@R3x6x>3_^EDO={-p#*A7aUBxxHga(r>h9hwuV${x~8o3LeMN!gU24HhI)ldJX<y##wgLp#MlJGRv%z-k8o5w7;H@AGdiZ8l`i{cx)g2#B`ki(vMDPQTE;_yz9V6f?8S5k6t2uT-AG$w8_tYi?{6+<^64Vb~dPA%e?tz*6p(zrjcI;xMS+#!1aOpquE{s>cgaa)`igOa2@2gAU<(w!+N687B@TmOhqpe$$&omRgKC^D}RkkzQasWXeoyJ&pi>0f%UTl)3U->+ZjhZFHD+Hvykx;chkza2MLjuEp0M5?WGgRP@e|>4A77B^Ap9%IW8k3ev4aMOBkNgP%@Jn%1lHpOby!_UT+Q6S4Jq=<dqZUhsF5``mca~tCjX`V}kSd3&iZazX$0DFu(Q~4eh$ThY#ZKBL8r+)Fq!AG9eVp4gOnRH0WP!F*li9ZugekKIme2j??2(1R8wV2ldU8mcxIZRa@@Yo_!-m>1^WJMt*Zb4(e}kzRfro-cN3&x<USf9+B!+nGr~V4SUm0S+q<!$nF9Bl^&tzf%ppW*92x@OP0i(IOCx%v3@wS0lgpM=Wj9E2o`&uA2lK!n1fDhYrl9f6hH5u<#3S@z7=~e56(UjjxaA<#x5ark7&^P)N3OMK{qKC^snhnDxiKkWMtwipg*{WN<Z<vrzt-r!QHe<^7C3UM>y)UhI*?waJ96|12|vvuRCygs*$p_W+wvNWsd$+)Or7cNSt5^a>&5<QTi1lQ;Ya|cN<Lr`j6pd3D%>^f|2#IMgFF>tP(YE!@=7-P~5=URO)q$W9Q)W{8gujmv~{TLhh;193X$byep|zzoWYi{=+P^KGz<7F|JDu1N6^4z6CYDP*d(EmA}KY4~U@i3m&;6LjnF`f%`2{+CV5AkC%QQeR>d=+=+{o_^dVZD;#mmi$Co#-Y#8H7*hrLf35*u=*sZBe4DU?1tf7mO+4iaymcs=)E__kpLFgmTq0jXza+cwDAAnEl(Q+riIQvZ!qH^u@ubo>Ce-^(t#aAt7sP$BXlzCS4<A(-6EYQE1M%}~Z*dU6NC~M3>D6F33;g{Qs&~xD?~MH+gn|At=x-SM<A|zZ&Rn5GAm{mq1a8oez<lJiyxKqq^zRS<HXp(HZ#hlw{XLGH8TZ`4-vRw@(7#~)M*QL|zQ);oW*aFpxnKYv`~kmNv*&~yMf;7&tA!uC;eyRfDxGix{m%djcz(V$=g5T*`Ui6;?%aF4FpJCbUttCC+XSdS>~`(*+fr(AXG(*<n^F$MCrgkB<o9Y&ALx%{qE_#E?!lY3ZX8fs>gMq)O3AXVi@FE-&$5-canHa8Y}eF6e2V1}+-2xW<^RNDI5`=?WX4M;PA0tRl?Ii+>=(#?vnOhOE+~Nh2lz`M#%6e#f9;aOQ59uB*k1}gjuqf&Q7dbAr?K}HMPXo5i9CS64$b$sZPvU$cvoY^IoLsBn-8w!8~NLiiRh*kbpI3lol##H@JEc>v*PNQrM#KBo@(?b4gUZC<xeWj2LB;zK=f6n<1;tckD2<u#cYtWuo=R}Xga{J0Dke(n=-}8H|o0%Vl3MSeIev&vL%1_iBP<GzpJp?;tr%=e|<{|ZnBQ$$1tzRn$l^!<5eLP^D!p?e}{)Q&<}nM-aq^#PvU5TKEUTm5C0nP#vv`^hWh*!Q(hk~DPkF?M%kos<^lW|s2|ARC|~5af8}rLepQ>~XwOYVN?WjL5pLA$5l=NX>^)fkzK(f9`oK+O^tX79W>>{Md>h}a0<Jmn6`+r0jYAtr2cyrQwpKRVXa&|5*Tp@t3}55<$<5;`>XEG<@b|EubxiKjynvOImp<xpi~CRFjru1|U=P+;w6p)7y;}f%;US&2Xa@B6;{5T#UQ#~XMO$<EurD0Mr-{Y>kn3$WMmT)l!0!X|*Aa*ll_V_U$AbTfz94wIo+&Zv&p-L68bCi3f1nS`@$FMP8AlWqlO(p@DvIq0s}p7{=!=;ZigE(zuj!)eCe4!}eG^h0ROI;qKQj8G6nQHR!au|v4J>p|-kLSEF(-NLlJ+q%Jx5&y;R{Q;D&*Y<`qx=;&9Z+WnsOt$@&(?%%Ms$A|NcJpo0zIMh`;_mp?zW}`CCQhb0(l~qoQ1_jrxzwc;O?t>iy_NG$VI2I6rjO8_C+B#rXmovj_AMSbxBL>V)_mdcmJ6KJE|dKXJ7g=)dP{PfgNs%~lKkF%OEL!JjL9?}o~cZkR&=_-r5GZPB2-n-1~^KMZX6;{eD%McrIJ@`l9KQ+KW4Mi&QlY{hVn_Jt#06$#X8RR3&@5a3ti%!n)zlJA0<gZNukL8Jx1kEB0hf3C7O_^*U41)t-{s8#f&O9GD;aRL47NjZ&eed+R5j;d}z=-XziRr)NsE@@XwLUO-F!fl=>@@f&SuXZr>@u$bE{l8V%6CwV()6)O)(NG(J|Jxbs=NZEGCJo>hj9Kb?zm=Oxs<wXl<=rK!<IZoJ)-0{$9R4B7IKMk~Nx}-j{SQ0&{l=Nm^W1OniW<GPJ$LlmZsC<5_fqmzQdw!V<Ck}>)P;@%<@Uz@1pE5}@98>xL~d2eTFZ%LktNo>SK{EA+^K0V#Vk%{>IO6158Uhn_|+J|Z~g{f0RCn|8}=l<;65B(PijoLHsU7Jo4I|!&m|Pf1dCITc=$r|58c+$YA`-veL(msA9&4TA)x!??|)s7%6Az(Ly_yP5^Q{|FG`C)N)5=(N8&N#%hXVQmgcGI-!PRe!qkY*&8ua-UrJ)Y{4D*=N%(K`9jXsEiSDp3jy}!`1^IQnH1q3*r+7s>X<dXDw%%}m)&c5=MBh3>+x-2hFtFJwAz%f%L22j@2?8+%=qGH~(|LW#YoW5ZADLZL7OBXhJss;2^zp>_22$(O9gItB_f!x7{i*Wzva3=SB~!vOj&se-%Uq>bxZNZ1xNj294beqS@?=2&T#tGXYlnsUrzC*{<=^tiR>S_m{8j|_?2<5Az6&M0zVudC6Z?mDGH%42o-~*J$^QZSPj~~~JYl&1W(pVmn-A~*7V!aG-vx19(EiDS{`H8g!9G~zSK#+8sw3`b$db$8{ojq{;tEvvP*TJ<+B0uSiatk8gadX?bkBX^eenJd)VDW7ul<6@%`ml6N7Fe*kpk)4@*{Y^nPAk<^ZEg-A6iiqQ&0%-chSHqPPs+rlO3SGc~26w%hwCM(6!>b?rVA96mby%zl8SZ0{Sbbgkqro*Lnl`67t84`sUHA?Un~MRj-AXI&7@3%jXUA|8Hy|AYQsFZom)y|ISapBD${*;AMZyu_Qi^3#_;3dg4Mp;xPIFe*)uwAd6!K`C~?WqVpPQf1a<<{$6O%--7<8(LZiiqe3oc$q)ztUl#ox@cZ-k`zi*bDKprLKK_^S3+q_V3<va=X~cjtztnPgMuW;zTzZ2SbkouTVj%y_IXE}lWNkp@7bN3+Y57t$?i!e2=b4l6KkP43tM>+4;KsrGDbRnZcPyO{CmHW|{={EgIMDr<!Czp5_2~#V`q!Li=fU_~nl<iEaDN+!zu^6x7qI@{{QvL}>_6Os|Exa$g9{DBhc79eMtoS9?|;Zokiq{4`M>$>GGQ&L<pcf!e*Ya5AK*EJ?|+Q1J?MW>vp(=A7UDZPhy(CrOMnY?4;9d#|NQUQe|!$;M^Pg)F;csB4!r-{-UQvhBy9NO`q1|w{}}i_f%u!Vq-M$Yzpf+asz#of<FXVUD;Da<=#L<KM?n8$fgiHaHOitG6s)Ojkv}i2pJkUMTY<jl|1_4iCU@Q+d<W|X^x=p73En?MBL8ClM*p_>O9}Y@jCX|be&MEk$T)u%_J;!fTVTF}^>G)-znlQ-BQ1B1`fwLTTzm{=xF1|tfA)|4(X`+X0{USCCU0~3FrK}rAE5OO{xR^}Fn|B_{&4_bpLvVH|1-7&@%fNn8~N!Rbie-ux}U1}H0U<XpkMpaC7eb7<H4xbR=4T-Bu1deq$wRuXXV8bGN6CgSmB;0@=J-`vo5$?hx%!{;H{ljunLwD+>?$5^aX)!HT=cA{{Y6%oY#ttC!4PNcEjt<HXP`FzrxGEhHz&_Og|V`b;Zx*yR|I7i!C@`Y~eqg48_@&d4*jwD;!kga#ZK5g{#5)Hy8ghYChtB0m4&9g#"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+    # Create user
+    user = create_user(
+        email=str(payload.email),
+        password=payload.password,
+        company_name=payload.company_name,
+        tenant_id=clean_tenant_id,
+        plan=payload.plan or "growth"
+    )
+
+    # Issue session token
+    token = f"tok_{secrets.token_hex(16)}"
+    ACTIVE_SESSIONS[token] = user["id"]
+
+    return {
+        "status": "success",
+        "message": f"Account created for {payload.company_name}!",
+        "token": token,
+        "tenant_id": clean_tenant_id,
+        "user": user,
+        "tenant": tenant.model_dump()
+    }
+
+
+@router.post("/login")
+def customer_login(payload: LoginRequest):
+    """Authenticates existing business customer."""
+    user = get_user_by_email(str(payload.email))
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+    if not verify_password(payload.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+    token = f"tok_{secrets.token_hex(16)}"
+    ACTIVE_SESSIONS[token] = user["id"]
+
+    tenant = tenant_registry.get_tenant(user["tenant_id"])
+    safe_user = {k: v for k, v in user.items() if k != "password_hash"}
+
+    return {
+        "status": "success",
+        "message": "Welcome back!",
+        "token": token,
+        "user": safe_user,
+        "tenant": tenant.model_dump()
+    }
+
+
+@router.get("/me")
+def get_current_user_profile(user: Optional[Dict[str, Any]] = Depends(get_current_user_from_token)):
+    """Retrieves authenticated customer profile and connected omnichannel channels."""
+    if not user:
+        raise HTTPException(status_code=401, detail="Authentication required.")
+
+    safe_user = {k: v for k, v in user.items() if k != "password_hash"}
+    tenant_id = user.get("tenant_id", "salon")
+    tenant = tenant_registry.get_tenant(tenant_id)
+    return {
+        "authenticated": True,
+        "user": safe_user,
+        "tenant": tenant.model_dump() if tenant else {},
+        "integrations": get_tenant_integrations(tenant_id)
+    }
+
+
+@router.post("/change-plan")
+def update_subscription_plan(payload: ChangePlanRequest):
+    """Changes customer subscription tier: starter ($99/mo), growth ($249/mo), enterprise ($599/mo)."""
+    valid_plans = {
+        "starter": "$99/mo",
+        "growth": "$249/mo",
+        "enterprise": "$599/mo"
+    }
+    plan_key = payload.plan.lower()
+    if plan_key not in valid_plans:
+        raise HTTPException(status_code=400, detail=f"Invalid plan. Must be one of {list(valid_plans.keys())}")
+
+    updated = update_tenant_plan(payload.tenant_id, plan_key)
+    return {
+        "status": "success",
+        "tenant_id": payload.tenant_id,
+        "plan": plan_key,
+        "monthly_fee": valid_plans[plan_key],
+        "updated": updated
+    }
+
+
+@router.post("/integrations")
+def update_tenant_integrations_endpoint(payload: UpdateIntegrationsRequest):
+    """Updates connected omnichannel social accounts for a tenant."""
+    saved = save_tenant_integrations(
+        tenant_id=payload.tenant_id,
+        whatsapp_phone_number_id=payload.whatsapp_phone_number_id or "",
+        whatsapp_business_account_id=payload.whatsapp_business_account_id or "",
+        meta_page_id=payload.meta_page_id or "",
+        instagram_account_id=payload.instagram_account_id or "",
+        google_calendar_id=payload.google_calendar_id or "primary",
+        telegram_bot_token=payload.telegram_bot_token or "",
+        telegram_chat_id=payload.telegram_chat_id or "",
+        twitter_api_key=payload.twitter_api_key or "",
+        twitter_bearer_token=payload.twitter_bearer_token or "",
+        linkedin_client_id=payload.linkedin_client_id or "",
+        linkedin_access_token=payload.linkedin_access_token or "",
+        tiktok_client_key=payload.tiktok_client_key or "",
+        tiktok_access_token=payload.tiktok_access_token or ""
+    )
+    return {"status": "success", "integrations": saved}
+
+
+@router.get("/clerk-config")
+def get_clerk_config():
+    """Provides frontend with Clerk publishable key and feature flags."""
+    pub_key = (
+        os.getenv("CLERK_PUBLISHABLE_KEY")
+        or os.getenv("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")
+        or "pk_live_Y2xlcmsua2lzaG9yLnRlY2gk"
+    ).strip()
+    return {
+        "enabled": bool(pub_key),
+        "publishableKey": pub_key
+    }
+
+
+@router.post("/clerk-sync")
+def sync_clerk_session(payload: ClerkSyncRequest):
+    """
+    Synchronizes an authenticated Clerk user with tenant workspace,
+    persisting email and phone into Neon PostgreSQL for future bookings and omnichannel messaging.
+    """
+    try:
+        user = get_or_create_clerk_user(
+            clerk_user_id=payload.clerk_user_id,
+            email=payload.email,
+            company_name=payload.company_name or payload.name or "Luxe Saloon & Spa Guest"
+        )
+
+        # Persist customer contact details (phone, email, name) for future use
+        customer = save_customer_profile(
+            email=payload.email,
+            phone=payload.phone or "",
+            full_name=payload.name or "",
+            clerk_id=payload.clerk_user_id,
+            tenant_id="salon"
+        )
+
+        token = f"clerk_sess_{secrets.token_hex(20)}"
+        ACTIVE_SESSIONS[token] = user["id"]
+        
+        tenant = get_tenant(user["tenant_id"]) or {}
+        integrations = get_tenant_integrations(user["tenant_id"]) or {}
+
+        return {
+            "status": "success",
+            "token": token,
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "phone": payload.phone or "",
+                "name": payload.name or "",
+                "company_name": user.get("company_name", ""),
+                "tenant_id": user["tenant_id"],
+                "plan": user.get("plan", "growth")
+            },
+            "customer": customer,
+            "tenant": tenant,
+            "integrations": integrations
+        }
+    except Exception as e:
+        logger.exception(f"Unhandled error in sync_clerk_session: {e}")
+        raise HTTPException(status_code=500, detail=f"Clerk sync failed: {str(e)}")

@@ -2089,28 +2089,47 @@ async function triggerInstant500msCall(sourceSection) {
     }
 
     const cachedVip = getCachedVipUser();
-    const res = await fetch("/api/voice/vapi-call", {
+    const res = await fetch("/api/voice/call-whatsapp-with-telnyx-fallback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         phone_number: phone,
         caller_name: name || (cachedVip?.name || "VIP Guest"),
-        customer_name: name || (cachedVip?.name || "VIP Guest"),
         caller_email: (cachedVip?.email || ""),
-        tenant_id: "salon"
+        tenant_id: "salon",
+        prefer_whatsapp: true
       })
     });
 
     const elapsed = Math.round(performance.now() - t0);
     const data = await res.json();
-    if (res.ok && data.status !== "error") {
-      const latencyDisplay = data.latency_ms || elapsed;
-      showToastNotification("success", "Outbound Call Ringing!", `Sophia is calling ${phone} (connected in ${latencyDisplay}ms). Answer to speak live.`);
+    if (res.ok && data.status === "success") {
+      const callData = data.data || {};
+      const latencyDisplay = callData.latency_ms || elapsed;
+      const isWa = callData.tier_selected === "whatsapp_call";
+      const callerId = callData.caller_id || "+1 (617) 271-8180";
+      
+      const badgeHtml = isWa 
+        ? `<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:rgba(37,211,102,0.2); color:#25D366; font-weight:700; font-size:11px; margin-right:6px;">🟢 Tier 1: WhatsApp Voice</span>`
+        : `<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:rgba(56,189,248,0.2); color:#38bdf8; font-weight:700; font-size:11px; margin-right:6px;">📞 Tier 2 Failover: Telnyx Line (+1 617-271-8180)</span>`;
+      
+      showToastNotification("success", isWa ? "WhatsApp Calling!" : "Telnyx PSTN Calling!", `Sofia is dialing ${phone} (connected in ${latencyDisplay}ms).`);
       if (resultEl) {
-        resultEl.style.background = "rgba(16,185,129,0.12)";
-        resultEl.style.border = "1px solid rgba(16,185,129,0.3)";
-        resultEl.style.color = "#34d399";
-        resultEl.innerHTML = `⚡ <b>Call initiated in ${latencyDisplay}ms!</b> Sophia is ringing <b>${escapeHtml(phone)}</b> right now. Answer your phone to speak live with your Luxe receptionist. (Ref: ${escapeHtml(data.call_id || "live")})`;
+        resultEl.style.background = isWa ? "rgba(37,211,102,0.12)" : "rgba(16,185,129,0.12)";
+        resultEl.style.border = isWa ? "1px solid rgba(37,211,102,0.3)" : "1px solid rgba(16,185,129,0.3)";
+        resultEl.style.color = isWa ? "#86efac" : "#34d399";
+        resultEl.innerHTML = `
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
+            ${badgeHtml}
+            <span style="font-weight:700; font-size:12px;">Dispatched in ${latencyDisplay}ms</span>
+          </div>
+          <div style="font-size:12.5px; line-height:1.45;">
+            ${isWa 
+              ? `Sofia is calling your WhatsApp line at <b>${escapeHtml(phone)}</b> right now. Answer on WhatsApp to speak live!`
+              : `WhatsApp call was unavailable on device. <b>Telnyx Failover Active:</b> Sofia is dialing your cellular line directly from our verified Telnyx number: <b>${escapeHtml(callerId)}</b>! Please pick up.`
+            }
+          </div>
+        `;
       }
     } else {
       if (resultEl) {
@@ -2128,7 +2147,7 @@ async function triggerInstant500msCall(sourceSection) {
       resultEl.innerHTML = `❌ Network error triggering outbound call: ${escapeHtml(err.message)}`;
     }
   } finally {
-    if (btn) { btn.disabled = false; btn.innerHTML = btn.id === "btnFastCall" ? "<span>📞</span> Call My Phone Now" : "⚡ Call Me Now (&lt;500ms)"; }
+    if (btn) { btn.disabled = false; btn.innerHTML = btn.id === "btnFastCall" ? "<span>📞</span> Request Sofia Call" : "⚡ Call Me Now (&lt;500ms)"; }
   }
 }
 const triggerInstantCall = triggerInstant500msCall;

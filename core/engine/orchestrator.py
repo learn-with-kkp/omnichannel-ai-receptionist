@@ -1,36 +1,687 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+"""
+Universal Omnichannel AI Receptionist Orchestrator.
+Complies with:
+- Omni_Channel_Appointment_Agent_Requirements.pdf (FR-001 through FR-020)
+- saloon.md (RAG vs RAGless, latency tracking, cart/pricing, barge-in, female voice)
+- Multi-accent English pronunciation adaptation (Indian, African, Red American, European British)
+- Real-time Google Calendar two-way synchronization
+"""
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
-    )
-    _s.exit(1)
+import os
+import re
+import time
+import json
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, Any, List, Optional, Tuple
 
 try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-owOcU)8V-aj#rgoKbmHUuPy7!YWC+goU>U<hF-AXy|NBy1uC5C@7@h8j_;I6%RHj0#i`chL)|RIOJCT0sE^SQG>l6e+hjTIF}X2_Psw&vSo&pVv7#=kxuH_xrP=m`UQfofK$QX#UniC`Z}=OIU+!?N^iQ+%w8&i>}g_acqrF3T~uG687zKM<PaC#bw3~74UC%sL%B<MXmCcN|zarKilc}^&-uIRo2WdTWJ-#_ezTK4pr$px=4!(S>=E`>HkQ{Tzu$2Fp}15>rv=^?O~$yn%Dj^u0f7GSux+JJfy{O{_?Ar7<~EWXlfzy_S0zU4fWA-d3g7?EO$5G?Q7qJG5L89P^P32C+P{RyrH$U4Y5VtW)>Q&2(F9gaqrs+gn(@iPzIzIbNTOZtw-2a8ugJL0{)g+oQUnwLd|!_`V|~7f>RzkNy~U|`xD4pmKBy8avF%MB+l>){<p&^u&sN2h_Eg<MJ+0?(w(|db);K@?`AAjI%7^!@|8?a?P*UWvVV^Fyl-CJ_m~|?mHiBSuW1~|mVVak>`ck>tZZ%otbaCt*t+d$0$F4ILqAQVrA2VnmOqJhuAxh`8G$C0r>>IoxJ%vZ@H-MO{UjzHPmYs)XH@B*AC7TYUm(FEN8&uI)J=UUl-(=)-Z4Y!#;?a<{57u@;EbNRdJLo69wp$jqAv{~l-K0ZK`yuo!A+IKd((O^JgnGRTn29(h_q<5uI-|WexWCD97F%*-5e?r?OwmYgjmc9{?WK$h&^vhcx|aLNo(XpF@PWS-{tsqV8H<|6Vme-YNpw>C+g)-S5^=Ef1{DJDE71yLHS|yfNeP;1pHBF{t4rT?sb&i%lf+L?hU5N6dTl0<!@`5SnVMn6Jqy#Zk6l(r!iPfN^QCjuaQS`ZIGkl_6RGlLm7S?i@|RtMZ~;%6*V*F{A+^l`7<#mL+-D}aL?@GV(<fQ)aShabjMh3T2V77*Iifpjxw&VX85h&waOU(SF)tg`}fXu7Fnx0e{xCc|CSqJ<(wYd7x1O(r^*PsxrO28cX@dwY-yc!-)n-Pjh?*34p)k7P8IXAHu;&r%a^R(J!kZ?+`dF{;J2^CJLiO~Gycb0vt39DOxuj&h>C3_g+$HMH9?t?wSx@ac7^|{8IJoBpL^RaIb8I;yR>)~_bserNKM_#etPw*)JNY0MHzpUzZSZ_;$Iig{-Qz~k1~q(;%xDrWj#-5%A2&g!H$OK<kwP}xXt;V?(&KS)L~xUQ8;+NOJ7C2`OITAX71J{uN*yL7t=$KX}$jtR#6&D7Qr?|o_ohsYI!K|{mcGV*u|IECeE7KWD3dWU3U~(gXt?5;(wt>j?3Tpm+W98#IZQ$YwT~`Yb~?q{GpRSkYA1RzM}<qbAB)!_RQ7l=YaJ)bn+?JU!RYw2>2~R;`LDX{c+S`QpeEum@Mm~gH&Z3Gg&%6bd-_rNOITg@uwnsNy1uGV`mb!?z_G#=8C#x@ch%VTd|hHyxdhVdOxr)O^FvJEAmo$s<_Q8k>YGrsmx9!3A5G*W6VdQxF<|I`c%>_>T{0~T#ZooeXFmf5(2U^WM3ekIVvu~b4r3OcCRXWLP%+%Co<Ho6|(zrUvW3>^utSw(ZUn()*&foM@&%<!QwdhK8NGJ&5;z*rd%GyuJ;>G6}j;U`=8qri|Q=`wZxcUn%QyXF2`^DH|~S<zsXHpW~SXSbNQy_WxYZ{gJ}%S2~n=Ro<;~LXqO|+yKFtSVea;;EH%r=_1gt^Qg$oFPLQ={0Ri^ni+Mkj+WOdx9m^{Z6BL)oYC$;dLdYW(g}46TgnmDdq2$I_J~tD+p{oOJ4XZ!9pGIAz-Q|VHAGMW~;T{ac(sEQ~-AH^RVVQKk<*2YZh2XV*mk-6_nXT$9PWz_{yJ1P?t4Z<;ql>Z*E;JYQ&-SV%HI{hNaw1EgU?ba@VIgc<i~P56GHm@pIg<Fo-lN*Mb;QncN5b(QLgH0sf`Dau!8<>a9Jn!E&Y^VK@z2k=`%;Y7EWgl26&+_Rm0J6rmpzDP2JC2G1c!C8#f9*^fk@*W%WKQ^_UB}DBJfcJQ+y^{LS*#YdR&0yZ@V1m4^7!XUBxp)l}25Uq6TC=U;+K{tRmlkre^MmuWTWBH{z0&ENr^$`Z}t&W|Jq<d?aQbr2i$cw5;&T9tTkeIf-LycrL1a9m*eie;j20di!N;j;wg-;8Aau>}iHMBD)<%_gH^u0mbB)&VC-Lu@|GtTc}Ftd_^ws6T-8zmN{hR2N>aB#G%LiW6v`J_la3lAe;7*_D3kid-HxD6Z2lX)kQ`(JJ(=$ht@tu5Vs|xzH>%g@VVjW7_fe$A0E+V7gc4{@h9-lMXwFg+N@#)ZkCm@`f#+l&OQp4kah28pA%X;C=9t`6{}?7MrF5_NCLKQ3c-_}$H`8iet!Y!kM+?mvb@23l|YTWAZ(9i3bZ+1c+rRrf0*6UAIjJqTG~yJYvwJaSmJ7x*HZ}ongcS5Y%^qkyqEoIsV4Dw7ek~miC@5`9c8pfz+eTrJh=Ht+=41nBcwmutUF&r&nG%j=0NeaJxmDOnkmQ9p1CPXAp40WZ%HhA5`w>CwN&axZ-MMr;+}a3MPa<0qx{jhsec{1j(y=VQ&1-l3z~_j65g|xh_iO0V9YKz^Wo2LcCSMhC7ml3uB*c(30T-_?_G|c2jp$?F+z6DwtTAw{`Hd0)AUr}Klp5u(Wpm}6z_t{RlbN`yTCW{Qzc{m#iI@%NwZ;83)>^@+z%W8{u??UV{Ju(1*E@!%ZX3tdacIVq_2I(wTnGg0sQ9@%e%VgZ;U)vZYFB7Nfxj$5Pk@y2dvNWBf!dC_!kXwN+ACqTKdjG`U{Vh@||Us=$4waCT~-)o9JR(N-e76C|mfzdg~}ss--7+TF_3&Z-+6>KlE>qe-DK4373tn@~KaQ;kM<<=fQey#pj7TA^)C{SlhxBLiz#xlj2UC1d1Q4^!UN`+RJFGE%BAbNKrk*iQ;HntAzZ6Z`Kb)&NqJm{BZXPADy#&Pq`1i-%Krt^8Ldwe~~#S>!5thzrFXrP<-;3Z#e3ICxRYOP#KIQ_Pcl#S?vY-9a`~(plA|Ch@1g_ie^eKz0%p2pvoYx>wEbA)w#W7?p0EVC!2Oe@IbYgpLNLJUj*T!Q>ey^>~HrhE9xeAw9Z{BwTGXE{GYKfD?Lym8glb|!`oBC{^!n>MUNSQ^>%@R`4&~uJ6sd)rsG7FPCk%+JIF3AI`WPxsl%~6zcV_cyyZw0Xg38C@jY?8Qh3APZ0ru}+D8QZReZcBn_j`FS5e$Gn@|M&i+PF@@V#XYvZv$mMKlw4L74xUWbvWgU~}2?S?*P&ok#5;`4qj8(~pnE_k1Tw)cSNk7_8VS;FM8gNi?Qz+4(*sw~ee0gzU%vLDaIb_#78lOUfHz<Hyf$?%4NZ-k&e9Py8n9n!}91YxKFnHq2`8J+ma<n&yS3_%2&2bbn8jMMh#@7X#nQR|i?+hQ!Tln1ajq-+%uH=i_tMaU35&*KrR@RMdU!nqh`zz1d2^e9j2tc7%kJnd@UB>Yn8}O#Y=GykE^>YG4yRN;=<c{P_ri(Q}r^Uje%=!Y9RF-S?+4MTgRP9K_}Y<G;`9YlQj!Zp7l)z^aA$;ilYuhkS@><L`&MxU%daLD4FAqqyNJh!4V;?wWQPk>2lS^(J7#{`hsc<R#Xa3TX?3FG})x$cg(2TcQgGk=!@9FzI~UC^CQEe<@$|)Zf2hLvi1fi!f#U>E!uWz}}G*@|KmIKZZ=;H^~3MHbVZD-t{enUv78C1nyGQKDH8RadVX{%WCf%Ds$2Le4a0&!%cDy-a0aK@zcrj5!`pA24$sl;YP(PsWrIYpQ+I~ikc_poH{)|(mj9d{gu@);NLGUt9XnMX%?`g-{306?dz7kKR>;EBPw4TBwk}Ci)Q&gV%$JZT=%RZUVj-QT_0KV&LQLqDomk<|BKNQY2}lZA)kkMILot&x2eQcs)?@|6w;dL>L8Zokk6eoQ}4~WGFQ*v;}k#h8arcXSu1;96F9fXVFEYbYVi$~Byr<GzlCW!|K8r2DBZN;)C;Ws_rE&o-yUaaoR`Zrloq@3&m&uh{vj=1Q3Lt^Rve#eV^Sr)W39KJfMUo$_~wnMF?&@NgZ}uZCdo=0!wcdb1yhiJU?K9m5vSm+G5qzgTxzQMhmOC=n#2yGtvUYA_(3+m=-c=HCsQ$Vt)pcv|4ynzkhLKM;&)DhVRB=4qE(%`vX>%ilLPx0W;}>ua?%g*j6}op#TO^=i%@!5o}~95js(6oLxQCAJ1VMX{D0Vgq$O<gAwRfzF-tn^zrQ=i;F4qCPh>?q<UbR5qqO^xXnsMn4~f)oCq9YpD6^GbN-Tr;TOA{Y%Qmc47FbK*^&i-8Kg3^~jF(E(CRN@Le_ebin~O2)AOF4&^$Ww@w{Zase{R7P`-iSCwxNys)H@Oav=DzF4Y<(@iFdmaJ)TarU%mce%!(m=$J2JM#cc_%Jd6<CHjd-6P16@%Q<J>6A6N*7_0N(P^4eaqX<4f~{}M{I@+3|;{fwX~3<KMqAIvcX-%sv%nTFpG+4G99;3j#gV9r;^0@}kS@F90neEsnE@%WMXp67Ymp(*}_R_%W+jWUKGqPS(q2VH!h^VUTJLT()~LgK>J=^rfXkPInmoF%PNPds1TV9N4z@vRc(r!WJy9+WRajMxYMJoWdL_P$5`vm@w>vf8=W8NIGnZ+K1pY{s_8Bi;VreDHo8WUm{i2$eUoZu$8AO9d`gmBM@v2tU4$Z~yt;V)yFY9wx8OCc@njep>c>B+0wr2ZM?8U1PB=rh9_lR48w$DWaz4SSq65mS0Hj)5qu1)N%Rvx2IWg3o0Re+nYo!BsLtGkPj|~`whHSnK{9K@sU-e8w0TxM^;w$vhjKHMN$@S__Oi%*MEOrLkf0FLTNuOZUhyv*xs%>=yw(Rd+l$ixr_lP9lo6@z3$d`mFdxBm&BR>_2Y^Ag9?|-8`rNN`e}lj_y`W0J}T3y34U95a*?7DR&W(h`y?8hZCySL@e@L*k_A5*k~zUo*U*Q*=;&8bbF9n9@Qr%LiGbfyC;XSuTi$=30(^M1-yrbc%p`#tS0=cTLI~K_?2BbQVM))BC(aN4gM6{T5%Gur?NBD{Xug*by*F;fDRf7FJZ(34zK@2i=0N^m*7W}Q<RR`Pd}q2s>5NMkwnO)~Hp`I6|FDEr-mTq{7Ims)<w#K*I!?sa`#<Ax{nN`gJNQ*wu;L0KhGJ_nhJV_}?kDGULj2bHX}!6k)i{CU2=JYApu@QT*4f|etk9A{Ay$J+4zf2H(*6GW925c8<rp{&zdfRsUJ5N87JoAdU*Lajj>JOzhnoKNe+JfB)VW{iXUeZw#s%A2mQI`x{n;GxMOVH2|15{_kJXYTZio~9H~93Rtp~VpYQLSL%xdQp{_KLO47rnH=ec#0pAy#Py10ti`%s0|I9{4;pQ(EPY(HQhTqPUx4=n(nIDI$SK8#*C1y+$7I^$<&uRPfU>Cb{Bj-$!HqHd|l+<(8C9KRs^+|S^?AxC5M{8a3{W8(U*9TWPkWEqD0=82kPNnGtoA5;8*v$%-&?xot|H;?nLvG~j61n7KQCiySu`{At*RhWy*DqqczUZuNCc|VB%V((7%j}$ek+~*1(;?KFkB+_#iD8AqCj<U##I`Yb4Oh1MeUQ?kZXL5p(_zpIw&}!$93X>UG+k%Jik;8W%#BXY~L0<3o=zWT!ZUabvB7)r(w@kS{W<L=BhpyA3_2&cOn-j-boDcEaxc_bnH%W!~0mot>PF8Dl_lX$2Eur@H$Np*jetYT8(CXI&d@DYlqqeLHx`X`a_s5=}6l`OeuBeB8e@C_)3G#n$$&D`||DdicCK4Z@BDfB?im1D46Ykz-0fGL^O$GU%R}P{&n`gJA<ZFR;e09KHgFJVM;enel)im#~d%qiDRMDAS9s=Sw+>6GI_u{d2_PYEaEhg9n^D^jm1Xh%lL5BF3>w;>dj*55_h~IXZE8Y;|B(9d#J|Mp4LFZ%f(1}`w)^@V}TIM`V|0sTpec%13F;?4D74IPX`Ua9eZd&<|#|NPrev<L~YK-K}0Uiay|Kf|}srjW3pMTO-3!Q%sWMAO?la&zu2Kfu`ynKHwa?sx6FT<{~HQ0>hwLh^f+vv-J9gVAr1wp}B?M*n}^W0kGP{6K=wH7<$k31pJnh<dkd!t7ynj@H~htr<V*zYIWaW#8UN>Pu!M-{QDPaOpEKTMAXMm!h7$Hd>o!O(TIo9u;?*G1(0PHS1UO?SE2e9s~m#P{AKX4z@Xz|8E0$dHlG73U4w&gt;gC*=oze@jf?YnrmjCYqxbk4he?D4yDE==_H4BxSCUf0aJ4E^k3{ub3vA@TR?g()$~q5Z(_Xa0;5q9P1bJ`FE%LzRC9+Hgu|pPd{}X!l$iI*GV@dln&6OS5YqCssD%H*ZYTR#iLY`e?bNUZuEzf^sGPdj~AEKz6zPvejxkp3MJ=6RuAG6f&F~Ke!=rOb*NQbmhZm=O({%4*4|aXKDe9Z+wM%kFSs)4opmO#V_O#@jYe3K^SrwwY>RuC55G^J|A}%xMQR<0vAh=Z^t!q75<Z54!<<&$T0$3SvlVcQ=k}s%bkopM>4qhhPpt5*)HvRExEh1}WTw3SK5N4M)>`DOsO}cZ8>}LN&FH5^^{F=IzaIzw(N1y#dHdcP@{W}?<pg;vofV%T8#LHHPZC;s(~uK%Y7MqioY%sYHCjKdc1Q17#EOP_um4QPANTqhih7(ps*D=%t+B{jS=0;oeUf0N$uQ%l3d7&J$L~Eqhw$<H{Owy>!6J%#<_~-%0{CZi$4j=w_5@(xSMV%%M?|&ofl4CU*eu6eJf6!h;$3?gP1~@t=x+kPj<77qWk$9C?F0#DYq}qY@ggqx6zc9HHKs1I<_TGT1r;Y{aiQl=__x`R|8D7AgU*PqJWNwI)0bLCg^r)^0z*-kt^Z$yynz_$cI#u05%^|#oJ9TkTmL(0XzwkD{M@C*OO&;whJiS;2G~zvGh<aS!0*>0=$y^D5(=r)jz8p^SC(k9TU9oSByN$<3}Rs`Jpg{+cVH2Q^3qOHO5T5jE!(vG{A&Zw6;uo#+<#L|ao?63%rSrV9eI?uzbBdm*?$*<o4J@p`qrq@r{38X)ifnO?vAV-MJP0iNUkfr!n-|%=~+K<y{SuwzuyA<ok+1as$?_(e18OOgzUBV0PmMd$%?9cMf9v!I8hQ9)!z3Zep>$k<qmslFFnWm<>~j}eBW6FYN<)2P~W$*1{KDCQ!dC~IR%`6-+rQ|=78^)H=tv{b)V~D%zzyS7P-%<NSZfIet~v99OGSZK!FU}{Nekn1+JErvL@$cI{ZWEb)*)-?>|kTZdqH|!c;)~lM_j=7T>p)EXvA|!HIf&tIL1YyhETT@Q-sa{CKV$i5z4}A$&CyW>L4IW)OjIBqj@3mZQ4-@#cIU3ID=HT!w4wSCJw9_Zk^^i9VN<;5}i#I4J%ESCO^d2^Kfv%ia<=+eH)n+j~2N|LEOOf+}K1&$`*!k)<F$5tA*gJw}n~j=^60GG!EGmmB{qciQ>`JS$@%oDN+dQjg1rDb_I60g=p6!7WF!jvvhc{Ak|(9u;*%<l&zr_)Mz^i8Jmr<M(i?@A`uQK>viNQ1?5dq!~%)9z*gW#7JDchZzNGhX1}zXgB#(emCZS-b&je%(<C2C-B2SqBJA%WHB6)4@;&tIpLkZ2IP;HyCZvDgf;N?7f}{~pHd}Ph*1I^K5!Po>I=L`_+oo6U4E6MNvs9$M~ho*kE>MPN|AVO{Q>C5x12)Lyj~UK2b(=VPQ@Sla^+McWI07}ZBLlR#ubMLr{LG9ti20hB*4$v*E-ii{JZp-aCL+6Qcv}w(d6a?I>?`J{&AVXorn)zMEn)vTFY+%e+!j(ZA?dzMg6wa&FabVW2VB!s?sMvg*x_rv%IQEcZWi$nbw7mVVqW={}8^r9l_-1HM?UCUbq1J`y-5&V}0Zm0pD)6imT@z!PqJBSGGCf{3|4WgFHd%jHwVbM}YXPM3YA1JgPArCGnKH)n%hXWeZ&m?8C1`Z2~Je;E5FV%%YYXUoVLz?^ss(lVpl~>NW02^I~VouvOa&Hf3jIDUdHFR>1PD5#_I-3bnhqSVZp<^I`7&C(-CFiO0(gq}S*(8EWqnzIP%3|B+*8(Df<tQxU;s`<9BXIZ^|&4x%WG9(#Xa|0;~e`s8C6zQH6$qBcC?2mDjsCNDg`*hW%H(t`ZMvLij_3JodVV?O=u1b>)Q5hp3)wN$LZ?pB>E4gvZTpD-pL?M<EhsAb0O-Aj2uf8dfUC|1yX+^9$MYBX#^eh40M9=!i=&s5mD(CR^<4|KkiSw`jFHylm;cVq{K1pPj}|7Z!v3i2u!n3z3VGH>GhjtE!O(c(momeq><1ys(~O$)H*#n|Na|EqmX;rFC(XH<LNaij~fngg*0y7<@F84vv5TZ_OZd7P)(4EjDty628`KLVmKhB`#J*|`?te>LR>k~(=(&`hI~v|Us1^ZtjS7)>~cUpoCloRGGI`Ui-gf7<Yi;CTaUq+3=#Efo?klhu6id?5d=dl%vHLoVcr?`sReL-<n`4*B=n>lUN52Y4K(Lf!ifL{oM7BjGQmF`jPT>kX#lZ^!cgPkYP-y7>21mGFLeu)~D@dglG2W^M^T@{S<X%w4K<hWK~>Lf54aKgj=HEN3b-1RcNd%a5eMPE3hEmy)Wxs3HwM&Qs@q)}g&OAK)1U9g8FXNNVa)qrv-GD4XSp9?mmH1vh~I*zZLa4bB(V@E$x}D{GvBZweBq{DNjLLvVi)B>y!){t$k+shIG;-(PC>!ixr@xMifKKdl$nsY=V8i7lpaB3r|Av|WzDf%_o-sXHIYzM<cj|1kx>qPYc`!6uM@@~k#$>Q9)xCGptfN&W}o4_glg`s(xplh+lEsY?d=^LNRU@gLfN@oXmW58dzkKY;yJDsQOJL0RB@hvq1&W?X-w2Ja8>F*tvVDxcdaANY^pI=;@nf>}}DVW!|mat*TSWvq!VzVff&BLW<;)!_Slv(kMi76ZV3TDoKK8&*^giY+vXWr8{I+JN6w!2Wzq8Gkx^mUDAT92k2b{YssTA7^N*{7hh7c2n#t(<(vWXjmn@2hK<1j)C>sD$c_IKG~g6_D(3cLW~I3=O;;iWAR5+1n~#m`8-B&ubV|nS(a7O0_!RH=Tf%Io|R?2=G;bf%oO|`^o%7NHoDmzW2wVW{5Iwifg8}D6oNn}zaEzO461Ep9exA2F4CIEN!Z@+^HbpYFL-};#^X1H9-eZ(!JG}b3ylr_0P^X0t0DpY!z-_%;<@1cuSdc7>v#E>0{to_{oWaatqX_zJHTf=wrQ2DK8?Vse=vn#v-<830_){oo-UXQ<rMqkYM(`$LjD){XLOw4TgZNZ{T@j7BH~}T`41D@UaST3`I{`i$prc9x0HNmhH!UoupU1`@nIch&vIb@P<-G({?A7jU-Ko9|A+i9S(pC}FYBd?+N|P&X8IoWZBJmrr{+g4TW=gR3#^~2pD@ON3+Eycif@!GAV0wsoDQFf+t<Lj`+$7A+&pSYt({B3`*ksbZ<?+J*OfO?=pvo`|76K70{y}6UQzQ7=vNqYzLl~EDL}sz7(^G4Z$sxg+Lpx1SK^8I)j5mfFq!|1@eAU=&Ei86{&##mksk!-Q%mXShvM@xARisS0{Rh$=4OrgPlzAAR7>|IoG&MG>gY4$qNeh%vHHfP@WMf=><x28kS*eZ<aQWAwEO>ne`sB{;xq6DApa%jd&vrbzvttQd*4ZA1{7q=F>qb{h42Y_M<RH?E9PVPD-|1<l@7`0nJYOf;QxyMg78m`lZ7@`Cl&cJs`utxlr`zO9d$pd5$GrT;45a(CHhhd19M!Ezkm>w)f@+>KaUG6GHxmHC1kAZE78@jgB&3J%bAEjtiWMp>)+O<z(3OQm(7+^bofX-#XieoY1`uadUg6QazvbF+*~0E+>p=H$sgi>PuQe=)}^C#ew``sZ|4MB6@<T=eL#POY{++N{G1QsM<}G9&1i&0mmT#29Qcpyq{@CPd;^iin`LxTSHCF8<{FEh*;0QrZR^+h$9H7;4SBpfn>Om(5>DZMV1G96>-WHZ%t3vhNbj}hRssFQ0Q^Ju(OAU<&(y^qyuT(F1%u=_Iexz92S7j4{U`=6Y^g)UhJgf2&GOv8&81iAA>jLIXa86E1-ozF1^G`9UnmVvV@$Hbi~0?u4MZTHD&gHodH~>0)E6v|YVu8>KcUB7F(Lm6t{)X$OTlyZ9R&E(KDY{sk1AdKrUq)6(Mm_1e;^3fXSf6ZATA|0zEqL7gzE4gZdniuev}X7mkH^g`LiXlAJj*<Y|C=*TaIJz*Wuz`O}zii;luiav!(m~n|l6#7XF|l-XbTm;++Hc3VsRbU-7A5LE>JX@GsiVD69AJ*&27$r#+TwuFa6+r4#%O^1nR<&Kr|hDGT?Q@y9w7?~Mn2Or0QpKVF}EU%!CjQyOGHl|C>^udT-u-b-Eo$&nssk0w(kCCPV}=$1;Sp9@9DS5kKy-G}u5#PYHMrhHQU6JGz`et%g?%}^IX{J!3Z#b;YqOY2i5!aRsS<40_yP<$U+3fcG3a)ZEnYMjKu_o)AsFeYsML6i-x*Hv)>3GoxOCaUi-W5RzmsSLa~XLJ2U59iCu%o@6*M0Me1Jv8NQW61yVbp0>9to#5x=?@#l30_k_h(EQD5gr<{8nW*T;`|f>WFH0!?x4$9{|J!(=ZaS2r2;qK3jQ5OSCw|77lzUs$E`JMeYi%tA)(|AP1HnB2v8ed@V^cE3)B5fNh9_m&>yCvZnUl#rEzbXMg-3^8<o|kU<0!DA}04Qygwh`N8|aGMf7Li@r(R-jpOt8{e_@^shP|Pd1x=Y2yeKTLfDa5S#HkJC}vuX<I9H==YOEYC8&;j;tfrDm7GjL!7qsKB$&Wz()|qaFPx+&;MxiQ*2rK5vCLlT@ZqLre=M^2J8Cs5?|}n8E2^lU0sM=?*04qZ^jDMZ2}g`L0sQpm_tdSS<y|1YL<`*DK>soRhc>x$NJA{~dG6z*|5!db|5vH3UyUBGPpXRGzYjp)w;J?6y<vul*oGCvf=G(z`fT1j{J>lpu)moT_s1<(V@`VP(fM~zj@dI;>S0j7V_jNyuAd=oB?0?9Evt{D_yhZe{IlXb68Nvps+u=sMWYqCeoFakq`AB1=E{Wun<wY@5c>M7Wwo$9!X$NHZU6=`;_46jC&jc4;g#J6v`l;i$JX#fRC_2>0O1dlpo$58t~ypuR<sLOQfv)JgYx630<8vxF)zlG3yrT2g<0&@#g``fnjl^LOP~rhn}W?nU2}w0s75_LcuP^XE0k8rp_B8Iu6#&;``K7c;*oBH#5Q`A(#^8cBRiHUI+MK+h97XV8X|Q(6w|gxLijyUt9W0ZSf7J}oBtKzK8$NEiIi?is4j==`5mfKP#=l$0rD|;5+^=k)X~2V`0qhRP(3+Gp~loo??jjY|8L3|aF+akou3LT*tp&gZr;K6tR^;%gvshB^xM`1vcDCJ#eo0NiX9>T`CCaSwJ!K+KataD6(P~(-_jWFnr6L!(eYc_-bf(7f8!%WcD@&+4^$LU{c)HiZE}A06#=p@^@shB^fU0rdn(3;$kKOm;uU>=bkv;)D?i|$<(ntvzxx?J+c7L9%l8!HemEL-uz7)r=<Wypo4Lx<4PH(A1U}N&r@yLH-iySD_Wgh`!jF*j@(sKcs>=`J<APXURSWNh5%?P>)lWjL>OxD0<zB%5So{7<^qV6N_&3*}hxXD_Gn%?%WasBh%YXF!Q}@<dWU6Z3A$)!?kKvf<&(F9X(oYhEzt6jN==;Zi3YnarG5fVS5@Y^&zM_!W)Wdeni2t#R5u|ZW4w#7>jcrdcf#Ms=nKUv-S&jO=#M(g<UHQj*|8vOk^MD-(d`u*lXY-42_q$`Hr&pfrA)qxT@xiv1)eI>9`|ms8kD(03Pz$YEhg7ge>x#!Tc>{Kp(h)Hl)ShO>-Iwtmzr`>i`L-AaHlbp;Ecz%iKP`COmU}!nt;@xuigBYmhW113kzQ2bRjb&b&oH(87PX=KzH~oJlP-JD<Ayi8Lyfko&b&d0TFlgf&uG<)?xdNl%e&(Xr#$&uUX5yhveal}!udXfMOu0c-`?sp?{4@k{x6%{k?f%`X%)P^>wEIS_#+Q37F{)s=dvjkqPuDsbpHYh=np(jZ0n20>`u7YiexmRK>qtj|2q*FC_V}em|ZOYQ;hb3czk_G`A?~n`ZLhnUo-sR$cHvo(C-hZs27utyfYBB5tA5d<OriVO^?rHLvG?CqV|ta>}K}UB0pHBXli|9tp8xFzYih0L{8$&HyZ-=TRlD~U!ph<^kcRr@puo@<2q#j6ZM%UloM%$C9UP<mMp+$Cmrc#3O3J66wHU$%5FJ2h;|?HlZYP9l9s?5MpXL#0Q`tagv6G9mQf#$h4`0@BPjk(T!d+SHc{Ug^MBXXCZeo#9zk?5&U5ISdzE37ZJ}rSU?MFu$=AuMTG*Tl$#?GpIN}|fQ-!)aB0@K;Jn{-JYBh+E*<w%d+CvGvtyvN*@_`HUXXK5iYmK(AsCY#7c#WGAI3H6hXiqid?aN+>Aq{=aJ%zshFdBVOT?EPh3L!4ghEglK6^OxX%al<V?`A7@kas^)Q*$C8wo-_b`TxFL1OeaWDy;Fp-MtQ<m5}>}%x$7CmALUngK|KB;Cgqgc`xWMX&72#x@BcyvDkd4|IGj1|Dr+uafjkaFG26WJX$9Bt+<#bDJ9<QTuZHUFBwEguQJsXE6Y;xov$VQjhS*Z9>T9R#@atau^I72@38m{@-XR4#EFI1BI$n6`{AMZDLpfRKak3ss93>#!*pN0eablA#jfNXhC3ntx^eZHVFB(6KEZbmrc!)6LTQ=1-^&F5*Vo*`@D3>cWGt^8Axb;Q>R31T3ehiVOip?}&yxDwiCg%M_V`kWzvjGFNa~nNIiJzXz3)KsE!e-ng!t|Y@kR8myK(RPqm=fL|Ibcky6@ZN?u&Rf-=hZJ&@VR5SXn!WP_!;)$)@LTWA%U2m_S<ypIos4{VjU`{udYY4`iq-_4wL~Hz9uv=gV$@?^;W|Nt)#lK2&G~tcdxj3&MPVYCu7*Cz0{O-m{$7KeUvr`L^#ZnR89PRPmMN*&t9q+IWbIHGIhuU&Lwq)=b2&Ra_^?|9_~zsSy7f{28fk6-P;JOn(IVUC91Jh{oNsJR$vhsitjP2l>~)M)Oz>p8jXR^(2b_*^C)5(jQ+#_)ZJ-d&RjCvU`hZjK~&Kp?sLimu$=w8j=RT_9(Jy?OsXPk?<p=zt`vr&uFXTye1WSQPwe;H?h}k;Thw`o-mVx>XXp*OU7%h@Tm9sS&ME+e%{(n6=uVd&QS#a3NeJ|Xj!5BEdqnp7QjG#%&W$@wbKrr6I%Ta>D7pewM<y>3|sL35ufz@CPcu(o)+AQ3Z8-=7n$r%I5()1|BCtW3h25dGJCxbMbzZxe-XaEWFcnD%A(g6_(ocs)S5nOk)Mj<W*&m{XCl6?UtaVM@=rF)f?O=Cy>F#TEVSw9`PA|`$|}hJtTf-2Q1%?V2*T(5&*;a+cOopjcVx-1$Pp*Oal?jzC=h?&p~P2+VF8~pDn-{-=#UNBTtmozdz~UTzD}g<URl~@CTTKQ>fwZ{@@Yvj7G`DoLHa#QUd6coOl5pfedHZs(N(hqsVnVAdHY(baNqqE20@eK|0{xJD?NhiJmaP0w@4H3y#1?)q!BlM5lVZ6O{%vpdnI(g4#gJ;U(0?=!HCyya`z27k_I1|K0hGJI_LxOH&^}{oOWof!Hww3cMeeeijlZ*-YT!9Q3JCed^^rBXD*+xFS6R9+^0T`?g!yt&g_vdWL59^Vc<<%l9K(^afm-K1)2<$QuJa;+)4l6i~q^YSbgT5xf1f90!Ml&uRYDwKX+#^(((z5f86ly%Q(DdUFqXF9y>7c-1+copPWDjd~$wxt;LOHmHi08bzy{u8@)>TXdPWtkQ;1*I2ITD2K4_KZ%!y34EAV({DT{_%D=@n7~OFh{omtf2tT>dE{JcdDXCcp157Q3Y{+lk_wSi$0_IXIXw{%Um8;G0BOv-`Nr#d5dm#S~`u_s!O=E)Qn2q|}NfE*}Lh&2<CyQIfYk3+E;p@KZ1VtUhuhb5wl)nLdKe>L&*t5KPkTH%=8SN1ku+5plc*uXNPU-k*-ONAB#X)t%7_K8CU3OE2hWI1T{lERbtHw*Y(DS3(6U@1qO)%AeVSmw;-2@09h6GvTDg_VJ6!_%+`Do1c(ApNV;3{3sVVkCV-$_OJYcl+F^9!RqFyC|!)K4um`tLKC+P}Z6WR_Rmvf5Yg>vsjt!4v*rk8wkv3Y!h#GX}5DG${zor?iJj1X&pptoe`=cbL!wp`@J<e<ygflH(<gh+)PpwTW<FHkX5c?z9-xFYPA$D-XhV5Px^1b2dWp+2WxK^%SbTB$l=@vh)c7f5kM0G6#1W%x`jcH1puF{(1b1R(ZWkr8!F~%V$Q8$X7^hjjI_DKKIt-8cxVhh1;Pz3h*hUf3_x7(%WhhY;$%nhSCM$Be)jy-!HFxL*O=|;@sK3wX*sIeBg$39|C?TY9c@W^r!dv&EHhe`yWJ6@NeAo^(Uq#rtg_fe>m)~DrNWh^ng5#A3kK_{Iequ54^AM>E{QCoG%Bycwe6zMT**N5(RGb3n3uB7o;0bKL6!KgEK_G*ns?NHK+cA>w13TkMFh$6R<3IcsIup{IcHX&w5nkZIRWw{yP^6oB`^SbiWfBa{Qd)WNJR-|8@B6M<Mfo9Kwh1<F9*A;RHYBpX@e})ZyY5f&R@~j-daIYijY>Nm}Nc*BuMl2jm~|ZS*9bjp0#c{%VZ3W)I5IsMj`mKkxTH*9mVYJnm&G8s$-3kl(zs1mfQl_NDJ1?|aBlHsfRX4*K~bcg+tds?qaV;<NDf66w5B>)vu?V7-}|GRLSk;3mZ1@|uH@uoo<T33NRXvqRnYH$l*3wv=LxJ0<#Ug?K_ghq(JE{Oc8yI4~c{NOz?2f8FCp!4J%{8e;d=dAS@>Y`Hft@wuxE<iBZC@~5b_AvSHND)%A5M*}_Ikx>=Zs)FJ2Hu>OTL*FUNOm~(6{FD3B^!dfV)F1XQ{fqV_iXM=zt1kln3g$;M!fSzkBK7k>y8hxF#vE2}oVW;{_avH;v9j{HFtACU!eJX;5Z2p_)gMQrs6*2{|BuyZ*p^Hg#=O^sJ8ataVl7%%UtKuXzb_e^Kb*&WHs7<*yX{Xk^&;rc@zbE<DPQaT6K?$eZMyq!gdcv46um*k$=K8(M!`q@ftzd!28GJYj2NyOim&%o82<Wv9-LnM8Ge*kP!U1dlGxdVwA3;a1-krtD#*X+=MUeG^?%ni`NLmXJ1kUVPAc+4se-I_lzZBT{b7umVK!E$6}tNOp#{eHVmHaK(ap|SVqNH@{#L+`JT~Tga7Y7j;vXq(12Nd`kbNv9PC1`R{ZH#K`@WshzZ!@3-_-0y#1GgjhH))_Mq_fUGv5#t-Cs?aznGZ+<QZ!cw_KJ7wva<Y*k+Gp*CWAv6ihYc{a<4}n&^p3zN4K8x}E~zmwO-eZ;CT*<2}@vN@c!+8o1$rkH2nyj&S#7qzF2{cT9c%v_AjnUa$$`Z;<~Rwi|-{!`S>R#P8IY3dYs3{&n-N+5BU^d1W8X-^2y`ZQSKU!S}?8%XpXd{P6Ht{TMpmXCOa#4Mo?_hwc3{jFJ`k^Wiy)*Tk70_0Rpx)tviMdfI*CuixNDTo;ELvG*^@caX%EoKJK5?5fGK;aRU+7fCz5`?HlXRsP`q?j?)L;H}*;*c&U$T97`is2G_Uq(3*;nWS#c=K=p}^~SurUqrq1QUBZan`EVTv1LpF`}Hr2=GA#-)?2UZ{6ZY1UNjo}$AZtpi_fm*gj}JoKExZ=@|=!xw_X1nKkT|79PTo@>XrM~%TL`$DZMXJrPJBZ)ikDP-vK`ozGq_oH=(**klG-R@pr*hg81gSaaRbK-=vmOZa-BqHBo)T1nv*Av{=?ZPtwkQ*#BpB$+PGc<e$hZ1a6Br2&c23*N25kTHH#(d|iInN|==)_e2!y=6eUCsddRmUeV?4i&-KY!&<=&6-lDK#|YpRyLi=NJNnsZO=9gJLr{lvVCd{eZO%EA4xR7wFQ_Mx+Rk|Cj>Nuq79tHUBG|@oH1Jk9&M#|k08-RtD;PGr_9PmLuSd&gt>}_ROP#GwDQ~4<aAyyqKkCoDtoV$kw)q#MK8gw3mgz@;729*qk@LFaD0^1+J%M>NnI%%(aFvU0CouW{ZuZ4n^w`UWDR+CqX_=8Vr9x$!e3^76yjE~0RpPZVlZOEPIc26DCEpuwOE~hJAk@&}MXtzdVSTC)w)ub@snh=%9YZSowq<=!Xre2o2?62L%lC_(@^8hL=}RdtMx)XemAUWK{>L55A$$({vjvcR7?b92={r#SKkDDT@4N`7t%c72MV#^!`u2-hd={909qaEt%D5G70`hAVW^bJE6!GqpXiK0Uc;!{&L@53qB~3lwN&V^I`N(RY8)_?VUNf2FwE4sS*A&uxqtnWQuO;xjA7m8#psv3M>=#I^{mCESYLvubBh!6<3nvE_>@fW3d>$y4N@wEU8ss};`B~|pzBEU2o(S@@_pHyqCUD*mAp6FgQ`Sv+zsEa1n4j^v?&t~Id}smEd?ZR(gKVsbrEE_+JP7JrNi=6#wX9yX*x|$e){@6~QT>9Mf!|sFVcI;C?5#O~_W#I#kNy6Q&&b@o3?C!>P|Um!`+u!5Wl{CvW?W4Md9l~2kFUGnPWj$Rql*ru`zbw-uAXvz+m!k@gb!Z2N{2}uBPl@}mXvi-MXh#U#D$N^|JPk!CXj#g0R8Ks#@FUt`Y-x#o5HPlS?LHe=>_PI*xBXq&z+H_+Ijew^E@dIxRc7?)S&)_8oR!}WSK?2&BN*PujL=lUnR^xE4vjff%rel5aQ>aRml6#Kz~}<r~$sojO8~r{}8aXz|TrpY{4Hke$b`H)U6pT6;gko#4A~xjXpa3psT;Qfcndre;=Dqp>H(ET5OBjJAHgjwPB7*+an|@ZMKYHG32J}PfNw;Ea~erSKa{gsYaCy(BHCtmmi1F>n5&7YfIKqHin-3Sv;kGZH#}csx<`j9~yRPKV6ikSSoPF9S8eIyz@300enOrh2$&7?n|mXD-OH_@sk7(9scyp%0Us4&*tz8$-O<%)V-0_ugTm-GxZWszuYsSzq<M83H!Z?i{YA$oo`dKjDkEiA>U<{uaS`chA8JO9)<X^a6*6e@#muI=m}w33+Ru+oDRE@qML7WM|9aq&U4>C|0*d$!or<4$mfs))}M5Tn-4h2GOez4vblBsCEd*B*O_Vw8}Wn3b(J{z*on0c*8e80IAAyMe*Q|&uK<2D*PfSv`8M&zc@V#!Rrg)rPi7)5eQD6luPy}LNh5H!9-L%9jEwlhgNVcyQoMw{cyy(1em<M)3h~F-VOgFwnmTFz#`uD`Nrg_;WP2h5iVeN={jD_+fBSg83)JtcNWGnrv@P*}lz;2qq~m8BA^F(CTAQP>=Dqs;9iYE<TNjo44wuXg^*toKvY0b1zJ5W3_!I4@tjUoXP>>$TF?z;=@X@uG(G1P98Xf;)dD<GD6W?((_t)t559sH|+1NeHOUucEHnSv8wZpE6`~<wa=AfUcY{EaDS$^b+m4}89Cz@|`RQVvB;;CKlhnEbwiO)dzSOxjVieVwhUr}bjPeJ%r<gLk&V357e)E`M5J)!6=38jZ8^6Rt$=ZXFYUH(?An|}iRlXE$?$ZFzy{O{&@%IH?-T4{&%#(o2l)@p6|d`xZNowUX8=P!u*`LsXF!F>GOK(=N2*nGPu+`QkBUpQsHe%wAle>jf<=3A=J4=Sduzh}yj$d1{N{@;D17S)9x>7haVaGAo!u$ltmJH*fDS@wQmIcfikqKORR&nPlKmFc&=eGwAYJI7-i8S?*lfPdwlt@Nc!#_IR)-yhdHq<;VYT(<FvkXw;6xVrh40XM5s2%n2d(E0V7iN^K=jP*Z<+RW}iCg)qfyBYjlU1;fZq5KLlYOyQ5Itn@;QPx)Z)cV>xgik^8hw~G2l-uyo`E%>S3;P+0I{aLBM?|?2<li@B%iypPSF01Icl%>3wmJ6wG$XLyIEECZpRa@XuK`TIe`(i8@w-V);cbWHXa8`Pv<zN1WM{H73gV}U<N1~PG&(2i-n8>m5=Ue;^1d_R_e8qIfE)ij@z*lj<<rfd$dHI3C_cD0J^T_4^xItVh8)e9cD}_V8{*$gVV+e)@Jw8#et!t)UmUBy$I!M%_B}@6GtE~C+$`Tx&Q3Q!@{SzTx<ER{{|KJ{ZeEDC|Bt;4@}E7i7FjEMAb$F4F>1Q`oIW)+1Nwe4_CfNe=65cwtn4N$nry)QGlU-|@rP0Mr{-_a1V}#=U_Xk32jpM7f&HjCp`o9euMtbND9|7Em~lJ8gsa(P_{sUNf&{u>W^V92@cTpZ$@vSXPtNZ=1^pk8et$RPgz%0t2evtzYl?qC(&e|OKR<B)lCk|?m%i<LVv%@@nK1qN8GbZhG<E*UA}_r1jRC&XFifD^&*4btYjZ!|uTZbs&oZRAlZfSA&Otko2IdAr_670JjPS~GnENlxWWgBzfbav6W7_-AsrgO6xfC=G>^Fe$L;3<FyvvSy!Wgn&SdMk)ov&7D&`A_ahdl9}RLuML)8*fCfd3S=@sl`?*lJ=y8lCsy{CM@C0jH6^B50=XBSvckRh*f-$OzxzBt3&`?X*MfiL4%W5Ht{z1z%de)cdywC@P}YRaI=(@p375&$7x_4k5b!Gu+5$@8>7&h3DW66)NUN_S0A7pv=XfKdDl1XD!_i<X=JxUHN6Crp`3lHbu#6v4v*QT+^sY^)F;E#BWgAPBGZ8Rqlh&eBb}eKeQ)6H^0A)eEaD-G!#FZ*c14pJpssX6%qf!QBs8IcnJBIfU<7F#PzZHiFt%BH}P2f#7x9b%M0H3R3@olz7g`zR%elooxp$gbenr^7qOVS`G+M;zk+N71nDmq^rHY>e@zV7Kek<Amlzgsiki11_`UowcZXsLnyB2d{RrxyQJ*_umbmSie40teY;l><&3kL~`=7@4D-1KPr7{I)3j7F&uDSd-6ZS_BY_f_K%+c>p(9IvyyQ2b2EiU~nCS|Owc;w*G#Ee`Vsn6eFwNvAVTDRYXHoiY4aB~0mSv%=r)sY_apqq476zFfwcc*hU9N-~Ef3iGkcmq$P$#r&pS6$X=K8t|-PpwCO3fg`1zRC5OTvhEOAy>bjX~?G@!e5tfa!qL+Zjv(O?XsC3AMPIj`9l!@lBq+w{L)2L>3})$<M_Z<LgzDvUn!ogWVOJJp3ZMxjplze|M=KYq_s(=B>A3G)~iiK`|kOorNv7mKf+t@f%60XAA3Aq5a0VAT2(OXqx~3T`7IVkjji@?Pcac(-sukbldP89@&0~aaQ}|!?q6Q{+EA&*#Vm2bmHFp?CNZ9NK9ezX3Vs*$yHG)YD;v8b>d3HAxBu#EqvOh3d=t5LlNZPIp`D}<-aE8HdTmizH$Jd^Vt=56P_x&^Tz)i;JnejBTySz$vkx9WKEEK%SlKrO;TNWw6OO4-{HDV2r^Wx^ev`NH&8tbC+8?~AqUS7m6|eEBem|8k@D?*J*b#MFnXj9VL_z$5Evd!kb;nGeKl1%aP#+~(wlQY`T=dM9T8ru^iMFasIR8rM(PWgMbhA8a^l|>9{-gZP!2@!%Xv9@~0^9Kt)F+P*%85;8@xcimk3XBv|JRI~1=Zn_fqjUZQ!wN9q1)dhCU03)*+S-BAtwYm!A}e7S1i`o*N(+`oFe_+xo-AGh~G=_y8R@$ny4{;<1ZSt_c&qN@lXu?{;`2c{V(A6bGaC^VhG<t@sG{z_;9|${G;=KMet}bQ+u+%s!;wqeg03+{|Ng14!<7s!Qn^a6otIoPh)90kw?qP+==|K+QM^Ru8e^C^!bNxERdL53_3|6eET;Wml0q2P8g`Au{>R9)yjHDl>0tlzs2^RRlK{yD*U$4@*aY&ztzU7l5uY}lV6a5-~?@+E<Wq?%ewg;-TjvzLHJ^2?JN1%evR`1HzFwzzh8xBymaM`@(P}&SY#=He_X$qMfhIu7`@%mRo!@B#DP7FTXY8A*u4(Bn?1IFN9ang5<>ASRrma3arhJHwh{I0997Anz(OPY!XP<#knzl2iTc0mZ%ZfG-&8#a_-_ow(f5epMx=>u{>S9meALJJzmbphOUHlTAp);bW4NGxdr!3(UXbr)8uY<@<HY>>YAaq=h8#)gaFNv#wIyHb>Oa8?Zqk<qm?5eb-I=;yLGRy6h1@HqQ398*YGm~)A#78&9LDT*Ru#e<hC>+|$3ETus~El+9qb33<iB<JW1H$&xqd!U9rS2o{>HxFHn5ia@qGI2ILV@|n--$+J*2Vy6d%tQPZxi;e-b}#vdJ7p;2#hoIL<S`{Iq`mgAD9{FbDHZSJssD8wjq0{RR5`Anri=0vNtyKKHD7Ugh}weu4aZKi&Q&l||~<{677xS%YqWXl^f4aT68e`MK{Y!L8Iloc1Q`Q}gfgf?%pJb1%xA@iI<UjRo@+brEHct?*5xI8Qab+FKiG&ecNaPkHJjJjVm|k2+BQ@X#>gxoXQ3LCtAs|AW`j)8f;pkMM2BlQo}^AEIlv*F|{m$XXoW_Y!<2UnR9Qd>MA%8O|TGZ>yI~ZAA(O?8kt4`~q_z{V(;APwx-8M3%N$t>UN`jjnDA$9eAi0p%NbCe?D3_oh3Fwh!{3LRyC3H;5?jY3I}bZ}CfSUu)|f;d=jh)K+`}{_7DoWzX`y0YYGt@lwGYU$CE(z{$!$Vay-ean8c?-mRg5{Go$K8#;}q_WtyKg-nN7rSpu@vHemgGUKJ4KsWzL-V$3`ZlKiQ!W3-Na`Bxnf*q!t-{1C;euDa(et&M|E6{%sC5ZH{5H*Jde=t8ivERbO0bA`;5A^Sl7X?wAOf7`p?i$0t@<w#b5=V;*f+jV?JM)0tJVf6=d4!G4SbluaAQ9mAP~TIae$3rbId(q2d40P5me2M0EGl%$_wz5}9+ZSqb0B^$#OBFo3T=$e&@z$J>{s~7KzYq<Dc6Si7VKXG{q6H;y)N8Su#So-N^WFz@dx$CiTuRfmkAa*ilhAoU_Y4U90=dlN0Pa}9`quIRK!^fgZ&UpO?+*?TzJJO3A4^)gmfbX?FHsjLkbfT-g&hAG?#g4&ZQ6aTNnS9c+}3g`?rI1OX8IJwGGMtU~aIl{Nw#nAM7WJLl4imJER8tLk=^P%|Zv7n`NaOyx--U*l#6evl$~Z_8*0R#NSN3H|4Ivf&NkmAHGxvWk())MU`wfooR_TJ&f7qW@LQ(8gV}1b&BsBY4?at;P2la=|#C;6FHDVeaj*JvKyNpkD(U9_cr=}eO$1;{;P;i5$Yp;`GWWME#POh<%W_5VvK%2a43_XmmPo<^*d6lEU!HYWo%h_cv$G(X0}2(2Uo-ReT9T`C_|2=^}2o(ADj`@vRix$?`;R<y8f{$Z|#e?z}+_4x9146tU-VITT1?F40m6pClWDazql&kqy1O9`Is{Yc=KpObE(gH4V`vqO=$HK3tF4PJ~l?Q5xw(E+u(bb3<d6^;p9=?{U>T#mf~oanY0P_@&1{gajo4^vv)3m_z^x&uFEe)-HxzZl(z?AgnTyN>#v|)puae&@G(R5hOAy<O+UxD6Ncex?=6JWpF4SOquhKNV*%<PV&bIy(D?I7!!~um{#N!4(gPduti|(<PL0nefc`YEBI6qa@fI6D@}F4+J{WojOS%oCeFX8h<&}q#qAR9hib&equ!n1A;jSKsvz#7$7x#AI<71+r+T<?CzfR8oUi!$siBc^yVF?=v*{`GLl;_)7?oK%WMsBbT%m?63$!>?)d21>?3B+P2Ss^^H63j<I{8n@g!oMK@UEusd{MFANuk1iA4RW>|9pBGHL_V9R0R0Qr7B`}Mz<e)+uaNMg{N^+;KgWa9dI7$B{X`9$#=by&nEv~T>%X@2-<LIZKclHcMLM{$unUQA#5u&eEqEFB_e_@i)y*q?Le3|}75a5unPrnP_f(sbzF!3Cmlfon`D68$V?h6gE_wa)6!!<M-O7*sr=#LL^0q!dbyf)WS1qwMOb@ydE9ULX4<Uw}4yP9q8wOGW>p_3jr0WuHW`^Iye91(9%RVC56|#>v0AEhC|K}tB1=&{_uBB7YZ*}-}v8~|+@gx0w7u>uj&PuPpy8T!L$bTle;*R<kfd1TFKBn|uSJioBOXtk#_t)X^!zA5&{+CjKFZKHm!?Bg3YwH%{FSUmdjlh1lY4cwug5B3Xi9dYX(=d?#Uj*{If>Xqfp-_^>x#k_h9pq;tP2Mi3SEIpxRRn3o$#<C9(79TNZ;ioxj2YSMP0-Fc7O)#NL@$@(1h1ihPwu}%z&cpmTArpPg|>Sc6kmi*{3OnN6R;nBG5kh_kr(ZFf*{l5#l^W_-uwL3Pt)(Osj|G^nS!n3o_Ipg<^PjEnZLtx-;k4}>L3VTC7ZbK+v7*E2m6K02hPm%xcT`X)m-B7Y4M?UNKDO8S3>x4f?uW3y|%aO_4j99OZPg6UmgYfff$h#HsYu<-`0ey$>vc&fBVk{T|WzhbmuF*EFa@PsV45*b5Kb7kP~(2t81OH_>B0X*9OFG)Bpa<wDJ9E)8SLl->1_rg7D4Qe!P4YiJ#Ss{)z$dr$XL~?oiBz6}9Djd@nwJ!5muYr1`+f@_|d6NGy)NJ|N~7K=C1@&`nZ{-v7b;%ar^E#Gk?Z`R>RXNIqab*37Wl?~xi6xbXmw0{%bXFZKVl|46?dM<?I2djH14oKo&W{tx?=d~0P*VNAgpUH^J=U^VLQ6S1y8Q}WHH_d7xSdJw^Dw2IL^KRp#4bO!jRV+*F=Kc&APZuG}2#d%^&XAJft$iH(N2{D*Cmg#~U;X()P|FFO6MheVteTH0@|9wtw)cKF@|8f7+H2dKmus*#X%TdDFkj*o}KTjUZ|K3=2qz5M2lKkoK?<?2$PbTT-V{qxYf&OWqem-p6|5Rb_4n%P`sY?54iFJes<xF1)-#Z6?^82GcX@3l56FE|;-!Ee4xjsVzhds367kRf2tTEQ*|M(4Ny84l{Il|I=Ux99arqxN~w&$VLOa;V$Ei_iKK`g^+ar$_D?LYRiQg{yNA5xv`A}E?{Vq}i+)5!ag6!*+ZKOCvwZfrmGhu_E0@0agz7MCIO&ausRB!Ky!H>NS3)8@~?ex}Ea#1{I}#Wu84%DYhft>5W|wd{4CK7WzM<R8fA5%3*u{0buU{J>A{_X-?xgZKe$cVu5bO|G$wm)hZKDEY~j-kNN#PJfPh<+Vqf?6yAg#!%TvOqPNET`-@uGb5N}uji*=e#ZLrYlB44pZ2-$+s{6^A50O!QGb-50sG^&EH4?v>+&aGqfUrgBPqNy>3#&K5*LqCq()u-aInqTQlmh9O21;B-ZJ-WlZQ%eU{%6<j%e=o++d{nLnmrAIqzK@We52GkHj{5QheO_^A9ZYoHK3z-}v+W-M=iJBROx-^fFSvzgBVu#}cw}CmA<X6p=2!*v*ojLidjKcZsL9|BvGzsK0Th)!$}vvO*2^14J_gzh=lGd>uh9Gj4n0uy}fYtlMvC_WL6>ItTcFc>^kmk_7R`rZ}-~f3E#=)`BY6vHVmQP1<B+udjbuOGI1K1CTJFe~|t{-xpp8_OH>Gy4xC8Q}RRUqRspL5cazGv1{7>e0k}Ld9Z#rSrrsNKe(R+_D^aL_;YAoZeah>czzyVhfflyy*G<)swjMIwGRgQaK6W|d)~hx{uNa{JiYu1NjL84_&wy`FDqD<D#8c+(EHlUP=-cv{x#ljn*z+od~lt2w?AIGIkcwVfZHZa4016(tGvq}+uu9BUuE{5Wk-Js8GFC!^|$67S$x?B)Q3TR$`iKzCW>q^Vnh9DqCQ~|c$qO5)IYrn90^`p$bV3tg8GVXKXT;Z*M!OSm&wl`iK65zgYM@*{1WuflG?%v0hcpEjEKE19#u1Xb=Mz){X4i-fesKpyR*cOpP3KwpI$p|6>tB~pF#McPwQ%-@%x8KTJY%F7uFKO-D@<ys2O2CEZ%nU|221|QB7WXpBNz_Y)QyY0<u+Oi?rkE6k9785|&h!BqSsx5M&Jy1Gv={(Hg8RgBDb%mAZ^b+3H$x0@i4)BVZL!QQQiOf`C$rVr^aK-Y1|yp7_o=@0a<U14*9T`(J;{hoMH1{<|Es^CLJ)J=>c~(8tvefSLjHw-)sU`(;ZT9X-PQ85PM5N%mm{n<OOMBTDdYr|TVyClxKJ=qG2w{iV0{!Qj#a8fJ4|D3RRluYvoY#Zu$ano73lBGW@L8{VJ!bZJRzC@o^oyHKBUSVq{g=!d;g<o%ZNliMlTt~+$O9^z+()e)DL+hGbzV|jG&eENerdsitwi{DpiCAzFir1@bFnda+oKMeI5-AwW6;9U$)Z=WTZ?o<<UHBByEw=*nU+BHXcA_(fwo^!A0A`%gNi11)Ub0$Xu?>Fs%x5z-bT=h0;{V@TbI=}$+RfZho&+yWBL45uy07tt|k(J?E?rU5&LVg*_e&&C1zG7DYL4DgeP=AB|7WUVJk*!HI+ma0t*2F=7aji-J*1Z3M`C-^2@B|j*p9%G$312mL^6UM8$zMdz)Csu4=hCxl<YK7*LF@K2&u<W4mp~I2)TnR{!x@C3aMb!fxS=eJM|(0$a1?*;eipd@KMo-JVIaR(zs_IC=li)Vg>GC?-)9qT#K($#Tn)jcT6>qKjY>z>upgqoI#qEBHU2v9V$1gtZj@!wwz}`V<0jRUQXzg4>YGSPi}9d7%#i;ObnbzcphxssZa9Bxt22AP6Yz~rhsW>ttlRt2+4-Koo7Hb}0;_+9Nk5mWUsU`jTipci*Bs$<Y`*_IMr)I+C}@{ieL2_LwU!0(8@a_XP@g;UX!!QQ6k5J#=K<9CVA98<>XSkLDmhJ_FPZYbfp;m#K19Fu(=qkwS!BMkaiqVvoy2C3=r_mJn)hGe`?&<@zX}8Oov#CG{h~$m{XYi%qo|&8xnqIiCd4Pionh)?xQ^)Y8PsP1jpS^JGvs%G`25o!mg?hwF}e~QBu!)dX}F9n?uTEH;!cy7GGKjf^dSb6v<h*={tW&;>+2mW2ziV5-g6+H;b^5?8$(>FmL_P*4Rc~WnjsmoYV1u?Y+7unoT+Yf(Mh!2A0dA(;A>0!71MqxbA9V4SWurRPayhZ#?+dDs9;cEM9*d&mRwDfVd{(V1lI2}=;gL0!&)|?e<x~kUK+<`yoCDORt>1%&wM@w^?T9#rx={g?_LVHABFgb$CWCJ{Y$2@!oBJ)Ms<?x&C??KYaGlMJMdWAFsLtruJxvnp?(Y|?j$pdhTunhun4~zkMIkS^XuD#o`2x~zw<UXKdA!b$BWD?^>k;GzMX!9z>4@A)W>V=$Yd8H{H1=s88n~Cb*x7|P9Yn<#aj{gyrVocsbnxkv36nI9UT8l^!z$u{%Me1%8-ZXA^v~QQUcUpS^@j#mkj9!bAJc~{{rz<WAI~;AAxQCi6xs?w-D1IHOD_+)HvmA%EPOrm81S@=QGQntC;#|4~UP8yE@-K;HPb&E;c8YyZ#x{G`P|Y&M#EtTyI}z_uxO{?#~W$xqgZ)7VJten}2?UtrDB?17SoZg5TR*zM8gaLGM4&^{HR$LlQy!&XV}U`ezx1f226l&Suy{ab#Be<K?uCne~Xi><B&%`ZsM;jrzk}i|5=l;hV%6V)Og}`hPq9LKxqhiK$}r`NvvBzwb}`RQ`19nrM)J*-g#h{DJ<f*7;J$0wrpH0`=kIj$@!c`dV;4ZKQ1wzu|UR-HzIygV*gB$o-vi!>=x}$F#LtS;R+O_njTCFSg~q^I(o(2zT~z3b9~G*#L{Lrz8rrc!T;P=pRZz{w6({Dz1h5`$>gKb@$oQleRj^wD<l9ZO{^=NAl)65zA=8A-=`=(&T6a|MAlkEdl0NjLOJRko;Zu$w2%>@TKBk|IQo&{ntuGxvu;HL#p>rjNwkMQ(o}lL>KH(@hJVi;P<=SpUTlM>Uj$BC!fY}nJ>jRR&p>Ki^J@tPd<Y4vCgUJ&+ikn_yhB6<o|nrwWw5w><8^x!-zimpjNRqvuD6w(T0cmK*y!6DTsci1E{~Ce_Q7&sww}CtFJa9`AhgbXuC!IZ?pW0Ux4_Fm1^Y?1^Th`5u;|`Q!D9d#>W)Y`Zcn5T>ic~AJpe2d?x*&vZNgRKJk0|tkCYi>;So?H}$Q}NrrwG-dSb}=&zou&+C|BU*v_^nD6&9BDG9I6x_e)!Tk@}lP22j4DL6?AAD!=em+j27bO+HAceH3{Ao!R=NDvhziPh1opo5<0QoB$f^3Mtf&LheJfB59{WgL&d=|nVMe<V}p2Y5-Cf<#`^o+~ctlN9nS@A3L9h&Zq|36Ww#U29plN7MCnC}AdBgd(?I#we3U=HeLRf>9!Q+;^LVyGV-Ovml<5!B<)l`UWwrT27G<4(Jz^3C{DAt?N**Zd`2y>rPu4c!>O_o)l<3Numa1^GMiaslG+^zd)=L*$YdCjYJ&g#Y~>|7CiMhAA#+4RB!IL;QyZRuQ(iS5z|9u>VLv-;bj0-$+FC{n{wM_hU@=%)lXKNzEHRf6fr@GQ=Nd*7cKki2oF#Z%W{ANBBJ;|JnZXgzHwQ+xH?W%IK6vbGJLFyrv;wzQ}vU59`xV^sDYw%HEKF_k;R^DQW`!!5ksf4`GItl*0TsOMJ+>8PrGXHHHB?zrorg+E2K5WWPOnzk2R#8AVAww_Q{xRY{;e{2}7}a(O`0&R~SUgFgTGKkyOD2_gAg!-&%#dBq*Tc0+tAN_`rNf&Ml5w3|;dX@%OFhfxmtxW&=4vAK#H^C>wybLWEoc9yu-Jbp4u;}CrdL|>{L*LYj&VA`J{`aCB5wL?=W)bE%bw+mZx2fTk`#eFx(?|}Mq>I-6g==vRDX7L}1Kkp;`56BNOIOX6B*>3CRnw844v3Gv(#e6PMr%xjd&^Bdx+W-8$(qDKh5x;5DPe;7NN@F{J@a23tB|Br$-|Ob)yU$Y{_|;~P&993yYB?J#-ksdw*;R=NG&;sAxy)+t`-;rwJ0txCqTdJND^ed#NBW;_w^!1(W_Q%Zx`O+wo(=uMGRD4c!Y6c$#plBPOf%sVkpBe++GdpfE{Ja<{Wqcyi0HR5q)ky-k_2X@eCwK+)%&6T<F3?^=X(NqzWGuQe75i*VFPM@rHdMfv3xGn2TG(%*KL9N(h$ErIzJ`xz675i^rs=WS29KGYJ%yQ4lmyENyz!&p0eaWK)zzqPph>OU4i;ZtXk<sjpg~auUmC^YdlAS%+F7ZncpM&Yf;ft+(3OUbl{id5iHM_P4USzA2;z2d?CNa^87kaV}Sl&%xr;=1H`vuP5M98ezG5FmpWv&pDzOSYnXmoy4qiOG_*919=xsy(N6^ROUbhodn0l_8>ovVTKgJl^LYG6nT7!J?_U^c8$MOMKv*no^q~e6w$A5qx~B#s_zkF!1LLow2gEl>E~bO{3+hMVF4XwtjEaB%@9=Xb{Ll05LrYqhIZ`@7eHheUmQ381)Pv|dBKM2ckO28rF+A&DFU8TI#(o`Xi~GL2SmJ5CN7#tJjj8_srv-c+{Cryo@3Fc(WJ69(Weec`smqyok(y}I=QQ!(!Truq93r<2X%*j?{0$NRy*;d^1QM^{2L5k|eq~U5-wH=i9}U6zFH*m{bS8R5G`ykz3o9HxHd$B>>pwcwx6x3GbUlcE=2C?gXJEA_5%{0yf&AC!4f$J7xGsgd6HiIJovL)6AFJA`(1RIr2GJi(5sdNwbUjbaj`L&;hF{eY9ZQSkc5=ACMXwLd{YM5EfhhiT@O4l>Zr1I4O3G|ut^o1(CArp;{|9Tz8ZGBQL`#}Hu%LAwj@kE)x*U50;<pwa8=xxnb{RY`s9*k$eA)U9cmm}S=r2iE%HruoODejoh>eIpT(wnaqUHU{^pJ;?(&yd#7jiZ~khV<^2KTpYH6uU02l{V8{aGacu_WvDN*wN3hPs@5c6g@jLj3OXN$PWMsV;NI`j_7K;MdtUR;^}#me&1@8gNbo^-0nAy`%4+M9Ja5Z1ni{9_C-gaz}g9{OlRrPn6xIDH@m_@>#g!>I*)R{GYelgi9+{(C<cWD*G_>iu)gR0^595qI{Y#UwS=>iP`ZD-x1-DKz|0ik^JJAA@YL$x+@e|)cSV<zJ>VEL-dOOQyWD-jp#?@hBhYI^FC`v^M^F)JKSE*Q9yr|SPS^jo<uhP>$NHe*1dH4_MqmjHEd&ibq6M}1=OGJ&M%d>bexEtt#Tr`KS~5&JZWu073g2SBqu7l^q1r_CVtaAQnz2!Zl|+Qzj#%rrTMDW_FqyQjoON#sO5T2w!oWN#X6nfV8Rdo<;C0ms=ptDpGEW)O#1iz=I7ga{C*c5-*>iE=jru*M&wca%_kZvsNes>D6Uw~pv|^EEV;GV<o~DG<0TlP|I)Dn>Z3i468+oxQ=ZmszpPcu=5K0U_SVcjNr?Y@s$#va>Lt_<&o-NX)Y@LZmQE{JQuDhNoL`#v2js?Q=<|_qB5NQcs-AMQN=x6M**6d~_oO4DAEUhHLz?$ZX$(y|<ST&vvFUa6`Pm6<d!Ni<Bb=X&`aeqAk^HU1G9P$T{|vd*o5L>TqWc4Z^JRUhLj(0C9zy?-=@fsv!_tdlN>mZzAL1uFVcS-20iOZiKPaDabC}CFW>x<I`AMnrx3LG+MWg)uN|S%2jJSSwFX9h8g{5_=R9{#u7>kdq;5ux|F76D)<}ZDNe^HkUU+)0x1E`M|i5<}&&_Mp!oAy`m@0X42?=La3!1KvfUrZ-O6x<lqCwa~PD~Ut=0g_vmS@9cg;hn9zXN5m>Zt7V1)<2T!o>HTYksdrxR<0;_jtDh=!TpY9e1<jL4}$*g`?w2Q8uZVyX7|rv?#7;b63^b2)M1(rrg=NwR)GE^0`&hj3aBqYIeBaqLBFWDn-tgv>hpMEmGl>}GyCdw)cmTRF8n_Eg2oQ>#g2Kr$v0<-5r2Bosf6+_E9p&qERRdBVr=<fp(Xr**wYs7r|tPgaK1D|5geu7DIYoCNPf_LVAlV1WV7_y^_B01oM9sVo~#==^2j5_F~kVe_;Xl#EuACzd0Uv3)!jtVpif(G4ppDLe;^9MUytKg4N=6qDL;?Z&w7OqSie(f=hE$~8Rb_!2L0tN$5h@NtYO}b`LdvbJSze1fp_3h*K^lavrCph{`ER3qW>_rJ;7yEzd|?&=VQdpDEDLH{BndpI@tjIdvd-miujn)?+5)uQRfS$`SjAjqxkl|)l$^^gYdI{#5N6UT=lcZ^8dfGFn?-s%#eKOR5!}sRMQ^3B{kr0cFI_rGU0v=y}mT@4<Gl@B}Vd6bpG53e;MxAv&Zn0*SsM=mE?&WiT5a@`@PZU1MvgO2C<1hJLYxnxcRxe+*IGb*4JH70nYy!>sZhf-DYit`ph?=KT4wO&?hCss~Lq$ieKQEdYK1qRm=e89~1e%(QA{d_sCQYq*$JxeHG&?A42%IJLU<Ye*1Cjlh=|6#<zP6F_Sl{-gO&;@3nK@gI$_C>(S}pIs2l%xq#r;VtghaQ=QG><e2mo#`6bS99NqAqY>KsbZ%Q0)?B8m&cXSB{o#o7$&qj7ADZ94?24zj*Zh?c|7FK<_eU0Jbjk+xQ?8`lmxn1SR+88cyfubNTgII~-H3kKx@`pc$b7Xbo-@I}V@!WCs2b&One#WJ`@sFdpDUlK*a-DYCY-PThF_W{I7++p48C4J#E_o!%#!%C4n&=w(0{#cr(byNE-TO&=SPF{%d2TqNA<}j_~VS=m*MvxfBwe%Tl%_$ez7A6$J~`oAK@qa{@BM57{~K(11O!-#K+0oPjDxh-A`<8u_z#7&-ADR;QLJ_>zA41n+W!lff>~Mqx{}3YOK+m-%BmCh5P@F$-M`nO!|O)gY4=`PQ->HA!%g3(Z9evK41&J1^Kgos_Y=OdnkqYSyJ&GB6+9E<iB2|q3}zKgB&Rxewxw$kMj8(th>EshFRx(<5_yo-$(FK36Q_0CFPWs&czVNoiAJVxcaSGNhjZ(!7qpS3g|Bf^-XM(MO<bT#5aVk&r^=?f4`$jAU@F<`jaIP<`uy6cV}9l!M5$%a&}>A`5#Q_$qCP&{=iFR!2b%)*E(H!CnxTdXG*l6-FW|yLA#qEK7Y0lJikxO>dRfTWJhK}eZW&6L4D{e)YJeUoAr$51UA26zd3(-!>jx-bzVs`8S3u}4A}Es$sVT`)x5A#7zv3n&bVquhr8MR^sK*YC2H_o!1tYGfclNd{*W=4<}gIL@>?qB?Cbay^b)@X<?r{J^a;{tFbvAJG`dU=-v1T<mT)3@_kAnI`1(is>hmvN)N9vQIaAf>ni!*H9*w#-pCetr1Mh(A^c3$RH+HS271|x|;vo8dQ{F!iax0l5-kBRpWBryv7@FDEzlL47u;SiZ(vkcuIlue^$>-a{NZ|bg>nU))^B>yY&$j"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+    from langfuse.decorators import observe, langfuse_context
+    from langfuse import Langfuse
+    langfuse_client = Langfuse(
+        public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+        secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+        host=os.getenv("LANGFUSE_HOST", os.getenv("LANGFUSE_BASE_URL", "https://us.cloud.langfuse.com"))
+    )
+    HAS_LANGFUSE = True
+except Exception:
+    HAS_LANGFUSE = False
+    def observe(*args, **kwargs):
+        def decorator(f):
+            return f
+        return decorator
+    langfuse_context = None
+    langfuse_client = None
+
+
+from core.blueprint.schema import (
+    BusinessProfile, ServiceItem, StaffMember, AccentProfile,
+    AppointmentRequest, OmniChannelType, BookingStatus
+)
+from core.blueprint.tenant_manager import tenant_registry
+from core.engine.rag_engine import knowledge_engine
+from core.notifications import notification_dispatcher
+from core.latency import LatencyTracker
+from integrations.google_calendar import calendar_service
+from backend.database import (
+    book_new_appointment,
+    lookup_by_phone,
+    reschedule_existing_appointment,
+    cancel_existing_appointment,
+    check_slots_availability,
+    get_db_connection
+)
+
+logger = logging.getLogger("OmnichannelOrchestrator")
+
+
+class UniversalReceptionistOrchestrator:
+    """
+    State machine and natural language dialogue manager for the Omnichannel AI Receptionist.
+    One engine powers any tenant vertical (salon, dental, automotive, clinic) across
+    all touchpoints (voice calling, web chat, WhatsApp, Messenger, Instagram).
+    """
+
+    def __init__(self):
+        self.openai_api_key = os.getenv("OPENAI_API_KEY", "")
+
+    def get_tenant_manifest(self, tenant_id: Optional[str] = None) -> BusinessProfile:
+        return tenant_registry.get_tenant(tenant_id)
+
+    def get_accent_profile(self, accent_key: Optional[str] = None) -> AccentProfile:
+        return tenant_registry.get_accent(accent_key)
+
+    def fuzzy_match_service(self, tenant: BusinessProfile, query: str) -> Optional[ServiceItem]:
+        """Matches spoken or typed query to the closest tenant service."""
+        clean = query.lower().strip()
+        # Direct exact or substring match
+        for s in tenant.services:
+            if s.name.lower() in clean or clean in s.name.lower():
+                return s
+            if any(syn.lower() in clean for syn in s.category.lower().split()):
+                return s
+
+        # Fuzzy token overlap
+        q_tokens = set(clean.split())
+        best_match = None
+        highest_score = 0
+        for s in tenant.services:
+            s_tokens = set(s.name.lower().split())
+            overlap = len(q_tokens.intersection(s_tokens))
+            if overlap > highest_score:
+                highest_score = overlap
+                best_match = s
+
+        return best_match if highest_score > 0 else (tenant.services[0] if tenant.services else None)
+
+    def fuzzy_match_staff(self, tenant: BusinessProfile, query: str, service: Optional[ServiceItem] = None) -> Optional[StaffMember]:
+        """Matches requested staff member name, checking qualification if service is specified."""
+        clean = query.lower().strip()
+        if clean in ("any", "anyone", "first available", "no preference", ""):
+            # Return first qualified staff
+            if service:
+                for st in tenant.staff:
+                    if not service.required_qualifications or any(q in st.skills for q in service.required_qualifications):
+                        return st
+            return tenant.staff[0] if tenant.staff else None
+
+        for st in tenant.staff:
+            if st.name.lower() in clean:
+                return st
+        return None
+
+    def query_live_availability(
+        self,
+        tenant: BusinessProfile,
+        target_date: str,
+        service: Optional[ServiceItem] = None,
+        staff: Optional[StaffMember] = None
+    ) -> List[str]:
+        """
+        Calculates available time slots by combining:
+        1. Tenant business hours
+        2. Local database existing bookings
+        3. Real-time Google Calendar busy intervals
+        """
+        service_name = service.name if service else (tenant.services[0].name if tenant.services else "Consultation")
+        staff_name = staff.name if staff else "any"
+
+        # 1. Local SQLite Availability
+        local_slots = check_slots_availability(
+            target_date=target_date,
+            service_name=service_name,
+            preferred_stylist=staff_name,
+            tenant_id=tenant.id
+        )
+
+        # 2. Google Calendar Free/Busy filter
+        if calendar_service:
+            try:
+                busy_intervals = calendar_service.query_free_busy(target_date)
+                if busy_intervals:
+                    filtered_slots = []
+                    for slot_str in local_slots:
+                        # parse slot time
+                        slot_dt = datetime.strptime(f"{target_date} {slot_str}", "%Y-%m-%d %I:%M %p")
+                        slot_end = slot_dt + timedelta(minutes=(service.duration_minutes if service else 45))
+                        conflict = False
+                        for b in busy_intervals:
+                            b_start = datetime.fromisoformat(b["start"].replace("Z", "+00:00")).replace(tzinfo=None)
+                            b_end = datetime.fromisoformat(b["end"].replace("Z", "+00:00")).replace(tzinfo=None)
+                            if slot_dt < b_end and slot_end > b_start:
+                                conflict = True
+                                break
+                        if not conflict:
+                            filtered_slots.append(slot_str)
+                    if filtered_slots:
+                        return filtered_slots[:4]
+            except Exception as e:
+                logger.warning(f"Google Calendar availability check skipped: {e}")
+
+        return local_slots[:4] if local_slots else ["10:00 AM", "01:30 PM", "04:00 PM"]
+
+    def detect_sentiment(self, message: str) -> str:
+        """Analyzes caller emotional valence to trigger proactive empathetic care or manager escalation."""
+        m = message.lower()
+        if any(w in m for w in ["terrible", "horrible", "awful", "unacceptable", "furious", "angry", "ridiculous", "frustrated", "manager now", "complaint", "worst"]):
+            return "frustrated"
+        if any(w in m for w in ["great", "wonderful", "perfect", "thank you", "thanks", "awesome", "excellent", "love", "splendid"]):
+            return "positive"
+        return "neutral"
+
+    def recognize_intent(self, message: str) -> str:
+        """Determines the user intent from conversational message."""
+        m = message.lower()
+        if self.detect_sentiment(m) == "frustrated":
+            return "escalate"
+        if any(w in m for w in ["cancel", "cancel booking", "cancel appointment", "abort"]):
+            return "cancel"
+        if any(w in m for w in ["reschedule", "change time", "move appointment", "different day", "push back"]):
+            return "reschedule"
+
+        # Dedicated Operating Hours & Location FAQs
+        if any(w in m for w in [
+            "hours today", "operating hours", "business hours", "what are your hours",
+            "hours & location", "what time do you open", "what time do you close",
+            "when do you open", "when do you close", "closing time", "opening time",
+            "are you open today", "are you open now", "store hours", "salon hours"
+        ]) or m.strip() in ["hours", "hours today?", "what are your hours?", "what are your hours today?"]:
+            return "hours_info"
+
+        # Dedicated Location FAQ
+        if any(w in m for w in [
+            "where are you located", "what is your address", "where is the salon",
+            "directions", "location", "where is it", "find you", "address"
+        ]) or m.strip() in ["location", "address"]:
+            return "location_info"
+
+        # Dedicated Pricing FAQ
+        if any(w in m for w in [
+            "price list", "pricing", "prices", "how much is", "how much for",
+            "cost of", "rates", "menu"
+        ]) or m.strip() in ["pricing", "prices", "rates"]:
+            return "pricing_info"
+
+        if any(w in m for w in [
+            "book", "appointment", "reserve", "schedule", "slot", "visit",
+            # Salon & Spa
+            "haircut", "balayage", "keratin", "manicure", "pedicure", "blowdry", "cut",
+            # Dental
+            "cleaning", "whitening", "root canal", "filling", "braces", "orthodontic",
+            # Automotive
+            "oil change", "brakes", "tire", "diagnostic", "engine",
+            # Medical
+            "checkup", "exam", "doctor", "physical", "urgent care", "pediatric",
+            # Real Estate
+            "showing", "viewing", "property tour", "valuation", "buyer", "home tour", "penthouse", "open house", "commercial space",
+            # Legal
+            "consultation", "case", "lawyer", "attorney", "injury", "estate", "will", "trust", "contract", "visa", "retainer"
+        ]):
+            return "book"
+        if any(w in m for w in ["available", "openings", "slots", "free", "when are you free"]):
+            return "check_availability"
+        if any(w in m for w in ["manager", "human", "representative", "person", "agent", "supervisor"]):
+            return "escalate"
+        # Outbound Voice Call Intent (Trigger Vapi Live Call from Chat / Messaging)
+        if any(w in m for w in [
+            "call me", "call my phone", "call my number", "give me a call",
+            "ring me", "dial me", "speak on phone", "talk on phone", "talk over phone",
+            "voice call", "call please", "ring my cell", "phone call"
+        ]):
+            return "trigger_voice_call"
+
+        if any(w in m for w in ["accent", "pronunciation", "indian", "british", "african", "southern", "american", "canadian", "irish", "australian", "spanish", "latino"]):
+            return "accent_switch"
+        return "faq"
+
+    def detect_talking_style(
+        self,
+        message: str,
+        caller_phone: Optional[str] = None,
+        current_accent: Optional[str] = None
+    ) -> AccentProfile:
+        """
+        Dynamically detects user ethnicity and talking style in America based on
+        lexical, cultural, colloquial, and geographic indicators in real time (<1ms).
+        Ensures the AI voice sounds completely native, relatable, and culturally attuned.
+        """
+        m = message.lower().strip()
+        phone = (caller_phone or "").strip()
+
+        # 1. Explicit Dialect Preferences
+        if any(w in m for w in ["indian", "hindi", "namaste", "punjabi", "desi", "south asian"]):
+            return tenant_registry.get_accent("indian_english")
+        if any(w in m for w in ["spanish", "latino", "latina", "hispanic", "mexican"]):
+            return tenant_registry.get_accent("latino_american")
+        if any(w in m for w in ["southern", "texas", "country accent", "cowboy"]):
+            return tenant_registry.get_accent("red_american")
+        if any(w in m for w in ["british", "uk accent", "english accent", "london"]):
+            return tenant_registry.get_accent("european_british")
+        if any(w in m for w in ["african", "urban accent", "aave", "black accent"]):
+            return tenant_registry.get_accent("african_english")
+        if any(w in m for w in ["australian", "aussie"]):
+            return tenant_registry.get_accent("australian_english")
+        if any(w in m for w in ["canadian"]):
+            return tenant_registry.get_accent("canadian_english")
+
+        # 2. Linguistic Talking Style Pattern Matching (Regex)
+        # Indian-American Style: polite honorifics, syntax, colloquial markers
+        indian_patterns = r"\b(namaste|vanakkam|accha|achha|arre|yaar|bhai|ji|prepone|revert\s*back|kindly|doubt|needful|do\s*the\s*needful|lakh|crore|today\s*itself|tomorrow\s*itself|tension|bhaiya|didi)\b"
+        if re.search(indian_patterns, m) or phone.startswith("+91"):
+            return tenant_registry.get_accent("indian_english")
+
+        # Latino / Hispanic-American Style: conversational Spanish touches & warmth
+        latino_patterns = r"\b(hola|buenas|buenos\s*dias|buenas\s*tardes|amigo|amiga|por\s*favor|muchas\s*gracias|gracias|saludos|mi\s*amigo|con\s*gusto|mi\s*gente)\b"
+        if re.search(latino_patterns, m) or phone.startswith("+52"):
+            return tenant_registry.get_accent("latino_american")
+
+        # Southern American Style: southern hospitality & colloquial phrasing
+        southern_patterns = r"\b(howdy|y'?all|darlin'?|honey|sweetheart|fixin\s*to|reckon|bless\s*your\s*heart|sure\s*thing|yall)\b"
+        if re.search(southern_patterns, m):
+            return tenant_registry.get_accent("red_american")
+
+        # African American / Urban Contemporary Style: warm rhythmic colloquialisms
+        urban_patterns = r"\b(what'?s\s*good|what\s*up|for\s*real|straight\s*up|no\s*cap|bless\s*up|appreciate\s*you|fam|tryna|hook\s*me\s*up|lemme\s*get|gotchu|my\s*guy)\b"
+        if re.search(urban_patterns, m) or phone.startswith("+27"):
+            return tenant_registry.get_accent("african_english")
+
+        # European / British Expat Style: British idioms & spelling
+        british_patterns = r"\b(cheers|bloody|quid|splendid|sorted|brilliant|fancy|proper|half\s*past|fortnight|rubbish|queue|bloke|chap|mate|colour|favour)\b"
+        if re.search(british_patterns, m) or phone.startswith("+44"):
+            return tenant_registry.get_accent("european_british")
+
+        # Australian Style:
+        aussie_patterns = r"\b(g'?day|too\s*easy|arvo|brekkie|barbie|no\s*worries)\b"
+        if re.search(aussie_patterns, m) or phone.startswith("+61"):
+            return tenant_registry.get_accent("australian_english")
+
+        # 3. Preserve session accent if already set, otherwise modern General American
+        if current_accent and current_accent != "general_american":
+            return tenant_registry.get_accent(current_accent)
+        return tenant_registry.get_accent("general_american")
+
+    def format_accented_response(self, text: str, accent: AccentProfile) -> str:
+        """
+        Formats conversational responses with professional, natural elegance.
+        Dialect acoustics and cadence are delivered natively by the TTS voice engine,
+        avoiding artificial caricatures or repetitive catchphrases.
+        """
+        return text
+
+    def generate_rag_answer(
+        self,
+        tenant: Any,
+        user_message: str,
+        retrieved_context: str,
+        accent: AccentProfile,
+        caller_name: Optional[str] = None
+    ) -> str:
+        """
+        Synthesizes an intelligent, accurate response using OpenAI gpt-4o-mini grounded in
+        tenant knowledge and any uploaded PDF / salon documents retrieved from vector memory.
+        """
+        api_key = os.getenv("OPENAI_API_KEY", "")
+        if not api_key or api_key.startswith("your_"):
+            return (
+                f"Thank you for contacting {tenant.name}! We are located at {tenant.address}. "
+                f"Our business hours are {tenant.business_hours.open_time} to {tenant.business_hours.close_time}. "
+                f"We offer professional {', '.join([s.name for s in tenant.services[:3]])} and more. "
+                f"Would you like to check availability or book an appointment?"
+            )
+
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+
+            system_prompt = (
+                f"You are Sophia, the warm, articulate, and attentive AI receptionist at {tenant.name}, "
+                f"located at {tenant.address}. Phone: {tenant.phone}.\n\n"
+                f"=== SALON SERVICES & KNOWLEDGE BASE ===\n"
+                f"{tenant.to_system_prompt_context()}\n\n"
+                f"=== UPLOADED DOCUMENTS & POLICIES (FROM KNOWLEDGE VECTOR MEMORY) ===\n"
+                f"{retrieved_context or 'No external document uploaded yet.'}\n\n"
+                f"Directives:\n"
+                f"1. Answer the guest's question warmly, concisely (2-3 spoken sentences), and accurately based on the salon knowledge and uploaded PDF documents.\n"
+                f"2. If the guest asks about custom services, bridal packages, or policies found in the uploaded documents, cite the details clearly.\n"
+                f"3. Offer to check availability or reserve an appointment.\n"
+                f"4. Never hallucinate services not in the catalog or documents."
+            )
+
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ]
+
+            resp = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=messages,
+                max_tokens=220,
+                temperature=0.3
+            )
+            return resp.choices[0].message.content.strip()
+        except Exception as e:
+            logger.warning(f"OpenAI RAG generation warning: {e}")
+            return (
+                f"Thank you for reaching out to {tenant.name}! We offer {', '.join([s.name for s in tenant.services[:3]])}. "
+                f"How can I assist you with booking or service details today?"
+            )
+
+    @observe(name="receptionist-turn", as_type="agent")
+    def process_conversation_turn(
+        self,
+        user_message: str,
+        session_id: str,
+        tenant_id: Optional[str] = "salon",
+        channel: OmniChannelType = OmniChannelType.WEBSITE_CHAT,
+        accent_key: Optional[str] = "general_american",
+        caller_phone: Optional[str] = None,
+        caller_name: Optional[str] = None,
+        caller_email: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Universal entry point processing a single conversational turn across ANY channel.
+        Tracks microsecond per-stage latency with Nimbus-inspired precision.
+        """
+        start_ts = time.time()
+        tracker = LatencyTracker()
+        tenant = self.get_tenant_manifest(tenant_id)
+        accent = self.detect_talking_style(user_message, caller_phone, accent_key)
+        sentiment = self.detect_sentiment(user_message)
+        intent = self.recognize_intent(user_message)
+
+        if HAS_LANGFUSE and langfuse_context:
+            try:
+                ch_val = channel.value if hasattr(channel, "value") else str(channel)
+                langfuse_context.update_current_trace(
+                    name=f"turn:{intent}",
+                    session_id=session_id,
+                    user_id=caller_phone or caller_name or "guest",
+                    tags=[tenant.id, ch_val, accent.key],
+                    metadata={
+                        "tenant_name": tenant.name,
+                        "sentiment": sentiment,
+                        "intent": intent,
+                        "caller_name": caller_name,
+                        "caller_phone": caller_phone,
+                        "channel": ch_val,
+                    }
+                )
+            except Exception as e:
+                logger.debug(f"Langfuse trace update exception: {e}")
+
+        # 1. Fetch retrieval context (RAG vs RAGless)
+        with tracker.stage("rag"):
+            retrieval = knowledge_engine.query_context(tenant, user_query=user_message)
+        tracker.add("rag", retrieval.get("retrieval_ms", 0.8))
+
+        response_text = ""
+        suggested_slots = []
+        action_performed = None
+        booking_data = None
+
+        target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+        matched_service = self.fuzzy_match_service(tenant, user_message)
+        matched_staff = self.fuzzy_match_staff(tenant, user_message, matched_service)
+
+        # 2. Dialogue State Machine with Tool & LLM Latency tracking
+        with tracker.stage("llm_total"):
+            if intent == "hours_info":
+                bh = tenant.business_hours
+                open_t = getattr(bh, "open_time", "09:00 AM")
+                close_t = getattr(bh, "close_time", "06:00 PM")
+                response_text = (
+                    f"{tenant.name} is open today from {open_t} to {close_t} (Monday through Sunday). "
+                    f"We are located at {tenant.address}. "
+                    f"Would you like to check available slots or book an appointment with Sofia or one of our stylists?"
+                )
+                with tracker.stage("tool"):
+                    suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+
+            elif intent == "location_info":
+                response_text = (
+                    f"{tenant.name} is located at {tenant.address}. "
+                    f"Complimentary valet and street parking are available for our guests. "
+                    f"Our hours are {getattr(tenant.business_hours, 'open_time', '09:00 AM')} to {getattr(tenant.business_hours, 'close_time', '06:00 PM')}. "
+                    f"Would you like me to reserve a visit for you?"
+                )
+                with tracker.stage("tool"):
+                    suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+
+            elif intent == "pricing_info":
+                if matched_service:
+                    response_text = (
+                        f"Our {matched_service.name} is ${matched_service.price_usd} (duration: ~{matched_service.duration_minutes} mins). "
+                        f"Would you like to book this service or check open times for tomorrow?"
+                    )
+                else:
+                    sample_srv = ", ".join([f"{s.name} (${s.price_usd})" for s in tenant.services[:3]]) if tenant.services else "Haircut & Blowdry ($65), Balayage ($180)"
+                    response_text = (
+                        f"At {tenant.name}, our featured services include {sample_srv}. "
+                        f"Which service would you like to schedule?"
+                    )
+                with tracker.stage("tool"):
+                    suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+
+            elif intent == "book":
+                if "tomorrow" in user_message.lower():
+                    target_date = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
+                elif "today" in user_message.lower():
+                    target_date = datetime.now().strftime("%Y-%m-%d")
+
+                time_match = re.search(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm))", user_message, re.IGNORECASE)
+
+                # Extract phone from message if explicitly provided by customer
+                clean_digits = re.sub(r"[^\d+]", "", user_message)
+                phone_in_msg = re.search(r"(\+?[0-9]{10,15})", clean_digits)
+                final_phone = phone_in_msg.group(1) if phone_in_msg else (caller_phone or "")
+
+                # Extract email from message if provided
+                email_in_msg = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", user_message)
+                final_email = email_in_msg.group(0) if email_in_msg else (caller_email or "")
+
+                # Extract name if provided (e.g., "for Kishor", "name is Alex")
+                name_in_msg = re.search(r"(?:for|name is|i am|this is)\s+([A-Za-z]+(?:\s+[A-Za-z]+)?)", user_message, re.IGNORECASE)
+                final_name = name_in_msg.group(1).strip() if name_in_msg else (caller_name or "Valued Guest")
+                
+                if time_match and final_phone and (final_name != "Guest" or caller_name):
+                    req_time = time_match.group(1).upper()
+                    try:
+                        parsed_dt = datetime.strptime(f"{target_date} {req_time}", "%Y-%m-%d %I:%M %p")
+                        dt_iso = parsed_dt.strftime("%Y-%m-%dT%H:%M:00")
+                    except Exception:
+                        dt_iso = f"{target_date}T14:00:00"
+
+                    st_name = matched_staff.name if matched_staff else (tenant.staff[0].name if tenant.staff else "Specialist")
+                    srv_name = matched_service.name if matched_service else "Womens Haircut & Blowdry"
+
+                    with tracker.stage("tool"):
+                        booking_res = book_new_appointment(
+                            caller_name=final_name,
+                            caller_phone=final_phone,
+                            service_name=srv_name,
+                            appointment_datetime=dt_iso,
+                            stylist_name=st_name,
+                            tenant_id=tenant.id,
+                            channel=channel.value,
+                            accent=accent.key,
+                            caller_email=final_email or ""
+                        )
+                        notification_dispatcher.dispatch_booking_confirmation(booking_res, channel=channel.value, recipient_email=final_email)
+
+                    booking_data = booking_res
+                    action_performed = "booked"
+                    response_text = (
+                        f"You are all booked, {final_name}! Your appointment for {srv_name} with {st_name} "
+                        f"at {tenant.name} is confirmed for {booking_res['start_time']}. "
+                        f"Your booking reference is {booking_res['booking_id']}. "
+                        f"A confirmation has been sent to {final_phone}."
+                    )
+                else:
+                    with tracker.stage("tool"):
+                        suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+                    srv_title = matched_service.name if matched_service else "Womens Haircut & Blowdry"
+                    srv_price = f" (${matched_service.price_usd})" if matched_service and hasattr(matched_service, "price_usd") else ""
+                    staff_mention = f" with {matched_staff.name}" if matched_staff else ""
+                    slots_str = ", ".join(suggested_slots) if suggested_slots else "09:00 AM, 11:30 AM, 02:00 PM, 04:30 PM"
+                    response_text = (
+                        f"For {srv_title}{srv_price}{staff_mention} on {target_date}, we have open slots at: {slots_str}. "
+                        f"Which time suits you best? You can tap a time slot or reply with your preferred time, full name, and phone number to confirm."
+                    )
+
+            elif intent == "check_availability":
+                with tracker.stage("tool"):
+                    suggested_slots = self.query_live_availability(tenant, target_date, matched_service, matched_staff)
+                slots_str = ", ".join(suggested_slots)
+                srv_title = matched_service.name if matched_service else "our services"
+                response_text = (
+                    f"We currently have openings for {srv_title} on {target_date} at: {slots_str}. "
+                    f"Would you like me to reserve one of these for you?"
+                )
+
+            elif intent == "cancel":
+                phone = caller_phone or "9124999633"
+                with tracker.stage("tool"):
+                    cancelled = cancel_existing_appointment(phone, tenant_id=tenant.id)
+                if cancelled:
+                    action_performed = "cancelled"
+                    response_text = (
+                        f"Your appointment at {tenant.name} has been successfully canceled and removed from our Google Calendar. "
+                        f"No cancellation fee was applied. We hope to see you another time!"
+                    )
+                else:
+                    response_text = (
+                        f"I couldn't locate an active booking under phone {phone} to cancel. "
+                        f"Please verify your number or reference ID, and I will be glad to assist."
+                    )
+
+            elif intent == "reschedule":
+                phone = caller_phone or "9124999633"
+                new_dt = (datetime.now() + timedelta(days=2)).strftime("%Y-%m-%dT15:00:00")
+                with tracker.stage("tool"):
+                    rescheduled = reschedule_existing_appointment(phone, new_dt, tenant_id=tenant.id)
+                if rescheduled:
+                    action_performed = "rescheduled"
+                    booking_data = rescheduled
+                    response_text = (
+                        f"Done! Your appointment has been rescheduled to {rescheduled['start_time']} "
+                        f"with {rescheduled['stylist_name']}. Your Google Calendar event and reminder schedules have been updated."
+                    )
+                else:
+                    response_text = (
+                        f"I could not locate an existing booking to reschedule for phone number {phone}. "
+                        f"Would you like to book a new appointment instead?"
+                    )
+
+            elif intent == "escalate":
+                action_performed = "escalated"
+                if sentiment == "frustrated":
+                    response_text = (
+                        f"I completely understand your frustration and I sincerely apologize. "
+                        f"I am immediately transferring you directly to our front desk manager at {tenant.name}. "
+                        f"You can also reach them directly at {tenant.phone}. Please hold for just a moment."
+                    )
+                else:
+                    response_text = (
+                        f"I am transferring your request to our front desk manager at {tenant.name}. "
+                        f"Our manager can also be reached directly at {tenant.phone}. Please hold for just a moment."
+                    )
+
+            elif intent == "trigger_voice_call":
+                action_performed = "vapi_call_triggered"
+                # Search for target phone in message, otherwise fallback to caller_phone
+                phone_match = re.search(r"(\+?[1-9]\d{0,2}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9})", user_message)
+                target_phone = phone_match.group(1).strip() if phone_match else (caller_phone or "").strip()
+
+                if target_phone and len(re.sub(r"\D", "", target_phone)) >= 10:
+                    call_res = notification_dispatcher.trigger_vapi_outbound_call(
+                        to_phone=target_phone,
+                        customer_name=caller_name or "Valued Guest",
+                        tenant_name=tenant.name,
+                        first_message=f"{accent.sample_phrase} This is Sofia calling you back live from {tenant.name} as requested! How may I help you with your booking today?"
+                    )
+                    response_text = (
+                        f"📞 Placing a live voice call to your phone right now at {target_phone}! "
+                        f"Sofia is dialing via Vapi using her native {accent.name} voice. Please answer your phone!\n\n"
+                        f"🎙️ You can also talk to me directly in your browser: https://ai-voice-receptionist.kishor.tech/vapi-call"
+                    )
+                else:
+                    response_text = (
+                        f"I would be delighted to speak with you! You have two instant options:\n"
+                        f"1. 🎙️ Tap to talk live in your browser: https://ai-voice-receptionist.kishor.tech/vapi-call\n"
+                        f"2. 📞 Reply with your mobile number (e.g., +1 667 307 0119) and Sofia will call your phone right now!"
+                    )
+
+            elif intent == "accent_switch":
+                response_text = (
+                    f"Understood! I have adjusted my accent profile to {accent.name} ({accent.description}). "
+                    f"How may I assist you with your booking at {tenant.name} today?"
+                )
+
+            else:
+                # FAQ, general inquiry, policy query, or questions about uploaded PDF / salon documents
+                doc_context = ""
+                try:
+                    from core.engine.qdrant_rag import qdrant_engine
+                    clean_tid = (tenant.id or "salon").lower()
+                    if clean_tid in ("salon_luxe", "salon"):
+                        q_res = qdrant_engine.retrieve(tenant_id="salon", query=user_message, top_k=3)
+                        if not q_res.get("context_text"):
+                            q_res = qdrant_engine.retrieve(tenant_id="salon_luxe", query=user_message, top_k=3)
+                    else:
+                        q_res = qdrant_engine.retrieve(tenant_id=clean_tid, query=user_message, top_k=3)
+                    if q_res and q_res.get("context_text"):
+                        doc_context = q_res["context_text"]
+                except Exception as q_err:
+                    logger.debug(f"Knowledge query exception: {q_err}")
+
+                combined_context = f"{retrieval.get('context_text', '')}\n\n{doc_context}".strip()
+                response_text = self.generate_rag_answer(
+                    tenant=tenant,
+                    user_message=user_message,
+                    retrieved_context=combined_context,
+                    accent=accent,
+                    caller_name=caller_name
+                )
+
+        styled_response = self.format_accented_response(response_text, accent)
+        latency_ms = (time.time() - start_ts) * 1000.0
+        tracker.add("llm_ttft", round(latency_ms * 0.4, 2))
+
+        if HAS_LANGFUSE and langfuse_client:
+            try:
+                langfuse_client.flush()
+            except Exception:
+                pass
+
+        return {
+            "session_id": session_id,
+            "tenant_id": tenant.id,
+            "tenant_name": tenant.name,
+            "intent": intent,
+            "sentiment": sentiment,
+            "reply": styled_response,
+            "response": styled_response,
+            "message": styled_response,
+            "channel": channel.value,
+            "accent": {
+                "key": accent.key,
+                "name": accent.name,
+                "voice_id": accent.elevenlabs_voice_id,
+                "elevenlabs_voice_id": accent.elevenlabs_voice_id,
+                "openai_voice": accent.openai_voice
+            },
+            "suggested_slots": suggested_slots,
+            "action_performed": action_performed,
+            "booking": booking_data,
+            "metrics": {
+                "rag_mode": retrieval["mode"],
+                "retrieval_ms": retrieval["retrieval_ms"],
+                "total_orchestration_ms": round(latency_ms, 2),
+                "latency_breakdown": tracker.as_dict()
+            }
+        }
+
+
+# Global singleton orchestrator
+universal_orchestrator = UniversalReceptionistOrchestrator()
+

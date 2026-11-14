@@ -1,36 +1,726 @@
-# -*- coding: utf-8 -*-
-# ==============================================================================
-# 🛡️ PROTECTED BY LEARN-WITH-KKP ENTERPRISE AI GUARD
-# Copyright (c) 2026 Kishor Kumar Paroi (Learn-with-KKP). All Rights Reserved.
-# Proprietary & Confidential.
-# Unauthorized reproduction, decompilation, redistribution, reverse engineering,
-# or commercial exploitation is strictly prohibited under international copyright laws.
-# ==============================================================================
-import os as _o, sys as _s, zlib as _z, base64 as _b, hashlib as _h
+"""
+Omnichannel Messaging Router:
+- Meta WhatsApp Cloud API & Twilio WhatsApp
+- Meta Facebook Messenger Graph API
+- Meta Instagram Direct Messaging API
+Provides Webhook verification (hub challenge) and bidirectional auto-response.
+"""
 
-_k = _o.getenv("KKP_ENTERPRISE_LICENSE_KEY", "").strip()
-if not _k:
-    _s.stderr.write(
-        "\n"
-        "================================================================================\n"
-        "🛑 [LICENSE VERIFICATION FAILED] UNAUTHORIZED EXECUTION BLOCKED\n"
-        "--------------------------------------------------------------------------------\n"
-        "This proprietary codebase is protected under Learn-With-KKP Enterprise Shield.\n"
-        "A cryptographically valid KKP_ENTERPRISE_LICENSE_KEY is required to\n"
-        "execute, evaluate, or deploy this software.\n\n"
-        "Unauthorized copying, reverse engineering, redistribution, or deployment\n"
-        "is strictly prohibited under international copyright laws.\n\n"
-        "To request an authorized commercial or research license key, contact:\n"
-        "📧 contact@kishor.tech | https://kishor.tech\n"
-        "================================================================================\n\n"
-    )
-    _s.exit(1)
+import os
+import json
+import logging
+from typing import Dict, Any, Optional
+from fastapi import APIRouter, Request, Response, HTTPException, Query
+from pydantic import BaseModel
 
-try:
-    _salt = b"KKP_OMNICHANNEL_AI_SHIELD_2026_ENTERPRISE_KEY"
-    _dk = _h.sha256(_k.encode("utf-8") + _salt).digest()
-    _d = _z.decompress(_b.b85decode(b"c-qvxX;@R|7B&n9NJt17$UHEL2nc9TZJ`c8NSG9m43Lm8$QUGmIG|`nP$SwZ4yfROfC?y(s??$fP^tA;8B{=JuwqdJ6i`G@5p9+4**jqp+wZ*BdwoB?-}~B6_I~zy*1GSt?zIwPN^-X>7v4+2yC{$O7>e%LbMukE55ySP2#QCwM6K>9royVy_o1DG*LT~c7P_zF)?C%U_1N0+oaeJLVPrEoA=JWq2mfITChX`Ib3bsuTe<tkrz==n5{e%SH`U;h1m@UE&s=Y`%h4k!3(I;}#v9v?A-UvCV%0}-U@JS3f<mZ5AEk&DndwplvEOpp8>?px2<!a`SGw?`7MVz3KjWOJ#m<m>_^2<2(&Zddjml9iH`roU`h+a2r7Qfc-A1K%W5sS;4!Pp-kD=@B&#h?(*A^G+iCPTe#m=~)xp@vjwvUhUh>Tax)M|41K&1Yj)zu}&ZgoUds2Ss&XRRH{ch^Bz1L6)lUNt6XXr=zn#Iq&r;QK}^ISTs<Nv)YUO!>VI=bP8+^${lf6ADX+{w=5ocT4Yzz+2&HQT>nWZLMA`cB>#AD3r4Htx>(xVkzxocnfvUd$pN~W3Lvix57TQ_bA4-_FGEMuThO)zxl;5UaDXeg*=Qf@Z8btiqn1J<o0G}`>^86JyEKjRP}ZJbDnJ$44>oKVmxcWnVzrP*cnNykr%#aa++j5Qgg&H{=*0gH>1d(h*v*<Pc%m9P|~9<x^EaKcI1|Z-c?XU7xKIeNZt0lH@N$ML}Lz^RSz=!>rug6YixyA?PhJ;-Dw^;(c_uC3eS%I1bk*>Pq&`n7Cnix7*i^`V@FteG&hJMdTSX{h^QNuldmRJK4*zqP%8r+byahJ+e}?rzt01YFS8UE;~ovHpdFAGKSkmj2&*KEjYoyeDFlx#`@ATu7nbsixcWcj*sZauk<@@zqeO~5rrN(Pf`!|YB|}iV9Qk9<cdDByZ8QkxSnFI7*76zR3rF24_->~FX#WE6+c4L9n1R>mD=A6dKZ+i#Ao%Ti=!ew4J#*OwM4ig^OXaGnej`aebD6}+xY9Fk<|@Iq3>gx6BAL4XtD)9tg9DM3Cv-S9j5yyU&kvN`6uNuPoz*Umy^h>+?WX<&>E+qi(#+SsozG1)TD&)D#7)eq&y_AE_B!(~<M$SG7hZ75emF0D;2UWy&GNwJHx5GW+FYIi>#;?^WmL!W0JJjv@(3ZZ$tYG}KK~^u)4|{N@{f_W^E%k8(j7iN46r-vz5BWqK1Y_aP~knw==Zddt4h~>^-Zl|%BUiz&{}dWq3|hNaEq-FTkEBHwIx{5GHZMTsFfR#7yaAMJ2UP^eCX%t*Kkc4?%@7h2kKJg(IsfofF=K`Q+?+OgZ+`&ADPk`VlXmQ@_};EPOM$u=z(MQ&kij|wRA?!IuKhqNEWtOBulJt=c9HxFF`!sV=muZ5XbnqB&T^f?ZB#??{)A!_;|P3-p5z`*Uo{v^N0u5cnG>)zQ+r*XHE5>p7Aw$vT*|Mbm;F<RNu6YP&8@SG2kTSNEw2yjCuAKfz!a)7`tG`72n$ml>Y^#j~4sIOxd6C`|Vg$a-SahGu@GbV3Z1)Bj`To(q;JB;QMSb>Ug`-|A&O4K{5V1J}%HX@B{y5V!+aEhkRUQKe$rgxaYk1mU%Tizn><nAw~(3z4v<8MpFI0JHDEr{fa_;>Hhqc0(01UdpAS0Qx*|qi77+oMPc3kv(E)Ve`zndfH+cSxw^*eSqY2xtHm0@V#L4Qo}^H{GmjC+&o>`^VD-TgFZ_S?W4QA<`$Tu;LhbL4yCU?i#)cN@9D1X`?2I{oUn}%BT|tTp8`e_qFB;g7bHJN<jZZhB3z9CCScrZl#Y?Qb%lv*%WeT=zkzp7Eajq4lrmiqX`r3kShH*xSDg6EK#fiO+?_Gyu^w?8hN^^=g7;ITpI>P4HgqR1K8;%n1uV<v@W(Q%6{v^3oV>|k-@tJ1F>m5@bTL@PhTO5vfBKdm757iqvj8}2s`FbZmA0;VpR521dFQ#1et=-~Zb&a3H`wzW8E%X{Qh8vDJFKf08`eofZlmmX)hPutLeQ1N@-lS(A2>e?{@xcmKrRTjk0(VcdluCIF;)B+$=TTa>Egq){@k*IFMd7UqtzD1ytIzi#=)SPzR`~wb7lTzMR$qkncX^1N-jAVoSFp9WrJ-B`e~1gJn9=k!0DCw|buoZjqmxWusCPwh7o3m!W)uh6WzMZ|f7KLhU6@ijsKaeAQW!fMU-7+}YQ+KHKh(8+J@d^B5I^v{7WO@a>?=-WXIvq=YiI1T<+zVtV5#e(_E~j(-(r=kd)_nMnuMnG1-Q%n=5Qm!V@JFwdR+@VhWyI^vypOet!gC5r4BdQex*3Q{P0EP<e&RjNVY}(P{Q)BrzHrC*cYX>sdWFNDpv!_i&-I;wfDYNpbkb>ee}h@rLT6grk5IJAi?)<M!N*=hy(W7*SUhVbDip)P*QIaFSXRU#ORBni*kMx6GdH?f;aR3Xt5^2{t3jlNUjBPbX{8tUHkNL4=UjVI_8Lb>sxEPZ274!rtw*5f4@<Q9?3EM%ybkEKjav20g*Gb9Gt(iPlQqRWMIGaD*?G2G-qqJl!EMX78kg;_s2`N$*bOzxi?5LJP<#G^>Q@-yX~%6W|tMU0CDsA%D_JG{e{Gg5ES@+qmt$b1FmxWI*P$-V1Mp)o$C#htEx}2MAvCCTxag3&|1qN&bDJRBy%|0t%TB1Y$>^>`Tp?z^xTC3+E<mXhO8HHVO7Y6VNd<NX2m1Ih-VJwD=lc{j29f+wU5E~74_Ruhmbe_h{A6TtL|cke5d2!x`6#!*1VZ)a6FBRWImoLsF-o2FpOFgUi?%`1mY8CKBH27zM%V`&g5NjR~E_*)8*AAdZK&!F+4}^zeRV#mZ9MFPk{Z$we&=jK>WT>ce^HYrr7AJ0<%`IMZYwzz!Lt9WxnA8{{-7Vcz(kOS0e+JsL_t6y*oDuC+)U(`;+_eZ8Yhc-LumHba?+E{~C!&9kZV|;C!YM($`k?>$v2Fn1`BstE6>&W5KpObM^1L=X7nP><%d!rSoeH%`pnv6`v<@Xy5G*gOIu}ZG;uRM_xnz^~`%6bjC7sQi9ukMy~q(3>n>X_ywL#{fU&DF@3)<1a*Wsv90&_KKGUreCv1O=Ciw;x%(+MPgvu(n-#pX^|-}O=GigMGTN47xb^opI?O8kiux0&^_lgI?W>D>Z9^IfVS>ffZpMvB3TIm$z&9PUxEGk<{a0(=Ulz}Gm{AGhKV7sX*PY{eVzHzW-|=<>ZC6O~2vuBzOXk`cpYzPxg!bK$EhX4Io+*LjKXzwA(S0pmE71n_Uz+FVXbsu(c40b(H_$R7|LD>@|NL^V2WG3(-%q_i!wPg3zz4RHpIssQPZQn@V{i{Y8s9(2Kdn_gC5JRw#PO3n%cM==6vVG1s7cqi#-4e~5Y@VVf`7_boA-awe_di-Bmbd<?e-qCBG8e3#ru{W+b1U*Wk(w@UsHu_=~s|1tiLoE1nkp(%JWmYtfUpB-anR8G9&*O&<nk3p>Q)pReFxwU#aWZ^G#j<>nZQoAC27^Q}CP&`LEd7h%)boDNL`-G(7@-z(IZr@~^bLNu86{-)Bb^>^R~B;+KtErGCpJTZ}U4)SH0#UCA2zgP)%$pR_+_McrDGU&zY?9TDe*PhtuDqggU-cCQmXAJOtS0KI$F|JnLzZeB)^f#_W<w;0**YJ>EFS>HQt!3}y6FTs73_9%+(r_AQM_??J#fzG#Fe{V?j2ez!i$dqDfFe<ps$3gr60r&y`D!HT37W{tpM}(x798a1T2HW?H`WijX)cE+dtWH0gg8k+Y<88>-iSYRycJiHwPk8?(HaI_+)6#n>VnOECV5Ht~RB*n2i^_D|eq+Rrv?4~D9m^#zOHUU+96_!?HN0IZZ7|Ck(vRO|^+lZf*!KnTpV@8C1?RUj2D^WK&kF)~cL<12I+sFk1N?Swr^s2>zHvpnW`CdkMV2+v!SCx|l!Exh|Ia}mN^t(7fU8E3|2z8aMEolcy`4&T2mU!!^j{lk5#rDj1@@*z;ULoOIx_~^zvZ1XSJ{r)N2ONIGhqK=X9tn!asL86U!GLg=7n`Ic)qdgaR<#%lu7ofgM2Yde$ueDUm@u*D|}~^SZ6G!+2Trxd60i;)Zqkz_%&u9(Ec>yVz@@em7H4O-?pdwEn;+<(JvqxRJK@UO7&?m{*kt=`u;>JZ~tfRzfX!6ThBl5*T^UE>hGXPq?e2NAGAA$%%r;`tNWqvW6DqvP8g~Es~F7~u$Nypy5Fn7T$PuB^)o_jr<^ZjucP=XzT<HKzz1iZY61M4AhFOc@qUuR_WSObY!UTOQpjau$CHgPe*peLXzDr>Q|k3_6DsxS5f1}=hb8BVPRCn-|1F-D=!olxF|p<*<x%%y{cRsNPx24sJ<(?YK5ZaIN+JzDtiGE-UApC%-zWA*3~iMq3(PU+eRBg4g3NReLqxBGycp5)GzOb1dj_2!S<14-y5&)~qNskEdx#vvw~qV*r-sfXY%Yj@shaN(zn|~neJ;R0)%?VoTeGI9Ylf&57ZGHntCHN8V?>9uWLRX`0$#N)@Q<^$CKLgD+`>){wa`iPy}6m9KjrzM{U1e&S}hU<&h#t6ZF8~w%(QhB{Cj6+`=sv!|31Ca>o&l@7mh9sHF`BOXcwiiFNW2C8NaUC|GaE>1ap`aa#32>xq-54o$946w}u!Yc61+)KV!e&vz(ThsOs_Be3KZrb|&V$ux<Gq@zHF(`HOxriQNCyvonavzYndSK=;YW4qBw!H&ap}eFWm?)ueoYzo*#uZ{}0{*S|;Eg4-4=1q<~mLT>~6+?KWkjURI6l@pu#VgfTFt4{>DH8P_F&c>A?Pf|&~dFkjSq8Coo9o#?rVoY|fE`;n0@M{piLT)Z+BYtg0n~?@)^RIHd_e|a&bKO$GZ;?!wyrUilHa+ItlgNgi<*fY<Rf7!Sxc|0<;`cft`-LTc6yUEF1b}}=VE-MTK&$j_S`+l`ugwxF>#?aE!cSqWtc6paf71CbKs3DCNUhn>_fE^dNk55{?ES&}PB@dBlMe9dC>%dJlNidR>XLb$H|VQ4mb&K|4^ze5rt$c8uP?zE;MYMtPMx96vIGZ}XY*#U*LTO38nOoFOyKkPWUpGI2!68nsn8k?e*T-^552RQDyV&gav=cwuS6fYY7O{J=U}kU*<=)1;qjW9yM)fk+za^K2|a#38SsDBezUwminz`wmIqzGh;&r*=dwBcV&5YrsjMxr#oZ<*H$i-`2LAI7`29WEz8plaQ^-#yy^#NkEP6rUyvM`{XX>8wKM3Pv7b>-5miQuKOQE|ybiT>5j{si~yq_=z*0TlsA4FrBy)o2sbkoxf+-tFyp9KZi(PBtZYWsxvkv1EO&#2!!|0Ow_1mVZ)cnQyuwgvcqYhh-ZzxM+8`?Wt0qh&4Zd!o(%-eg6fsa~b<fjkJM#t#;p^G>%rH{!RiSM%flnSTamrn%}EbU2GIAzF$}SJy7M2H97LDG80K4*flx>Ro@;hoIMMxvYYe)2v|bfbw5%jmAl$#fY=M_rfXKFn{Zx4f_Wx=`{=ZesUybrpe`~#&8z5{tlTFIJ8)luUj_|$GT>A<|!V(o3u`71oJQL)Vy3bB=dy1<jvf7wJwXU2JUWKl>C=PKnl`fUu<qTT6=4T_ae>y4@DD|iO(*2;omqd+l>BKTEc7hMTysLj^nH6(Z(5(m8aMtzZlt&ei#m7{Hb7acjkKN!}&i%%M%5rCRz226<S9%cd@2b$nMEm+Bq3Zv;qI{FGAn@%Su{1?q3$;O8xFch*xK(i?Pfhdy{keEkg?Gfra^_l*AjPh#*tk`QSEyKL9`W6%E=8Dv`ZIEA^EN`#uspn*^(Z>=5T^2VnaMLa>JHsYkyUxW80;YviSm?9h5)635QC#Op}{m6v&k#drT9PEbK?ABf^!3sjA;0~$;s;PdmFg5Z;R2)$(U4%c-B`nQG@nA=Ik@3d$cg0<@Wp*a~ke+I-}C-Qqm`|wKYR<p7}BK{Uz!8gUF1-7MPxXOb*c$<DpVKt_yKf!;0<iAG=ZcXmyk=D$T(Az2gOxQo?$C9^_T6-Y-t}0=N+%QTEHOG#A`!Ip+wk_9<1Lcn(``jqm9a;5`99V;c`MYP^CXy$>2P9Tk+{yyv%@<JqwC8jH5%!P9DmOKMgzVEHpct8R$(oiOR`5~Csll!T{%>g6?Qn|zwQ>LOsBfbL@aqvQzJX}Yw==#%dLTE@ug!L+AR&IUsJrZ6t0((sz>n<Mftkl-9M(V_|1z=eFDql^+RoE-Q421@AMjJ!K0AwVC)vkXd~vHGMhh0tuL#MVE9T~c_0{~SzB7icT-{eBT+$|*<8N*JmUb^T2sJH!jSvJ425|y&<1|4#@b8)1d<?YJ{^PBJu`{V)kiiA~$7i0~P;gtyGQ^fcz&`S0ji<#oTBTR>azpMO72uy;mTmwaJ&&e*zvj|?zz^99juEOT>K@>)yVBJ8#mX6biz8VF!m{6k{RjL3;4ja%1cLt-@ccIY4%631g7~R00p|~eMD$v^jo};k`-Rw3zNQY({UkmXev4MF&W7w4@JlmXnb*S=Y}~GFnRno@y<ai+K%p%-AJ;yKzx79b)%=Lq@nMrBJ+Z6=DXItj+6YlK!EYz;pE|!uv()*w=wMusT)EE!2l@Zwi27j#6`bGy3BT~8bnQo7Z_6n>fFCe~(Io0=qx#N`vkpX_`>0Qx!2gqfe@gtLBzczz?`>oYa<aIK7_VlBR*)Os%CUP^_q^8&h4_Kd<orU1Gp7KxcS`*ITYd=Rn`FV4#&4$W@7Vn<V101D0lwq$GmkArB0J0lql!<y-}w4!``CqhcxfXmE8)~%1mSyBjMz@6lydQJ)>ne~V6Iackj5eVZ8;D4!GOIq!{lbC)t80*qj$bp*J+RX%>Lw*AwKu}TZ1u_=OkVQ<=%h-U9<4nME)GamjL(7?OHB+Z|5un`_~yiD=WVEBa*la@NdPu59^!5jkHU)h_S2z=ODmep!^Cae~>Cwei`q!nEoN=v(NvO$sNys@mZcZTf8WgK6~B=5WnMRLH0`s0rq3;j5{CFw%N*a&m$BT`PhP=Ppo^o3BM;X>$INeK7J#K;6A$KW+c=5LYfbe-fz!+Nxe0&f_Qbc>OD<TgR@;Y&Y#kJC|a*9si(R1LvrlFRek4##5$_!68O4Yi<7xU#+mzmHvc4q-z4d)o(=kbGqyiX;U?~Y|00pEX7c{jI#RO{vuE|QE(ZSD7=EzBsq@R1;+9r0C+BBkI8L<lj2jLZ(RbT}34xd5$Q7izzKww2^}Qr;uagr1zA5v)W64Gx8Znm#oQP(8bRX*9fK89C?5E=&lUE8Hj7Q_!67jy<4of-Wv(XdzL74y9xmu$xikhPXJ(cM)1o4$k(2!sGV}(i0Iw-z8w1^Ws8(#^&qaddq%l1YyUYMG|{)2EZBD<F<tZ_F_SqSaFg0vxLdyuo}YFu;?qV6xVulFRXiiG~P<Op7p=S9EYEy%umve8Q<aDK4yRotwtv1fW{qIzbGfx;5T2QC?Bq!i@uap*T+-|F0`b<?l-DS@SACxqJ3pV02FXW(`m@iL@C_=3AnjlTiDd5@0aS{f8Z)rK2!l{Zm#y2Iw;%gB3=HemP5o?R3!Z=|pEi=25**k&en$vEmo@XQDJ$8$3NF*R{_>xR!?Z6n&2IpiF0fz<xYdeP3+s^?np_p!rP2p^1npA(Dt1>^Odpt1a+;5R$GaHoogCG^IjU%DR|{+5{)UfD$vWym7Lv%TK}{A4v5KSBAuz@0Z1t$A<b5ve<8d(?Bzzak3@fPGHGXXcnB@12_mxr^6dD2lP3+YpXz|D1nxIC43mdAWh!u+6dp<o!YoKE>aquMD+8REFfHVmVO$%IK|?w8V3|eGSSn{@ad8k-?8=N`U_y`V#uS&sqMp_!zM*ZWP4NAiytpNJ77jycqb0FQt(Gl)BWi<HVZ$o#4BpQlzNPBx0*YO^*V`w=%aTcCwrE{Ay9VoJaocXC00je=CbaS^MQbbW#1A$nj!@!4*N1oQ1ds?05dFnVe!oU1<s>3&dxsM~(3cz>i-E?xq^JfcS<BEOiaYH)-jyhUzO%$RR)DV`43J%6uQLK)Y=JU-Hw<PU3S={6N>pi=H!s8;DU9-Ld<d6&PgiY_~TW|6El9)|W-NIqJUlY)eJ?Di2AQ2Ij}Y`GHNC!wbgao8cAThakRxr}V;TpK#)zFzOiI6!_gL@ct9|(>Q?tV0;o6a@qai(@nJ7(W;L!Vhu5wJKysSqi2~0Uyb=U6W|{PXNc-iP=2*iSi4zU9bX5>>eJWko;6w1^QOfwNB-p*aDKq-j}n4ASYMsrNM-x&$qsUnoS5tV-t+g)P5#&9Wv7F``7}O(_YXOV>*(J!YiATVKcc&I1t%O^>3h%t&E0WSjKL2$lSkcu88KD!Q_0T&A0&8A#|NLpAHYvY!2bjjZHDb7<*0@Saavd9MIQ-)t!n-+XtxX+_dmOkzx6~LWUkHb!V`DOfd4|A6|_Ydq;5H+E&nur-Gt9)C0HNEcTj!OWJvS<)c9;#{Nm&z>K<%j<*Wto7hHo&3be(k@mF5<GD_eNab)2Crp51jabjT(;P=|S|8jeSY<X;rRwkAW>LoVN92b5jJ{Cq%GNM%@L6Uk#ys?evA>pHNvZwMOYLb6Znf=hMhi{@Q0?my_m*3dT=5IS5f+Tb}^DiS?hStoiiK*<S;~(K-#ItcK5dU?V^*e(J_*W#i3gd<m+hu*9!xvNH8+bq7SbgM4_@w%X=gqg#4CSh-`_#~S;6I(=_-rLQp62eo`BQu_w*Gny_ppkG)Elx{Rw2DLtiW7dt9q@)IxG7eeggNS!TNxoz9&axCgQL8bo`;d-?uG-?w6->)$@F1&#gw^2KeAWWKlnZyEFN3*8ki5_l%UZFWy~~I;t?A!(Xx;pZopuqS{Df&mCD%eUc=oB;S0xiLnFlLkOP+hnmw%r4KgKmtHu;^9KA@P(kV)h!@pN)c+CZggxMV96j#uGP~4uJbzd@2-OG7eG<U^wd*m6re-wOIR7j7x&r2R!nGYHG49a)xeAPS<}`jv;Ita81om^p^A6y*TaHb#A46qCem7H^Crc5`n{@t=y%7G)`Dlwi5LP{kB<9IX1&e9tJoC)Nh&|ad1nXri_6@+VW~|z8ucf6LDg7Ooip7-yZLt5_jHLF>6kj6eoSrG{!|WJg@|r+=f&GWMCjP0M`BxFYzm=1&&AwKr7utx5;i~;Zpv%#tNHV_DLR^i_9#W8%5dHx8n!~j)DGj}2VZzOOfc7E1Hm6+y{#S0iGx2PpmZ+8<#kE7e@=@axz+Zdp{omj_-iDbR4yhibiLMz&NR8N);``xL?_YjX=l_SeN18P2<6qOmLM(JIFz(CgK6yt_MC1!={s-=nVuYH1aT^U4l&?L3e^0^kYj2`l7|)^l7r_6xo#Cp}zW9vUF+tW?m9%lJzJG$wKZj^~qrgD*FFnz9+D3q{zW2N-*R_2-BF8h{I`hH#>Dz$4Y0;~x4@Vel_ODU<)A;3opFEDQM488Zbdg=N0RJ9&3+pdV>4dhRY)BE9vx5C$Y<^CbABNc-=~jV;^1r+7ud4G;q^PhfUe_a-+E9Lp-DN4bis&8N-^2#ua)}w@eDJ}|>}AKn`St_P562(TMEz*GKH$i(oV+Ko@1z=^CU|~;?dRXwOOUMp+H>E0(eYeiyg#h4<g3so**f>xn9|VOcFUH+`lMb*>L2b+{ZaVL$Y;;AxlMo{IbePa_+7#D2KXO|1o-*AXE|j5+;f9eU_VI|2i@~a+csn1{3GdQoLdp8rBF`YW_D&&D|Ck;tPcvgZD;8DUGuj{dhZ-wIVR`VXl#v3&M!ezo-Z%WUp(%gVEqw0qzSSg2!EyqjP0-dynaJr7-?@p<wqg61|Q?U7*ihgXgPta+&+H39?P-mAU={ku9K4~i*Y~rwWS*1($hT*f+y-*NoPioqMrf3b;SJ`3ZMUdTqyq0Pa^Av6|;6GmUh!6^~_+mg&_X7Swi)fiTD&|GIl?N|ISM9q_TPH`iV2Ylz8Nm{6sbXVG8h%&18;lmlL;QMpy9)LOLA(MyB|`asOZVrDShd<vW7#V+h0_KjB9(zs(FQ928=e1`%9mT-EYC*nhhtXuYv3+Nbcx1c@!S(laZP;<4?4ugk)L+2Sj>mM7MB%6QcaJ^!2P`n>DSRJP#4F)ti`G|uF-ZsSu3AN+LE7yn2<Nw9c+Y3P4abRqmU*}qTmkGXTjLgmpAByz|`x=X*VXE`ftZDqe!Xe)me*FwM2>o%Y1tK8;;*Ms$Ky+hw(GOefO4>F{H|IXs)liQytxCd9MMr<Md1jGH)_&^5nAH+Yff7o9_lKqzxH2b>;?K>^LsqqQKuSJ>1ybQDfzkZ`%S7?h)k1u{2Fg?C$^i5xWwL7t(mgQehj0vI{oej;BEQ<f(rwta4Ke&DxUqq1p;|`zVvOSwj)$4VVUq;^VoWh^o?oYu_CybhU!e{M|ywt-MwE+9GpjGpMeG1_Gf;xXR{4IzNRUZMq!X-!?=^u=s{O7sG6<Egexa5<R)`1x8?#QB#0W4*RYlyY}1;!uYSV2zX+W)<Niq(97;qnkWD1T)(wZ6lbLeGaKjx00xa6(l3KiSOo&p7Hs@O-m4<Q%s5twMj7T=g#aoALeI%!cp<$1vZ~t(<sk*w(GaqWE!u4}2Y0ENR<hp#8&lOOP;sb8jEEW<3~>-=?~kg4;F+a1W<>;DevWt|}n4zJ>HZ$29Rlp@|Po%>pE9QvL2T@fYUbL*6;X@vH-31w8?1B`%p8i5vE~h+H+J{&!tJQOm-RVq(Wz>wp@`vwEtaPG7-M*jD@A+ei@YZ;t(9;RzQ1ykTo!IJ#y|cX8@B-G=dQjyRP%|JV_#j-Or)ufwpwzXN<d^|}|4rCO-IKj1)e!AC7oYl!Va1KK&iS~*&c?^QM)m0tHdH=xs_3!WO8G-2X6;C^zQoZ+=C*Ud$?!-4;k`xrk&NSZ+WHPTl}4kn;E7q)xo;|G$c$0!X0(bV+#tan<R5nw-TlS<F)mS6cQv$dD_!T9G$u`TR>Og$P<$%4h+JJkB0=D4|Eoj`?_qwjUb7%SEM#(vB{8~D~2g<`aa?Rjr3`)*h>c7&bkf$}Tnu9n6Z8GpDqh2JO$v+%gMiJFi5y<d(!xLS1zt`CwDJYjz5aX6R9VGTI*0e%?@qhzk?8GC->sGxBZRgl*#BeRA<e0BQmc^E5m?O1)lT(^|*Xfsot|GzYTzE+><LW-1M286R5VEgghc1(+)-Q~>5clxa_p4Bmbq*9FknVuYIsrQ8TDiXto>YtQXv*pG5cROPs|JhF$0el1EtD3)R^7oqS9cI-Z*j#Wu)<Lf#^lnN3XIq|_s@+Qx7U%-|M(<51dPkt$FkBw%sCyyw?#xx6>Q^jmC`0%m_4i}+slOlRt40*{oMHR(C{|{)szj~NosFwv++NS*fcUDT_0r1s19#t^DfUaN^tu&J;b*F3SmRzx@^kmP&JFr|5~~JnxpmYS@w~A6b3bgR3iGmqmg>H6bo-N={aRgrk#d{K$sB9i2cwHVXy4=8eelxPGr3UxO0K_i3}4V4*%iLP{(%4f1mE=QNWLS)@SHK11b0^iijEzXQSh%KT`F`M`=W^e|Meri>P^h~)&`>hf3tkR^J%_cQ~wIeZh6rQnI?bV%@~yH3p3MYz9J3(3u8Yp%XqIPsUt=NQR$_goq#{rrh6GO24Xe(ylWPHu)biKzyVjWv@KP<R{i^Nt1C$zJ)0ydb$(hF<6^B->XoaY@anUIDU7pD{CrAle?0m&>_5izg@8X#@N2EQzDUW=#OgsK&UI9r#GF3lTNh~{%1m3w5cSXUs3tWOZZh1twi@ue8+a&xKVBc!BMsXC{M7zhjz0jtk1nqUmrR>QKPNmmb6o%8QBJDwjGt~l{@<lZk>mB1S=$tyFUj2N6a3V3ce5CQ9I_X{{8B%Cb=4qVtuKZ23l5*;2gdoQIYz;_;(1%n+EAPBV?Y4$rE<oRwkh$&qzuF#18&xKRH*2+4KE+@@R3^oVExUM_;%bwmk9iSCF)V1naMTJvHS>4Z6DfaufqBZ>S-vy%Gw`N@KPVGM6Tmm)6#s~)*8raKdEm|=%*lkB2WAHF;^1)m1DqFr-}S}o#7n!#k$p@w;_GwF&G~}`kV)w4E85>rhUraVEhwQL9TzA!0K321>V1jzJU`K_9;KC2mTY%XR(Dj3{%bmk5gW45iEdzT=h`-F^fLse~!5G(z_5oxHFzVFO0_2SXA}XLhD29r}2Ame*0rsyB22jG9*2u2(dZt$As&f*tn~O%fB-Fl|E(tUCC4O4@O%3vt_$T9e+gOm8$?h4{bGB0nUd?3gL4#K6K<<&<6OOwJoHohskXTu?6veba|d1<ey`Sx-ZNn#h8x%O;G;#fu7_BS>d1X^%VVrq?$OcuTA`!oaAn24DiF|0H}VjNc#_SH^5IG#FK8WQa#0sS^+-@^FHVKD2mO`Q`e6aL(ubSU6Va6(d9Lm#Ktbhoej7r$FPoMxM~}BIPp)Sn>sfv>-)6+8C07tLukKs1petrU$`_EzFwoVT(Ho1bn|}_*!~dy7j-#OD`e$k`y;DkMhO;kD<OWXzq>IWk9^@otwiNCrQ#2)RgDNW`M++)4LO7_$G&e}CuASbh62?2MbB<Vo*XUMmIl?&9Qeh^rsn`(0Q-`Oc4?y)x_gaM_nM01w;Xdr66!7C`Vq`O$Mnf`==v(#(lig?-<{|u_3MYsq<1v+U%MbnoeQDuk(AH-M@@Zy|8jy~TJ};56X1_5QtPWtto;s`x{*+RJ#Zo76;xk!*>%)iH|V9g<PzfHKukb(WXTg|=xq@H?dV0qM|Ldk?q(MRv&V|R3*FQo&e|pi_N%F{zV&ST7R$}qPUKkie#5CCH=MCn>xZEH)3o~i5V`$%H1*o-*YNo<B_+V;W42)1KBzwL2=@24zDRs#^s^i6klXa=&F0=m1$X335nR9Tn#0eB^|R?~s=Fne8r&+0xnUV;Oy3RTXJXx76Z{3{2ZFmPZ1=-({=|`f71#1o!QPpe-HQxVk`vu6Xr+v%NQ!snAy)&N$5tT~sD|<U+RyCdKt<rFv`#?~)u;IwY4tj~eK4r+i}9bRuP?-?yxL;Ltoq}w2FAS(A(u7ypyxfA(?SmpHP=5EcrU^vb$hmyK<c(Pxrl6dI-!q?Tc+`k+TR^ps^M2^eOmRP0XIW5HGikc??C#Ih0oyiqvI3kmBMxqA1kKlFUR=@B}v2Y&Na%A*x~<?U(Mf{cybV*QZLi!o9rO{4T?VT`?(9A4Qad87zT5!iKQNSlk_#v??+>{#;O3mgX5R?6UNO5LSSZ^6hZHp$vbBV{0Am|ZShEuORLdxuzs4PIl_>8I9**IE;g#`H(UK_{SMYwY4p{~R~vwThxTXZXY$MW<fgtD!2kXj2#_`Sr|_(Gsz7|f3Y7m}@+;SQiTM{5whN}@?}DesuVWq*)>CsKte=`SuK(tSL*I{2@>Cx7(PIsa#g8%nw~lM>J}SDCfCuL*2%+6SQ?i3w*O@{-Y;o{p>Ue(qj@&?a_!x>FIOH5qY*b(TFUhrplc)9J>(<2T&|4|u$gF)nMCkrE$ofKs+jxF9$O3yQ^o|8va5y)}+bG|VR{-8Wj9TMU@YF=~^LzzGqt9p7@ANSVoX9_{R(;gw)XP#xYW;r@v%b*>@{i<E_al!L*mU`+)4q7XuZ^wUPRzZClxpAjU6*6lZyHgJ&G|VDqYSSuaT?P%jNwm$=xj8jeLVkUB%0hGkayIL!gwBQ{7HQf@?V<#9FoF%?kv6p@afe4mn+`)V10>~E^A;8tr&NAD4ICtKTS>C4J&228`**_2mBXl_nW#^V|z9DR0i*#!;C8dO>&BR=0DZ%W(r~ZpRDhBU9!Lhsvp_uZS$(#Y^mMSoI=IF`obhvzom1sK8c37kkA}04#?c=0`cR?{U`WweU3#Cq82{i<`enHZWB>GoWD5}dMDCYtmap7l$Y)=Yov3F#MzG)Z0!7E!hamjawXtTAR;op`tV@|YcI4utpydqae~fYESvTFHKwnq$KI_Rckhy|gK~Aj09&9wzyFrrTh8VI`~;nEUIp>i+ZaiCWYv3SNDJLYWT8_E@FS12HH&MAADF|3&kyB$i>D=Y(a+?FSVwR^(i|Xsha}Rw%q39$0^zhj;qpfU=X-;Ao+IbO7=QFp@BfjqPp?1RL@?CUcQxN{Qht|l&a2ik$nd)@u0FJ}{;+@p@{=E#(y{ml{F6)0_wL#vD1Qs^Q9M~0Qr%?&_{q3`)<2vrq2h;}v2VWY`0ux@thG-|H2M`pl~yhX1?le*^ma$Lf(1F3tfg6Dr@9%$UG6Y`qUAZj`1%Xvi`kGqZy50Z@Zw%}$Te9&sMX?g{<&TRLFPUgN8P^$uG2E3p7m>U>-<*=oEhhY?WqB<{d~552lqb^{PME>@Fd9o$cKi)hzAl*!u=C*(uKMz-`o^}H{hR(C@;<Vmx<%}MR*+*0sQ|JpNEkK+M4&H|C`*}Z#Ge%akrzDg+lrt_4y(RuR`^;KsbLlp1*w(OV)?_|0e1aJ7YBQhhnEw#ki$F^D_^r_1(pYnjza|52n;N#`P^A{=@l6c9jLB?*#E9bhhV~Dfy)$a>v^M2>+LO;qS9o@~jQF(Q4&dqS~`l@%yQ6qre)&IicnT=ZL>K%=6ok%fm3c<02}t1AXC=Q%g1aV2%GL@DANX(Z}^YI>3IW;P)x|`@%0J2NMfm{cl3-M1IQy@KbetHh{4w@yei{8+<<IL-=x;?Wg*W%kK!B_iBC`ng-`Lq4+x;-#g>VyzYflQnwr;>jVxvGbZsD;`I2YuD=D~w=LB4hlb7u_&C=A<C2l<?jo61KZ5l0=R=$3e!WzAG)~=r_{GnEC;~5dZUz3~pY*@~oPXQ70{EZAp9wbO`}=FN2cFVr&n;HxPlEbJ2rjj{rg5751@!!Q{P1GlW%pl-H(=A(UVayVR))j}Cs5(*TsS_RF!VczxCz~FcIKT>G*Lf>`hR`!(q1QCHEC~`?ZW-5i${c#`myu1f$g?6*F)d$#9aOln*0Rx{;l+6x5YZ6u6d~jE_oSJs6T=a<>zcgH5O%qTK)}qQv(Iy_Xp+vvd1Ilu2B3@_dj1y_g{|nH>ZjXZu~w`|4(2Yu<k2FsPQ?klz&G~=jAkN%L%=9)IvnvK%&;wwfQ3i|DSQen)-^`KG<)q<yZ6{{_px&LOkEvb6Bm9Iufj9^Iv;jrPj|6Hc`HhEIKFLd>^tu%#X`&r=Y*Bzk~XhR<D!qpR-&06{4E3Q(a`YoRAf6_T0(wA=Y?wyuXtwzK&0T`oE|9x7i0HE8oac>xeN71?ES=!&Dw(YlinyN}rANDx^P^)?yx?8_S>V53N;*lQr>c`Q-TZi_uC7ZH6lJVJt@bQieBy^2!|Uuig+imOq(}&x;M~I_2!FkTdVuWBtj#_cya$_N1@VruW-RiWQprs#>1|{F`R~RZ9$6kUmfoA2s<S<1zj2udu!u*2nx6fZek~^;C?%r5_eM9^cjRE#xQn-(JYcyC8iu`qTWdRj;E*HLAYT44i*({<t~g`emW^cEGPl9nQWd5z1nye&73^=HCG6ci{W!o;lel8?zSXs#4vKKcM<|r&|9V>!4c|n&#w5{Iz*0QoGAs`jYz+%Ad+h`=R`k`7%4ikD=`j{{K+lyXe`bVDUkGM(F)%DSR`dqsy9*o><mHNNggl6xbP-Mcs>F`fdmOF8Gzbdl903=wBdy!}{4}=9>O(0<Wn#2F8cw=q`ZIFPr^Q65w_nA1_Xr&>zA6;WPSLxIgmhksu_g$B}vk(E{gBpLOej^S3I<5?97}7y<ZAh72oyWzRjS-|~2a<dFPKiK)1i9>I5p`j;)>_~{au597<Bjan1&!-jS)FgKDS$~>sXzxkdGFE+B$qpI$cT^h#YA6}4|wUqFG#oxBO;PG7!++Di&1{Bl-4ww4%+-fZ1#16XUg1alMH25q+P)=;0&?k{2$L@Dg9zqdGuN?Uo)%q1ke=vp*#{3_VG2|?-oB__4I)4_I0pXkZ6(M=cru3)5{HEaLr}Z&cy};k6)Ngn#^p&xWxMJVjxnekfM`(|Q>Tkuu)l>8r0nIB+xQ8FQ8W_EZ@E>x}^k0tee>uQ!1Yczb)c^PewHlT45vmVocj0}M#v3VL!}+=Yzr;@qhFU+nGwP?);%WLJ?Ow}(%f#M+c&=K%@tzzF<*#VB6(nC}qs}z_&JA_`4EZ{Y;(7XrmjScaDx!qaQ5rn2oV)Y3)s*!=sV^oLe;n7pN3};{{J-121dV?c#jQX+e6WeIKl02=WFmAv=5x-9Zm0Z%{&Q0O?KAobiIwLG_<AN>pNbpzFVFgs_?ij(^VxRL4~Z<ZhxnZ;QChgV5}eNlqIvjCTBWo-b&P)`QBNcOQ#_HMSSfHcQ3-RCgZOz_GOAvF5_Jes_cj{VAK*nz?6{zWWut)KEaP6Am`~8EU~iLGmn;hT)o2~yC-27V3kxUeD`wrrl5fr~TnW#A$l65ZL;8yuz1E@C`gcn<vbIGPd<>wUWheQW>yL)C#i{#i@EuP4i!+)4{?XuT;Yz_GlS;4Juf?m?{f9ABwZ8hQyli@WbkXaw5?|)-y9%G*F@3-J6=C~wHoyL;yEbFcTynv^uQQ&#bM3QUf?EqaN-$QxtAF5u7rnBVmYd`ZD=>%TrGr9Q12u+1!JHMeZ4OM@vc*Ra*=rN@m*uVDO_becW&MQUI-)HN_W!|jaYn9}9>6E$a-)V9VE-08I}PPe6oF>A50qR7hVP#5(PELh{(c7Vi!~*k1VK}XBPBssqd$fE|As9>E^7n(h5A3c;r{zTQ_c4u^UuYkpRbPlCt3u@&ie`D;Rd>AUULvq=Pkfzp3TG2)SI)fP4uTh`J>e1={|U7*DU@UDXc$mI6J6C%V4kL%+yuU4nX}OhrB2xO?_8E-3HYU@pXoi`Wp@eVQG`<oACKX#rQgc-)~nKxTy2T*5ZpMN6M@z`@#Nb`G3!h;Y4~u_4!Ht3B<;M7-R7L0RD&kw_3kr;I-wL-y&8|tTDtd<7o%N)cik=pD^isu%5<2=L?*FDF4Oqze$JtJN#~g_k;9vepB%A<oOE5h!e+_U}?~Nn=d;a$Kwx}Y5GIe@n?NtP)@eH9{v>x(&zQdNy=|um*B?zFVx>PrT#(LAD%ym<f`?9qsZL#6wlo3AOh(nNnD`Y*tr3_Kdic2&-lJ!yvUkf7WF8c0_Vq|__hn;*Z$M=bFjWo&2Kv{jrTV!o2DP+R*>rlqN!m2E)t2YGzTAzz74wHfHY|DJ>*^f_xiT+`d3Xt<yidx-}?{e&b@(4&6tv3oTN{O?k|Xos-WEa%No1Ktm-{M0O{iufPXj2DWdw^Adc=UbJucWM`0u@Yt@+-gem?tFDnS}%Q*CeeXs+R!sHN3ol8;o)bZC_yAPaSr>4hNz&}=gM0zx!Rv0H3zl_S8DfT_wEJL#f=79KnXm}HC|Jte#Z0;?gDQENi4@L)Oin$r-KI8dS5PuWT^iKVKWv*<zKP-T~bJeAOEx|4NN*c7kPd2l8dydM+zK;s5AFcW*2IpgWh&A9B525&a293wRw(=cXuy4;l>F2AlM@Hc5g9d^cgJg<6oWBG2H+vC8y-ABc;lHqc?qFO{B&0tO^;=TY5f2}SVJGy%;QNF$$<hCp`Ma_H!Uf`d;@;v}w7v4)5rXh%ax#6P?vDX`BPnj%zSHRAD6P+<X6=tGd&vgzRUxz>z8$wOzY{tz{+E-hR#lH!<8x%DJUhK}!n~QBDftgi#sT@2L7JD+WQD*%yNod?XYsadM^Txt>;o>kH}%I+a>mXlFU<R_XLACZpOY=+P+!cHRib_$wuJk4$h;;a2d*{aM?sq=zhXLM?_Y$@>59hG0RJ#U)QSiA!n@kDIRdf|F%sE7Q&6d!)0xEDx(4EB-^2X#11%5MXZzwAgK?AkpOMC`^k}}NahkX}MeMnKiw7RkSHtm%u}iLcss-DRlMcjx0KQD~(IfOb%g>>kI%BYqzS@>oZx|Ced;VB|x)zS~3hG~NfBdE0{xzzTFu&3~zZD<q5A!^M*W~ZFgYyaJf5Zxt^AP@@sJ|j_4J`-$^$+MeKT6=p`5?WSg7-b#IHCWFqikCb>5E&K>i)3b!&zcYeh;3H0Q}qJ`-Km~*obS*7!JN{4*d;r*MlUjBjfnl(qL4*ezTVW;RNL0w@lF|PtgaRNTwE{ApK%i*s1$W4mAJ7k#@zmd2@jO;oK!iy&;mY8g;vKBU)V_Y|>vTj+|CMh4sA()jOpBHM+CV!mwz1|Ij3TuZ^cFWN$KEn0Lej|Nmuu_1_m2vlg~Y!RPcT`IR&ug6Qf$*FTZH4uVQzuV%i0%)b$}LbCYp^Z%3MgCKJY7lR)nf%w-@D%al|S@cr2Bm)&sO7_0uR~tnY{Mw9G>rc2_ApN^KzT=Vu9Zkw;2Ucq0*DHHi|F}w;wf4+MZMO_}bCR=3wWKW-1NCof>M!*VQZReM!TyVW2KdAjcb<4hj`G=(EnNisr`vn)oZ^kFz3~Nu5I)uPU-L0s<#v&L^N!ila&mp44}O1S=|`(g!}c*APPj7PgMM^==2Z_p{7X&$2zF1%r6<gg8h3MGA8`E9=sT0B03XBlHJ<-kHo6w}k6BzNy<w*n(EOJTv|R~Br&Fil%c=TaNI&hsGoycAf1>s;abjCuS?JwZ5u^|DLv$?&`G~spERMC`;&B>Y^ouM>U~ZVEuAgSFgXcdKB5w`^P!B3f2K8w7*&Bl_FjZQb{O>%+CXN18lOG+^f4r1acsbzwh+ZsqJFkDMKVI_V(xWBn{!eS~D!Bfc@x5B#ptO3{5MX`Ucl#aN)K~LdRvUBS{Xx_=!spkuoYM3lg|H`41@KcH4m#hJ!g|Y~btNa3FS4xDNjc;++{j%}DCj#W3~iOg^B{cH7GbDgTeR8Msa{9E)&6b$(pf(Ul{e>wL-TK9q&=8DPOh}(>r8)5{CErZ&;4V6Tb82ggjVQ#gB22U+!ODIYe>G|9nzyPIu?XhqdK7aa7y(>9sh^;_`um*jsKfcUpPAMUnc3}2wIP!{Q40{zq(rWE-0`DWiuAPPyoMkg7Y2um(}=LUN}ngZ=y$&qP!~uZp+1p-C3@N_@3B_`3$FtoH|0V*a>+#^o|2ZJ2y*=v3YGFzKl39?!UnKf#z3;+ctyvxW$V}e_<o|Kx|d-Z_)VqqqWNoT(%qs`2CeV7hYed4|DA~&A$a_9&W97-t9jjY`;DE>iol><MRW9)%hjkbL#mOH&K8;!~3f_|8V?O>x1MJ7v=VK7{aBv^>F_lZC6m$N4<EZD>$E+A4PW^R@pw@$3^H3jn8*-tL!EVZ?Ka%#%ler{+TQ(((#1@|EizbKf~usGk@mx*W!eu>iJWOtGN0hc)nVz5UczmUTh8fU%GJ5Q6B?J?{xiM0_MknCmRX=>iU#M{|f6H;Qjf3&o9C2GhMcC@xl-XNRo0)$5rdE;QEw*tyL0d@z(%9JA5h3%0|s2y__j|Gk55|wawnh(k`+rBN;WWPdu6{1^gm1;3O_vy?<Sd!0%8oLFPuqWT^fC;+q~`%?}=IV(m&i|Jqj5U-MRDpG1yXua%_4xW6-ot;vsR>hF0DL92j&CWxB!BLA}eqeZRnHWk$pH~K1cN&<hEqqXyLQQBHV&f+VGx<c4KP6ZG%lGXFqp!pg9h#ynfKFaTxEz%owG%42C%s0}^j|d;Lk4GqIz6kmx^5^H#v~3O={G-k<hGE<<99;_VffGMpoqy8AN2tCs%xK;$M&xC44Gi9sg7UR{hr>u$=e;|v!579Qo_FmK<N22%a>LV223Z!b!S`u2f$H-gp#CC3X1cn*lTU0P`WAg{Hq;-wI|TSYV~D?EJhx|X5!$^D<oE6!&o{7YEPm)`%W7z*6Z+>yF`n^XbAYdpT(y=Sh&=Ta>zOgZUl4h@>kPC8t@#BYKBdqO#~1hGjhl>u-Dm2a58XH3e;?~#pnt#kUy?nmApTcFTw|QD_(<{_p=oMWWz3wp9lGJiXMSjf^7~y?9PRzS^O0+$z34nmeHMN{P5%|7U(b^z@@(f<giKmrJ--0(>&ihSjNd+^UwoQ^zoXt?vcf-NZ2nw_H=fbuAS@?06q~Mw=F?F)b?j)79lbQF4w^5QB_`So+VCzR8UTN}nRMn2E%Z9gk-~)LFD^y-pGosT5FXobi#7GfiTwH=zuQr4eti}S!iW4~NS~n(?5|s`PaN-$hxqpiB&QUS(;_GDNhm7e<A)6*#@DYu7ffIc*mLvU+j~|}4klKYXoV_G*6|#5%R}$jQH0y~`r!4-V#z}=zRX-x_>91T^xX?FMFGtU7H;x<pAC{dtDiMlf1|;FLV$n$j^}wJkwX*wq<RE9b$$~3eAWTyupmAJZVRjKr}($f%{B8~O}Kd~FGG6AY)(G0^%=l-@O+w<DfKURDy`F=m+!7DOkf=dInzT+yrG}Ou|QUOKG}r#Rc1@Qb-TWhRwEylZenGI6@9do{0#MPYvz+p=(9TD`uDRtFu#KMx%9RjoB6r<M9u7#V!$tnzd0=MJ$`&Chxx*pdR4#uu{Go1s_JgKs8zNq#6qXiD;JvY)Vx&d)A|!U-v*8!810tk)y|vY{6kZhHFeM0XHT_*f2FVFC5KIaKfbhn?ogGx&N1Est<4hXd<pO!znBENT->PF7kZ>kJs%D)s)hRJ5a9RciZ`hBKX&2*_m)?Xesuc!OAPT{meBmC!Y?IRYb#GMcsE6J0KTg5o}>>A`N_SdZ<AzeysDp(Sg)UGFonNE{kOQ5SBgpbL1*tLjJx3mp1Y4OQRgpaG!3WF4ut1}{cE8s_~Y{#AIPxk_^RxQVx=c$gXh~RgZe|p@qq?kPVC>$^n}oFa4Lwuxg6c%V?ZdGONQrbf%93~L-4PM;+Oj<?T#EH%-F7uzd!huPv*Dd_<fT8Z}?lr*2t=Nlk`0fWAP^z`-al~R}>{Zs^>X5_&z(%-+cagX`_6S{~)#w$;nq&0e%PkM}okdQx)123C%zDA;>2BE1>!|_q|EH8}N@>xy#vpzZ~*0WI^>iM7?IdDXf3vTkBOUZQD%X<}?yHgkCFXe(!(+4d;KL`9G2R)<@Pn=g&(#b9vL8c^!JI(&oRrw$$c<*{Loh_aiM%<T$U)_YOS&crDc5uE<oB|FixDaj$=+_8ocAGp1*T2nFe*gWFQ9M489knb;0<$$9-6m8sj5`IGXt6s$m*j-s%8<D}(8fL|qJ{YB<c+D@Yy{43><1{|ozzIax+d2;`>{<)C0R1iP*`Ct&e4%G7|IYY}?H6m3H!>dE4#vfU*|Aq81=KOs3h8GIS1vow^O(M9!zCCl7&X(7!=SNFR+#C9=S(&RYj}Y(&mVRNRU;z9Qi4kQUTY?mI&E{1DezAeIf1PTC2Jkb8Zva2uNx|U8=EK1F48J?6cti`|N>}&CtM&cCc=}6o(Fc;+|6Wt;!yx<+)gsph=huS(%~z>F-B#J!75Z$yJ16n!oF%bHhwZd|c0q`152X}j{{oZuu>ahdSki5fsOkTO&Zp0obeXr+uc%eIU-UM3EI2FNe%p3ar-T1GjKeOYi}3rq>WGHzrI$@=9)z<d=|85-pMm-B+bBtgS>F>a?tPpi9qP}^QsalElozvTg~Bm?y{)hY9|z3`3cdXW3Vff{1lEZCikHIO#fYi%Tb4lmPlu0lG1RiL{%{Tc5w7E!x{vbP6fExHbTU2gm&I;X`gH@V;rvGcTFEe7V~tUP_<_*ak14-|d1S<Nihl33pf>8$^$)H-)vY6{hw}ICqrUgT*noeL1EuBR)N(S!FZM2&)?WqXpHC!HA^nOKc~4l`I~k<^q%Fo>2{|}3fS0)s@W+x^PO;X(%eKpEr}fwF$O^)<dY$BI{s-%u<3^_GD<J>*5YoRzo%u*spC71y9-2RRR$Khp{$mEfr?Kk!A)5Mydj6nVzvgad^rPruY!J47r)bG%@7K)#I||LmE>YL-Cg!((`h4d8Z&0m6Fn>Ci`kCwM{A@J!fV^mw@XhD0R}*hOh=lwz;D@dBIXv+FB=;@RdKdR<1^Yd6SlY?#IxRw9UVPvs4$-C+!v8wt&5W9vGu;~0_;dPv9?ksKZQI2Fe_D&H(SJW*hB3TAeg&HErq0iWJQT)KEOka9eLgNDHx!9138(&~Uso6o#jmEneLvX0mUiPs5I=?D!`S>ds6Sq<zkupf2=R4PQs6=c6hBRTw;kjn1E=@DO<v!{sB1R=yngFT2tO7)MRKn*R|cASzG38TqVsc<9(Y2248X@7J>Oz>u00RUw=;+nL-RMAQ&5P<pPOF;t^f7#XXod9{`<}jC?GX;Zk#nXpK1<x{z_rHCBnA;Z`MyhRM9f*SnB?)et^HH=l93o57|4LUkS~3q#XeGUPo=;v`R@^Bs9OtixOBmJwG-cKjHdL67{5-UqJo;#GSH~B~j}6!~R=y-H|o}i-XQ1>WWQ8pY8vLo}XN-5AeUfdcH)Hktstl@03U9ObbGV+WtMN^jkVL`4i$USRbvKe~^n_BI>o`R=6K2wp?BFH|wj<&%Y$l{15Rre`i0o_^goPk2)ZJ$MKAGOTG6Y|7QM>%v9pYfc24xre+U{ZpW;EV%^5l1Q1^@o#4`;`oD$o*{DW^0cUHokD*>~oCZIC`h2?6=Wlfp@i*8jxt2IpRHGcj|L&j<!SA#E|C;&TJO6e*0qu4QU35GhsvkOX&O!4lr45+B*?(Zat*<sRln}q;*5DO>U(T<V-U0aIu!;-fb1bv{@6Jb~46EH`1@P0o&KUo#VU;87iTRhQ{@A~@f6pJKwQ`K;LavM$cqvX;P6GI5Jb#-M|Lxc6?+g6LBFYN~{*YhJK%(T+^~dcaB;ToZC`DRprs_e8;QYk&`qbF(6UX9j-q&KzcWFVGiT<3d&+ZRueE*g3d~>DK29Y(~zaVzWY4*V*FHP|un*NZ}(mN3Zzg-V}UA}s;Sb7o0&)XxbpR>lkFGHhmorLey^D~C%3F7%gsDA`4IMk>uhvNgO1L`j}`*GYqeDJDO7ziPJ7&x?82<azmC(akiS+~UVksPYu@Q}0@PQH`sd*FN}2by|zGn(WS{Vm75vDmTxWOS|FczpF7t3Lqy>9-VB8~2XSx6Sj@%;#OX%Jy-25LRp0p7(*$It<SLM1LOcN8$CgL8!-BQYQ0poS;H0=Y^cQEnanB3(k)iA<m1N*Hd`EX!JMF-TTz@%m1#wAJ@_wZIBuDtlcR>snLJjR`(x#g@0-3Tk3wNGmfw);iS5MbFCet)DPf)?NdeT)%t7PZ|eCX&zZs+9NhmYx|t&8?l|IsVRpw*%TW&t;ra6KgyKd*1i+^yUbW$5?%`%gU*bqD*3Y@_BH16QnQtHJY&<ljzFvvB*|!l3_{D^NE#zSeTeKz5hr=3NATA(6^>gLg0!{tUkybP@Kdy78pk&&7^q;(%BPPv9pV2-f2l%d}8}FsAk5@@+6`$Y-{q*&xy2(PN>!kX-CO<jko%3<cguZuTJ}%t9uja?Fei72gs^{lv?svg5dr6Wa%!5vNe%GY=JCOdi{tk*r`qN5WKDj?->U{Lc^93OLPK4(ZdtVW@+d=y8sq?Y>OTHG@n8ZT)0}X#bVf0SesP&VY`SZ$u1w<=2m81t2;^eJaGQyXy7ck$Lwe}^Dm3Ge>$buSU=>Hp_`Az;)`%kcYLkgk%n#`H97&qkAra*JHJ_zDjcSfL|fAjF;H#${w4!pC*y`!b*&ZBG%x#1+FANp;L7XODhD1J<xABQN50`VQ-e{U?~WyG}jIN|@H`j?HQ#P=?QA0hphajnr>!D7xZ<F|0Mc3QKmfvEkn_=EN+oW+IazfQK_z9JzJo{wb&;g_-b-OzlH-}|DCcSZIUeHI^)e?tD&8AsW(0=mC}n8dMz=7&K4f3n4kp!dg2-bHBsA^iU*Z0<v7J`$rs2+dys{?}z1J~f*<AA0J18iHq&VT8yLR~7XLo{x&cYQH80l@ot^VP(8O;qrT#7977pe0>r|7wtHLLehuqsYBc;_+-lZ_yK1gbUs#1i|;{W{83&`1o(lSzE<^-9bCg-$8pd(=L7J+XHKp!7CC6+_NQOY57yF3i>K4@6&k9afcP~r|9HB-`k(PbV85dr;Ae1s=c?>(Etk*SFD|C^_C&Lx_&Rlero=~`Dfmb};=3sEs%rV1uWuQrWIO#)6J%51zPmk0Qjd$_I&uanxpIo=@b^>aOBD<VWi>>bzsV2Onhlq@YE7TNMPIeoVz?<_?hkGmzkjpl{XCB-6Wg54FD+2MM;~b7&m?@(fC~orr+e-{&yR8_v_2-@aP?y3oH-BT)@OW`)4KGVLeJxO=Ej5g$yto4_HBz5hi^ONBNn~0_bVo~_dxxl5PolyrBcu)KL+GV*pj@PC^|I1>eKw$-}N_Dzqb`!H%N9{jH`n9H}wA_E`BFIS$}GOtE;GCChrRJUf~K#<~r2~(qG-5Gb*{6YT&y)JBTyu4h{PT?k}xLF8Ij8HxeQKTqbRrq;ISyO|f6eV*QJuw^PtC{}5e`<6OqU_3QZT$^Xw}fl~K3cFY!EhX20-o}UiQ|1q969|YDfYVg17=jU&3U}dd>>c<T<=L!EleSVdCe)#-~khK5f{(v8s9-Z!Av`H_m_ytZkUqn-t3x6142CM6PQ}EYRen^bxSQ=DFVEv0~DMs(LjoUfH|7Ul<tAqB3!`cUun>?q2#!uIR&!?CEj5vQK@{~}d2xx!r5q(wE_A_^D>E0hw0{7w|=MMwhcg)c9k3s8KK<9f@yxM@ee|f_N@cLHKK520LrEGX9=x{N{-A|t%a{hByBL_R8{oRwd{;i->w`75fvc&h8`5vJCyBxsq(U0E6aerwnc>X9P^0Zv8vl1Wj{$I-=(EdeDrb9)0UNg8}1FheK^{*~~=D!_n0i&HdGy"))
-    exec(bytes(_v ^ _dk[_i % len(_dk)] for _i, _v in enumerate(_d)).decode("utf-8"), globals())
-except Exception as _e:
-    _s.stderr.write(f"\n🛑 [LICENSE ERROR] Invalid enterprise license key: {_e}\n\n")
-    _s.exit(1)
+from core.blueprint.schema import OmniChannelType
+from core.blueprint.tenant_manager import tenant_registry
+from core.engine.orchestrator import universal_orchestrator
+from core.notifications import notification_dispatcher
+from backend.database import lookup_tenant_by_integration_id
+
+logger = logging.getLogger("MessagingRouter")
+router = APIRouter(prefix="", tags=["Messaging"])
+
+VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN", "omnichannel_secure_token_123")
+VALID_VERIFY_TOKENS = {
+    VERIFY_TOKEN,
+    "omnichannel_sec_9e2f4b810d7a46c3b5a19e8",
+    "omnichannel_secure_token_123",
+    "omnichannel_threads_token_123"
+}
+
+
+# --- WhatsApp Cloud API Webhooks ---
+
+@router.get("/webhook/whatsapp")
+def verify_whatsapp_webhook(
+    hub_mode: Optional[str] = Query(None, alias="hub.mode"),
+    hub_challenge: Optional[str] = Query(None, alias="hub.challenge"),
+    hub_verify_token: Optional[str] = Query(None, alias="hub.verify_token")
+):
+    """Meta WhatsApp Webhook subscription verification."""
+    if hub_mode == "subscribe" and (hub_verify_token in VALID_VERIFY_TOKENS or hub_verify_token == VERIFY_TOKEN):
+        logger.info("✅ Meta WhatsApp webhook verified successfully.")
+        return Response(content=hub_challenge or "", media_type="text/plain")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@router.post("/webhook/whatsapp")
+@router.post("/webhook/sms")
+async def handle_whatsapp_incoming(request: Request):
+    """
+    Receives incoming WhatsApp and SMS messages from Meta Cloud API or Twilio.
+    Processes message through Universal Orchestrator and dispatches conversational reply.
+    """
+    content_type = request.headers.get("content-type", "")
+    
+    # 1. Twilio WhatsApp or SMS Form POST
+    if "application/x-www-form-urlencoded" in content_type:
+        form = await request.form()
+        incoming_msg = form.get("Body", "")
+        raw_from = form.get("From", "")
+        is_whatsapp = "whatsapp:" in raw_from
+        from_number = raw_from.replace("whatsapp:", "")
+        logger.info(f"Incoming Twilio {'WhatsApp' if is_whatsapp else 'SMS'} from {from_number}: {incoming_msg}")
+
+        # Check for explicit call intent over WhatsApp
+        call_keywords = ["call me", "call", "voice call", "phone call", "ring me", "dial me", "can sofia call", "can sophia call"]
+        if is_whatsapp and any(kw in incoming_msg.lower() for kw in call_keywords):
+            logger.info(f"🎙️ [WHATSAPP CALL REQUEST DETECTED] Customer {from_number} requested a voice call. Triggering Adaptive Voice Dispatcher...")
+            adaptive_call = notification_dispatcher.dispatch_adaptive_voice_call(
+                to_phone=from_number,
+                customer_name="WhatsApp Guest",
+                tenant_name="Luxe Salon & Spa",
+                prefer_whatsapp=True
+            )
+            tier_msg = (
+                "calling your WhatsApp line now" if adaptive_call.get("tier_selected") == "whatsapp_call"
+                else f"dialing your direct cellular line from our verified Telnyx number: {notification_dispatcher.telnyx_phone_number}"
+            )
+            reply = f"✨ Sofia is {tier_msg}! Please pick up to speak with your luxury concierge."
+            notification_dispatcher.send_whatsapp(from_number, reply)
+            return {"status": "success", "channel": "whatsapp_twilio", "action": "adaptive_call_triggered", "details": adaptive_call}
+
+        orchestration = universal_orchestrator.process_conversation_turn(
+            user_message=incoming_msg,
+            session_id=from_number,
+            tenant_id="salon",
+            channel=OmniChannelType.WHATSAPP if is_whatsapp else OmniChannelType.SMS,
+            caller_phone=from_number
+        )
+        if is_whatsapp:
+            notification_dispatcher.send_whatsapp(from_number, orchestration["reply"])
+        else:
+            notification_dispatcher.send_sms(from_number, orchestration["reply"])
+        return {"status": "success", "channel": "whatsapp_twilio" if is_whatsapp else "sms_twilio"}
+
+    # 2. Meta WhatsApp Cloud API JSON
+    try:
+        data = await request.json()
+        entry = data.get("entry", [{}])[0]
+        changes = entry.get("changes", [{}])[0]
+        value = changes.get("value", {})
+        messages = value.get("messages", [])
+
+        if messages:
+            msg_obj = messages[0]
+            from_phone = msg_obj.get("from", "")
+            user_text = msg_obj.get("text", {}).get("body", "")
+            phone_num_id = value.get("metadata", {}).get("phone_number_id", "")
+            resolved_tenant = lookup_tenant_by_integration_id("whatsapp_phone_number_id", phone_num_id)
+
+            logger.info(f"Incoming Meta WhatsApp for tenant [{resolved_tenant}] from {from_phone}: {user_text}")
+
+            # Check for explicit call intent over WhatsApp
+            call_keywords = ["call me", "call", "voice call", "phone call", "ring me", "dial me", "can sofia call", "can sophia call"]
+            if any(kw in user_text.lower() for kw in call_keywords):
+                logger.info(f"🎙️ [META WHATSAPP CALL INTENT] Customer {from_phone} requested a call. Engaging Adaptive Voice Dispatcher...")
+                adaptive_call = notification_dispatcher.dispatch_adaptive_voice_call(
+                    to_phone=from_phone,
+                    customer_name="WhatsApp Guest",
+                    tenant_name="Luxe Salon & Spa",
+                    prefer_whatsapp=True
+                )
+                tier_msg = (
+                    "calling your WhatsApp line now" if adaptive_call.get("tier_selected") == "whatsapp_call"
+                    else f"dialing your direct cellular line from our verified Telnyx number: {notification_dispatcher.telnyx_phone_number}"
+                )
+                reply = f"✨ Sofia is {tier_msg}! Please pick up to speak with your luxury concierge."
+                notification_dispatcher.send_whatsapp(from_phone, reply)
+                return {"status": "processed", "action": "adaptive_call_triggered", "details": adaptive_call}
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=from_phone,
+                tenant_id=resolved_tenant,
+                channel=OmniChannelType.WHATSAPP,
+                caller_phone=from_phone
+            )
+
+            quick_replies = orchestration.get("suggested_slots") or ["Confirm", "Reschedule", "Cancel"]
+            notification_dispatcher.send_whatsapp(from_phone, orchestration["reply"], quick_replies=quick_replies)
+
+        return {"status": "processed"}
+    except Exception as e:
+        logger.error(f"Error handling WhatsApp payload: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- Facebook Messenger Webhooks ---
+
+@router.get("/webhook/messenger")
+def verify_messenger_webhook(
+    hub_mode: Optional[str] = Query(None, alias="hub.mode"),
+    hub_challenge: Optional[str] = Query(None, alias="hub.challenge"),
+    hub_verify_token: Optional[str] = Query(None, alias="hub.verify_token")
+):
+    """Facebook Messenger Webhook subscription verification."""
+    if hub_mode == "subscribe" and (hub_verify_token in VALID_VERIFY_TOKENS or hub_verify_token == VERIFY_TOKEN):
+        logger.info("✅ Facebook Messenger webhook verified successfully.")
+        return Response(content=hub_challenge or "", media_type="text/plain")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@router.post("/webhook/messenger")
+async def handle_messenger_incoming(request: Request):
+    """Processes incoming Facebook Messenger messages and replies via Graph API."""
+    try:
+        data = await request.json()
+        for entry in data.get("entry", []):
+            for event in entry.get("messaging", []):
+                sender_id = event.get("sender", {}).get("id")
+                recipient_id = event.get("recipient", {}).get("id", "")
+                resolved_tenant = lookup_tenant_by_integration_id("meta_page_id", recipient_id)
+                message = event.get("message", {})
+                user_text = message.get("text", "")
+
+                if user_text and sender_id:
+                    logger.info(f"Incoming Messenger for tenant [{resolved_tenant}] from PSID {sender_id}: {user_text}")
+                    orchestration = universal_orchestrator.process_conversation_turn(
+                        user_message=user_text,
+                        session_id=sender_id,
+                        tenant_id=resolved_tenant,
+                        channel=OmniChannelType.MESSENGER
+                    )
+                    quick_replies = orchestration.get("suggested_slots") or ["Book Appointment", "Check Hours"]
+                    notification_dispatcher.send_messenger(sender_id, orchestration["reply"], quick_replies=quick_replies)
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Messenger webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- Instagram Direct Webhooks ---
+
+@router.get("/webhook/instagram")
+def verify_instagram_webhook(
+    hub_mode: Optional[str] = Query(None, alias="hub.mode"),
+    hub_challenge: Optional[str] = Query(None, alias="hub.challenge"),
+    hub_verify_token: Optional[str] = Query(None, alias="hub.verify_token")
+):
+    """Instagram Direct Messaging webhook verification."""
+    if hub_mode == "subscribe" and (hub_verify_token in VALID_VERIFY_TOKENS or hub_verify_token == VERIFY_TOKEN):
+        logger.info("✅ Instagram webhook verified successfully.")
+        return Response(content=hub_challenge or "", media_type="text/plain")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@router.post("/webhook/instagram")
+async def handle_instagram_incoming(request: Request):
+    """Processes incoming Instagram Direct messages and auto-responds."""
+    try:
+        data = await request.json()
+        for entry in data.get("entry", []):
+            for event in entry.get("messaging", []):
+                sender_id = event.get("sender", {}).get("id")
+                recipient_id = event.get("recipient", {}).get("id", "")
+                resolved_tenant = lookup_tenant_by_integration_id("instagram_account_id", recipient_id)
+                message = event.get("message", {})
+                user_text = message.get("text", "")
+
+                if user_text and sender_id:
+                    logger.info(f"Incoming Instagram DM for tenant [{resolved_tenant}] from {sender_id}: {user_text}")
+                    orchestration = universal_orchestrator.process_conversation_turn(
+                        user_message=user_text,
+                        session_id=sender_id,
+                        tenant_id=resolved_tenant,
+                        channel=OmniChannelType.INSTAGRAM
+                    )
+                    notification_dispatcher.send_instagram_dm(sender_id, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Instagram webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- Telegram Webhooks ---
+
+@router.get("/webhook/telegram")
+@router.get("/api/webhook/telegram")
+@router.get("/api/messaging/telegram/webhook")
+def verify_telegram_webhook():
+    """Telegram Webhook health probe."""
+    return {"status": "ok", "service": "Telegram Webhook Receiver", "ready": True}
+
+
+@router.post("/webhook/telegram")
+@router.post("/api/webhook/telegram")
+@router.post("/api/messaging/telegram/webhook")
+async def handle_telegram_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Receives Telegram Bot updates (messages & inline button callback queries).
+    Executes conversational turn and auto-responds via Telegram Bot API.
+    """
+    try:
+        from integrations.telegram_bot import telegram_client
+        data = await request.json()
+        parsed = telegram_client.parse_incoming_update(data)
+        if parsed and parsed.get("text"):
+            chat_id = parsed["chat_id"]
+            user_text = parsed["text"]
+            user_name = parsed["user_name"]
+
+            logger.info(f"Incoming Telegram from {user_name} ({chat_id}): {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"tg-{chat_id}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.TELEGRAM,
+                caller_name=user_name
+            )
+
+            quick_replies = orchestration.get("suggested_slots") or ["Book Appointment", "Check Hours"]
+            notification_dispatcher.send_telegram(chat_id, orchestration["reply"], quick_replies=quick_replies)
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Telegram webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- Twitter / X Account Activity API Webhooks ---
+
+@router.get("/webhook/twitter")
+@router.get("/api/webhook/twitter")
+@router.get("/api/messaging/twitter/webhook")
+def verify_twitter_crc(crc_token: Optional[str] = Query(None)):
+    """
+    Twitter Webhook CRC Challenge:
+    Responds to Twitter CRC challenge with HMAC-SHA256 signature.
+    """
+    from integrations.twitter_x import twitter_client
+    if not crc_token:
+        raise HTTPException(status_code=400, detail="Missing crc_token parameter")
+
+    response_token = twitter_client.compute_crc_response(crc_token)
+    logger.info("✅ Twitter Webhook CRC challenge responded successfully.")
+    return {"response_token": response_token}
+
+
+@router.post("/webhook/twitter")
+@router.post("/api/webhook/twitter")
+@router.post("/api/messaging/twitter/webhook")
+async def handle_twitter_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Receives Twitter Direct Message events and auto-responds.
+    """
+    try:
+        from integrations.twitter_x import twitter_client
+        data = await request.json()
+        parsed = twitter_client.parse_incoming_dm(data)
+        if parsed and parsed.get("text"):
+            sender_id = parsed["sender_id"]
+            user_text = parsed["text"]
+
+            logger.info(f"Incoming Twitter DM from {sender_id}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"tw-{sender_id}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.TWITTER
+            )
+
+            quick_replies = orchestration.get("suggested_slots") or ["Book Appointment", "Pricing"]
+            notification_dispatcher.send_twitter_dm(sender_id, orchestration["reply"], quick_replies=quick_replies)
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Twitter webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- LinkedIn Messaging Webhooks ---
+
+@router.post("/webhook/linkedin")
+@router.post("/api/webhook/linkedin")
+@router.post("/api/messaging/linkedin/webhook")
+async def handle_linkedin_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Processes incoming LinkedIn Direct Messages and auto-responds.
+    """
+    try:
+        from integrations.linkedin_msg import linkedin_client
+        data = await request.json()
+        parsed = linkedin_client.parse_incoming_message(data)
+        if parsed and parsed.get("text"):
+            sender_urn = parsed["sender"]
+            user_text = parsed["text"]
+
+            logger.info(f"Incoming LinkedIn message from {sender_urn}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"li-{sender_urn}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.LINKEDIN
+            )
+
+            notification_dispatcher.send_linkedin_message(sender_urn, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in LinkedIn webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- TikTok Direct Messaging Webhooks ---
+
+@router.get("/webhook/tiktok")
+@router.get("/api/webhook/tiktok")
+@router.get("/api/messaging/tiktok/webhook")
+def verify_tiktok_webhook(
+    challenge: Optional[str] = Query(None),
+    verify_token: Optional[str] = Query(None)
+):
+    """TikTok webhook verification challenge."""
+    if verify_token and verify_token != VERIFY_TOKEN:
+        raise HTTPException(status_code=403, detail="Verification failed")
+    return Response(content=challenge or "ok", media_type="text/plain")
+
+
+@router.post("/webhook/tiktok")
+@router.post("/api/webhook/tiktok")
+@router.post("/api/messaging/tiktok/webhook")
+async def handle_tiktok_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Processes incoming TikTok Direct Messages and auto-responds.
+    """
+    try:
+        from integrations.tiktok_msg import tiktok_client
+        data = await request.json()
+        parsed = tiktok_client.parse_incoming_dm(data)
+        if parsed and parsed.get("text"):
+            sender_id = parsed["sender_id"]
+            user_text = parsed["text"]
+
+            logger.info(f"Incoming TikTok DM from {sender_id}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"tt-{sender_id}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.TIKTOK
+            )
+
+            notification_dispatcher.send_tiktok_dm(sender_id, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in TikTok webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- Meta Threads Webhooks ---
+
+@router.get("/webhook/threads")
+def verify_threads_webhook(
+    hub_mode: Optional[str] = Query(None, alias="hub.mode"),
+    hub_verify_token: Optional[str] = Query(None, alias="hub.verify_token"),
+    hub_challenge: Optional[str] = Query(None, alias="hub.challenge")
+):
+    """Meta Webhook Verification for Threads Subscriptions."""
+    from integrations.threads_api import threads_client
+    challenge = threads_client.verify_webhook(hub_mode, hub_verify_token, hub_challenge)
+    if challenge:
+        return Response(content=challenge, media_type="text/plain")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@router.post("/webhook/threads")
+async def handle_threads_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Processes incoming Meta Threads mentions or replies and auto-responds via Threads API.
+    """
+    try:
+        from integrations.threads_api import threads_client
+        data = await request.json()
+        parsed = threads_client.parse_incoming_webhook(data)
+        if parsed and parsed.get("text"):
+            post_id = parsed["post_id"]
+            user_id = parsed["user_id"]
+            user_text = parsed["text"]
+
+            logger.info(f"Incoming Threads mention/reply on {post_id} by {user_id}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"th-{user_id}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.THREADS
+            )
+
+            notification_dispatcher.send_threads_reply(post_id, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Threads webhook: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+# --- Reddit Inbound & Webhook Integration ---
+
+@router.post("/webhook/reddit")
+async def handle_reddit_incoming(request: Request, tenant_id: Optional[str] = "salon"):
+    """
+    Handles incoming Reddit message webhook (or relay service like Zapier/Pipedream/Custom daemon).
+    Payload: {"author": "username", "body": "text", "subject": "optional", "thing_id": "optional"}
+    """
+    try:
+        data = await request.json()
+        sender_username = data.get("author") or data.get("sender") or data.get("from")
+        user_text = data.get("body") or data.get("text")
+        thing_id = data.get("thing_id") or data.get("id")
+
+        if sender_username and user_text:
+            logger.info(f"Incoming Reddit message from u/{sender_username}: {user_text}")
+
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=user_text,
+                session_id=f"rd-{sender_username}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.REDDIT
+            )
+
+            # Reply to specific comment or private message
+            target = thing_id if (thing_id and (thing_id.startswith("t1_") or thing_id.startswith("t3_"))) else sender_username
+            notification_dispatcher.send_reddit_message(target, orchestration["reply"])
+
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Error in Reddit incoming handler: {e}")
+        return {"status": "error", "detail": str(e)}
+
+
+@router.post("/api/reddit/poll-inbox")
+def poll_reddit_inbox(tenant_id: Optional[str] = "salon"):
+    """
+    Actively checks Reddit unread inbox messages, processes bookings, and auto-replies.
+    Useful for serverless cron or periodic execution.
+    """
+    from integrations.reddit_bot import reddit_client
+    unread = reddit_client.get_unread_messages(mark_read=True)
+    replies_sent = []
+
+    for msg in unread:
+        author = msg.get("author")
+        body = msg.get("body")
+        name = msg.get("name") # e.g. t4_xyz
+        if author and body:
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=body,
+                session_id=f"rd-{author}",
+                tenant_id=tenant_id or "salon",
+                channel=OmniChannelType.REDDIT
+            )
+            res = notification_dispatcher.send_reddit_message(author, orchestration["reply"])
+            replies_sent.append({"to": author, "status": res.get("status")})
+
+    return {"status": "success", "messages_processed": len(replies_sent), "replies": replies_sent}
+
+
+class DirectSMSRequest(BaseModel):
+    to_phone: str
+    message: str
+    tenant_id: Optional[str] = "salon"
+
+
+@router.post("/api/messaging/send-sms")
+@router.post("/api/messaging/send-from-vapi-number")
+def send_message_from_vapi_number(payload: DirectSMSRequest):
+    """
+    Sends an outbound SMS message directly from VAPI_PHONE_NUMBER.
+    """
+    vapi_phone = os.getenv("VAPI_PHONE_NUMBER") or os.getenv("TWILIO_PHONE_NUMBER", "+19124999633")
+    res = notification_dispatcher.send_sms(to_phone=payload.to_phone, text=payload.message)
+    return {
+        "status": "success" if res.get("status") in ("sent", "simulated") else "failed",
+        "from_number": vapi_phone,
+        "to_number": payload.to_phone,
+        "detail": res
+    }
+
+
+class TelnyxSendRequest(BaseModel):
+    to_phone: str
+    message: str
+    tenant_id: Optional[str] = "salon"
+
+
+class WhatsAppBroadcastRequest(BaseModel):
+    phone_numbers: Optional[list[str]] = None
+    audience: Optional[str] = "all_vip"
+    message: str
+    tenant_id: Optional[str] = "salon"
+    campaign_name: Optional[str] = "Luxe Salon VIP Special"
+
+
+@router.post("/api/messaging/telnyx/send")
+def send_telnyx_message(payload: TelnyxSendRequest):
+    """Sends SMS/MMS from Telnyx number to customer phone."""
+    res = notification_dispatcher.send_telnyx_sms(to_phone=payload.to_phone, text=payload.message)
+    msg_id = res.get("message_id") or "telnyx_msg_sim_01"
+    return {
+        "status": "success" if res.get("status") in ("sent", "simulated") else "failed",
+        "provider": "telnyx",
+        "to_number": payload.to_phone,
+        "from": os.getenv("TELNYX_PHONE_NUMBER", "+16172718180"),
+        "message_id": msg_id,
+        "detail": res
+    }
+
+
+@router.post("/api/messaging/whatsapp/broadcast")
+def broadcast_whatsapp_marketing(payload: WhatsAppBroadcastRequest):
+    """Pushes a marketing promotional message from Luxe Saloon & Spa WhatsApp Business account to customer numbers."""
+    numbers = payload.phone_numbers or []
+    if not numbers:
+        try:
+            from backend.database import get_all_customer_phones
+            numbers = get_all_customer_phones(payload.tenant_id or "salon")
+        except Exception as e:
+            logger.warning(f"Could not load customer phones from db: {e}")
+            numbers = []
+
+    if not numbers:
+        numbers = ["+19124999633", "+16175550199"]
+
+    deliveries = []
+    for num in numbers:
+        clean_num = str(num).strip()
+        if not clean_num:
+            continue
+        res = notification_dispatcher.send_whatsapp(to_phone=clean_num, text=payload.message)
+        deliveries.append({"phone": clean_num, "result": res})
+    return {
+        "status": "success",
+        "campaign": payload.campaign_name,
+        "total_sent": len(deliveries),
+        "sent_count": len(deliveries),
+        "deliveries": deliveries
+    }
+
+
+RECENT_INBOUND_MESSAGES: list[dict[str, Any]] = []
+
+
+@router.get("/api/messaging/telnyx/inbox")
+def get_telnyx_inbox():
+    """
+    Returns the latest incoming SMS messages and OTP verification codes received by the Telnyx number.
+    Queries the Telnyx carrier API directly to ensure 100% persistence across serverless restarts.
+    """
+    import re
+    import urllib.request
+    telnyx_key = os.getenv("TELNYX_API_KEY", "").strip()
+    inbox_messages = list(RECENT_INBOUND_MESSAGES)
+
+    if telnyx_key:
+        try:
+            url = "https://api.telnyx.com/v2/webhook_deliveries?page[size]=25"
+            req = urllib.request.Request(url, headers={"Authorization": f"Bearer {telnyx_key}"})
+            with urllib.request.urlopen(req, timeout=5.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                carrier_messages = []
+                for d in data.get("data", []):
+                    p = d.get("webhook", {}).get("payload", {})
+                    text = p.get("text", "")
+                    if not text:
+                        continue
+                    otp_match = re.search(r'\b(?:\d{3}[-\s]?\d{3}|\d{4,8})\b', text)
+                    is_otp = bool(
+                        otp_match and any(k in text.lower() for k in [
+                            "code", "verification", "verify", "whatsapp", "google",
+                            "facebook", "instagram", "password", "security", "pin", "otp"
+                        ])
+                    )
+                    carrier_messages.append({
+                        "id": d.get("id"),
+                        "received_at": p.get("received_at"),
+                        "from": p.get("from", {}).get("phone_number"),
+                        "to": p.get("to", [{}])[0].get("phone_number") if p.get("to") else "",
+                        "text": text,
+                        "is_otp": is_otp,
+                        "otp_code": otp_match.group(0) if otp_match else ""
+                    })
+                if carrier_messages:
+                    return {
+                        "status": "success",
+                        "source": "telnyx_carrier_live",
+                        "total": len(carrier_messages),
+                        "latest_otp": carrier_messages[0].get("otp_code") if carrier_messages[0].get("is_otp") else None,
+                        "messages": carrier_messages
+                    }
+        except Exception as err:
+            logger.warning(f"Could not fetch carrier webhook deliveries from Telnyx: {err}")
+
+    return {
+        "status": "success",
+        "source": "memory",
+        "total": len(inbox_messages),
+        "messages": inbox_messages[:30]
+    }
+
+
+@router.post("/webhook/telnyx")
+async def handle_telnyx_inbound(request: Request):
+    """
+    Receives inbound SMS messages from Telnyx webhook.
+    Captures OTP verification codes without echoing, and routes human customer texts to AI receptionist.
+    """
+    import re
+    from datetime import datetime
+    try:
+        body = await request.json()
+        data = body.get("data", {})
+        payload = data.get("payload", {})
+        from_phone = payload.get("from", {}).get("phone_number", "")
+        text = payload.get("text", "")
+        
+        if from_phone and text:
+            # Check if message is a verification OTP (e.g. WhatsApp, Google, Facebook code)
+            otp_match = re.search(r'\b(?:\d{3}[-\s]?\d{3}|\d{4,8})\b', text)
+            is_otp = bool(
+                otp_match and any(k in text.lower() for k in [
+                    "code", "verification", "verify", "whatsapp", "google",
+                    "facebook", "instagram", "password", "security", "pin", "otp"
+                ])
+            )
+            extracted_code = otp_match.group(0) if otp_match else ""
+            
+            entry = {
+                "received_at": datetime.utcnow().isoformat() + "Z",
+                "from": from_phone,
+                "text": text,
+                "is_otp": is_otp,
+                "otp_code": extracted_code
+            }
+            RECENT_INBOUND_MESSAGES.insert(0, entry)
+            if len(RECENT_INBOUND_MESSAGES) > 50:
+                RECENT_INBOUND_MESSAGES.pop()
+
+            if is_otp:
+                logger.info(f"🔑 [TELNYX OTP RECEIVED] Extracted Code: {extracted_code} | Full Text: {text}")
+                return {"status": "otp_captured", "code": extracted_code}
+
+            # Normal conversational customer SMS: reply with universal orchestrator
+            orchestration = universal_orchestrator.process_conversation_turn(
+                user_message=text,
+                session_id=from_phone,
+                tenant_id="salon",
+                channel=OmniChannelType.SMS,
+                caller_phone=from_phone
+            )
+            notification_dispatcher.send_telnyx_sms(from_phone, orchestration["reply"])
+            return {"status": "success", "reply": orchestration["reply"]}
+    except Exception as e:
+        logger.error(f"Error handling Telnyx inbound: {e}")
+    return {"status": "received"}
+
+
+
+

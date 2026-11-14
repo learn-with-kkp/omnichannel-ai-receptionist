@@ -676,17 +676,18 @@
         <!-- 🚀 Instant Outbound Callback Section -->
         <div style="padding:22px 24px; background:linear-gradient(135deg, rgba(56,189,248,0.06), rgba(99,102,241,0.04)); border:1px solid rgba(56,189,248,0.22); border-radius:14px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
               <span style="font-size:18px;">⚡</span>
-              <span style="font-size:15px; font-weight:700; color:#fff;">Trigger Instant Outbound Call to Your Phone</span>
-              <span style="padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700; background:rgba(16,185,129,0.18); color:#34d399;">&lt;500ms Dispatch</span>
+              <span style="font-size:15px; font-weight:700; color:#fff;">Adaptive Voice Dispatcher: WhatsApp Voice → Telnyx PSTN Fallback</span>
+              <span style="padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700; background:rgba(37,211,102,0.18); color:#25D366; border:1px solid rgba(37,211,102,0.3);">🟢 WhatsApp First</span>
+              <span style="padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700; background:rgba(56,189,248,0.18); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);">📞 Telnyx Line: +1 (617) 271-8180</span>
             </div>
-            <span style="font-size:12px; color:#94a3b8;">Sofia will place an immediate high-fidelity phone call to you</span>
+            <span style="font-size:12px; color:#94a3b8;">Sofia tries WhatsApp voice first; if unreachable, rings your cellular phone instantly from Telnyx</span>
           </div>
 
           <div style="display:grid; grid-template-columns: 1fr 1fr auto; gap:12px; align-items:center;">
             <div>
-              <label style="font-size:11.5px; font-weight:600; color:#cbd5e1; margin-bottom:6px; display:block;">Your Phone Number (E.164 with Country Code)</label>
+              <label style="font-size:11.5px; font-weight:600; color:#cbd5e1; margin-bottom:6px; display:block;">Your WhatsApp / Mobile Number (E.164 with Country Code)</label>
               <input type="tel" id="outboundPhone" class="form-input" placeholder="+1 617-555-0199 or +880 17..." value="+16673070119" style="height:44px; font-size:14px; padding:0 14px; background:rgba(15,23,42,0.9); border:1px solid rgba(255,255,255,0.15); border-radius:8px; width:100%; color:#fff; font-family:var(--font-mono);">
             </div>
             <div>
@@ -695,7 +696,7 @@
             </div>
             <div style="padding-top:22px;">
               <button class="btn-primary" id="btnFastCall" onclick="triggerInstantCall()" style="height:44px; padding:0 24px; font-size:14px; font-weight:700; background:linear-gradient(135deg, #0284c7, #0369a1); border-radius:8px; display:inline-flex; align-items:center; gap:8px; cursor:pointer; box-shadow:0 4px 14px rgba(2,132,199,0.35); border:none; color:#fff; white-space:nowrap;">
-                <span>📞</span> Call My Phone Now
+                <span>📞</span> Request Sofia Call
               </button>
             </div>
           </div>
