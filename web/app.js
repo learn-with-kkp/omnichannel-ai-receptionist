@@ -1956,8 +1956,9 @@ function renderClerkSignedOutState() {
   const container = document.getElementById("clerkAuthHeader");
   if (container) {
     container.innerHTML = `
-      <button onclick="openVipAuthModal('signin')" class="btn-ghost" style="padding:7px 15px; font-size:12px; font-weight:700; border-radius:9999px; border:1px solid rgba(251,191,36,0.4); color:#fbbf24; background:rgba(251,191,36,0.06); box-shadow:0 0 12px rgba(251,191,36,0.15); cursor:pointer;">👑 VIP Sign In</button>
-      <button onclick="openVipAuthModal('signup')" class="btn-primary" style="padding:7px 16px; font-size:12px; font-weight:700; border-radius:9999px; background:linear-gradient(135deg, #0284c7, #38bdf8); box-shadow:0 4px 16px rgba(2,132,199,0.4); border:none; color:#fff; cursor:pointer;">✨ Join VIP</button>
+      <button onclick="openVipAuthModal('signin')" class="vip-minimal-btn" title="VIP Guest Access">
+        <span style="font-size:13px;">👑</span> <span>VIP Access</span>
+      </button>
     `;
   }
 
