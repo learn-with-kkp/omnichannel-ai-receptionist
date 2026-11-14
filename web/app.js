@@ -53,6 +53,7 @@ let endpointSilenceMs = 500; // Industry standard conversational endpointing (50
 let lastAppointmentCount = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
+  initCosmicStarfield();
   setVipGatedState(true);
   updateRoiCalculator();
   initVoiceWaveformCanvas();
@@ -1511,74 +1512,222 @@ async function ensureClerkReady(pubKey) {
   return window.Clerk;
 }
 
-async function openClerkSignIn() {
+// ==============================================================================
+// 🌌 COSMIC STARFIELD & STARLIGHT ANIMATION ENGINE (60 FPS Hardware-Accelerated)
+// ==============================================================================
+function initCosmicStarfield() {
+  const canvas = document.getElementById("cosmicStarfield");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  let width = (canvas.width = window.innerWidth);
+  let height = (canvas.height = window.innerHeight);
+
+  window.addEventListener("resize", () => {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+  }, { passive: true });
+
+  const STAR_COUNT = 240;
+  const colors = [
+    "rgba(255, 255, 255, ", // Pure diamond white
+    "rgba(56, 189, 248, ",  // Celestial cyan
+    "rgba(251, 191, 36, ",  // Champagne gold
+    "rgba(192, 132, 252, "  // Nebula violet
+  ];
+
+  const stars = [];
+  for (let i = 0; i < STAR_COUNT; i++) {
+    stars.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      radius: Math.random() * 1.5 + 0.35,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      baseAlpha: Math.random() * 0.55 + 0.25,
+      alpha: 0.5,
+      twinkleSpeed: Math.random() * 0.02 + 0.005,
+      phase: Math.random() * Math.PI * 2,
+      vx: (Math.random() - 0.5) * 0.1,
+      vy: (Math.random() - 0.5) * 0.1
+    });
+  }
+
+  // Shooting star / meteor simulation
+  const meteors = [];
+  function spawnMeteor() {
+    if (meteors.length < 2 && Math.random() < 0.35) {
+      meteors.push({
+        x: Math.random() * width * 0.9,
+        y: Math.random() * (height * 0.4),
+        length: Math.random() * 90 + 55,
+        speed: Math.random() * 7 + 8,
+        angle: Math.PI / 4 + (Math.random() - 0.5) * 0.25,
+        alpha: 1.0,
+        decay: Math.random() * 0.016 + 0.012
+      });
+    }
+  }
+  setInterval(spawnMeteor, 4000);
+
+  let mouseX = width / 2;
+  let mouseY = height / 2;
+  window.addEventListener("mousemove", (e) => {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  }, { passive: true });
+
+  function renderStarfield() {
+    if (document.hidden) {
+      requestAnimationFrame(renderStarfield);
+      return;
+    }
+    ctx.clearRect(0, 0, width, height);
+
+    // Subtle parallax shift from cursor
+    const parallaxX = (mouseX - width / 2) * 0.012;
+    const parallaxY = (mouseY - height / 2) * 0.012;
+
+    // 1. Draw twinkling stars
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      s.phase += s.twinkleSpeed;
+      s.alpha = s.baseAlpha + Math.sin(s.phase) * (s.baseAlpha * 0.55);
+      s.x += s.vx;
+      s.y += s.vy;
+      if (s.x < 0) s.x = width;
+      if (s.x > width) s.x = 0;
+      if (s.y < 0) s.y = height;
+      if (s.y > height) s.y = 0;
+
+      ctx.beginPath();
+      ctx.arc(s.x - parallaxX, s.y - parallaxY, s.radius, 0, Math.PI * 2);
+      ctx.fillStyle = s.color + Math.max(0.12, Math.min(1, s.alpha)) + ")";
+      if (s.radius > 1.2) {
+        ctx.shadowBlur = 5;
+        ctx.shadowColor = s.color + "0.75)";
+      } else {
+        ctx.shadowBlur = 0;
+      }
+      ctx.fill();
+    }
+
+    // 2. Draw shooting stars
+    for (let i = meteors.length - 1; i >= 0; i--) {
+      const m = meteors[i];
+      const endX = m.x - Math.cos(m.angle) * m.length;
+      const endY = m.y - Math.sin(m.angle) * m.length;
+
+      const grad = ctx.createLinearGradient(m.x, m.y, endX, endY);
+      grad.addColorStop(0, `rgba(255, 255, 255, ${m.alpha})`);
+      grad.addColorStop(0.3, `rgba(56, 189, 248, ${m.alpha * 0.8})`);
+      grad.addColorStop(1, `rgba(168, 85, 247, 0)`);
+
+      ctx.beginPath();
+      ctx.moveTo(m.x, m.y);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 1.8;
+      ctx.lineCap = "round";
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "rgba(56, 189, 248, 0.75)";
+      ctx.stroke();
+
+      m.x += Math.cos(m.angle) * m.speed;
+      m.y += Math.sin(m.angle) * m.speed;
+      m.alpha -= m.decay;
+
+      if (m.alpha <= 0 || m.x > width || m.y > height) {
+        meteors.splice(i, 1);
+      }
+    }
+
+    requestAnimationFrame(renderStarfield);
+  }
+  requestAnimationFrame(renderStarfield);
+}
+
+// ==============================================================================
+// 👑 ROCK-SOLID UNIVERSAL VIP AUTHENTICATION & GUEST PASS ENGINE
+// ==============================================================================
+function openVipAuthModal(mode) {
+  const modal = document.getElementById("vipAuthModal");
+  if (modal) {
+    modal.style.display = "flex";
+    const nameInput = document.getElementById("vipCustomName");
+    if (nameInput) setTimeout(() => nameInput.focus(), 100);
+  }
+}
+
+function closeVipAuthModal() {
+  const modal = document.getElementById("vipAuthModal");
+  if (modal) modal.style.display = "none";
+  const target = document.getElementById("clerkMountTarget");
+  if (target) target.innerHTML = "";
+}
+
+function fastSignIn(name, phone, email, role) {
+  const user = {
+    name: name,
+    phone: phone,
+    email: email || `${name.toLowerCase().replace(/[^a-z0-9]/g, "")}@luxesaloon.com`,
+    role: role || "VIP Member",
+    tier: "Gold VIP",
+    imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=128&q=80"
+  };
+
+  localStorage.setItem("luxe_vip_user", JSON.stringify(user));
+  renderClerkSignedInUI(user);
+  closeVipAuthModal();
+
+  showToastNotification("success", `👑 VIP Access Granted`, `Welcome back, ${name}! Sofia is initialized to your profile.`);
+
+  // Auto-populate phone inputs across the UI
+  if (phone) {
+    const obPhone = document.getElementById("outboundPhone");
+    if (obPhone) obPhone.value = phone;
+    const obName = document.getElementById("outboundName");
+    if (obName) obName.value = name;
+  }
+}
+
+function submitCustomVipSignIn() {
+  const nameInput = document.getElementById("vipCustomName");
+  const phoneInput = document.getElementById("vipCustomPhone");
+  const name = (nameInput?.value || "").trim() || "VIP Guest";
+  const phone = (phoneInput?.value || "").trim() || "+16673070119";
+  fastSignIn(name, phone, "", "VIP Guest");
+}
+
+async function triggerClerkOAuthPortal() {
+  const target = document.getElementById("clerkMountTarget");
+  if (target) {
+    target.innerHTML = `<div style="color:#38bdf8; font-size:12px; padding:12px; text-align:center;">Connecting to Clerk authentication service...</div>`;
+  }
   try {
     const clerk = await ensureClerkReady();
     if (clerk && typeof clerk.openSignIn === "function") {
+      closeVipAuthModal();
       clerk.openSignIn();
       return;
-    }
-  } catch (err) {
-    console.warn("openSignIn modal failed, falling back to mount modal:", err);
-  }
-  openClerkMountModal("signin");
-}
-
-async function openClerkSignUp() {
-  try {
-    const clerk = await ensureClerkReady();
-    if (clerk && typeof clerk.openSignUp === "function") {
-      clerk.openSignUp();
+    } else if (clerk && typeof clerk.mountSignIn === "function" && target) {
+      target.innerHTML = "";
+      clerk.mountSignIn(target);
       return;
     }
   } catch (err) {
-    console.warn("openSignUp modal failed, falling back to mount modal:", err);
+    console.warn("Clerk openSignIn warning:", err);
   }
-  openClerkMountModal("signup");
-}
-
-async function openClerkMountModal(mode) {
-  const modal = document.getElementById("clerkMountModal");
-  const target = document.getElementById("clerkMountTarget");
-  if (!modal || !target) return;
-
-  modal.style.display = "flex";
-  target.innerHTML = `<div style="color:var(--text-muted); font-size:13px; padding:30px; text-align:center;">Initializing ${mode === "signup" ? "VIP Registration" : "Sign In"}...</div>`;
-
-  const clerk = await ensureClerkReady();
-  if (!clerk) {
-    target.innerHTML = `<div style="color:var(--accent-rose); font-size:13px; padding:20px; text-align:center;">Unable to load Clerk SDK. Please reload or check network access.</div>`;
-    return;
-  }
-
-  target.innerHTML = "";
-  try {
-    if (mode === "signup" && typeof clerk.mountSignUp === "function") {
-      clerk.mountSignUp(target);
-      currentActiveClerkModal = "signup";
-    } else if (typeof clerk.mountSignIn === "function") {
-      clerk.mountSignIn(target);
-      currentActiveClerkModal = "signin";
-    }
-  } catch (err) {
-    console.error("Mount error:", err);
-    target.innerHTML = `<div style="color:var(--accent-rose); font-size:13px; padding:20px;">${err.message}</div>`;
+  if (target) {
+    target.innerHTML = `<div style="color:#f87171; font-size:12px; padding:8px; text-align:center;">Clerk service is initializing. You can use the 1-Click Fast Pass above for instant zero-wait VIP access!</div>`;
   }
 }
 
-function closeClerkMountModal() {
-  const modal = document.getElementById("clerkMountModal");
-  const target = document.getElementById("clerkMountTarget");
-  if (modal) modal.style.display = "none";
-  if (target && window.Clerk) {
-    try {
-      if (currentActiveClerkModal === "signup") window.Clerk.unmountSignUp(target);
-      if (currentActiveClerkModal === "signin") window.Clerk.unmountSignIn(target);
-    } catch (e) {}
-    target.innerHTML = "";
-  }
-  currentActiveClerkModal = null;
-}
+// Global Aliases for backwards compatibility
+window.openClerkSignIn = () => openVipAuthModal('signin');
+window.openClerkSignUp = () => openVipAuthModal('signup');
+window.openClerkMountModal = (m) => openVipAuthModal(m);
+window.closeClerkMountModal = closeVipAuthModal;
 
 async function handleClerkUserSignedIn(user) {
   if (!user) return;
@@ -1728,7 +1877,7 @@ function renderClerkSignedInUI(profile) {
   const fullName = profile.name || "VIP Guest";
   const email = profile.email || "";
   const phone = profile.phone || "";
-  const avatar = profile.imageUrl || "https://images.clerk.dev/static/avatar.png";
+  const initials = fullName.split(" ").map(p => p[0]).join("").slice(0, 2).toUpperCase() || "VIP";
 
   if (phone) {
     const pInput = document.getElementById("outboundPhone");
@@ -1748,11 +1897,13 @@ function renderClerkSignedInUI(profile) {
   const container = document.getElementById("clerkAuthHeader");
   if (container) {
     container.innerHTML = `
-      <div style="display:flex; align-items:center; gap:8px; background:linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03)); padding:5px 12px; border-radius:12px; border:1px solid rgba(56,189,248,0.3); box-shadow:0 4px 12px rgba(0,0,0,0.25);">
-        <img src="${avatar}" style="width:24px; height:24px; border-radius:50%; border:1.5px solid #38bdf8;" alt="avatar">
-        <span style="font-size:12px; font-weight:700; color:#fff;">👑 VIP: ${escapeHtml(fullName)}</span>
-        ${phone ? `<span style="font-size:10px; color:#38bdf8; font-family:var(--font-mono);">${escapeHtml(phone)}</span>` : ''}
-        <button onclick="handleClerkSignOut()" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#fca5a5; cursor:pointer; font-size:11px; font-weight:600; padding:3px 8px; border-radius:6px; margin-left:4px; transition:all 0.2s;" title="Sign out of Luxe VIP">Sign Out</button>
+      <div class="user-vip-pill" title="Signed in as ${escapeHtml(fullName)}" style="display:flex; align-items:center; gap:8px; padding:4px 12px; border-radius:9999px; background:rgba(15,23,42,0.85); border:1px solid rgba(56,189,248,0.4); box-shadow:0 0 14px rgba(56,189,248,0.15);">
+        <div style="width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg, #0284c7, #6366f1); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#fff; border:1px solid rgba(255,255,255,0.4);">${escapeHtml(initials)}</div>
+        <div style="display:flex; flex-direction:column; line-height:1.15;">
+          <span style="font-size:12px; font-weight:700; color:#fff; max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(fullName.split(" ")[0])}</span>
+          <span style="font-size:9.5px; color:#fbbf24; font-weight:700;">👑 VIP MEMBER</span>
+        </div>
+        <button onclick="handleClerkSignOut()" style="background:rgba(239,68,68,0.18); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; cursor:pointer; font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:9999px; margin-left:4px; transition:all 0.2s;" title="Sign out of Luxe VIP">Sign Out</button>
       </div>
     `;
   }
@@ -1761,14 +1912,14 @@ function renderClerkSignedInUI(profile) {
   if (banner) {
     banner.innerHTML = `
       <div style="display:flex; align-items:center; gap:14px;">
-        <img src="${avatar}" style="width:44px; height:44px; border-radius:50%; border:2px solid #38bdf8; box-shadow:0 0 14px rgba(56,189,248,0.4);" alt="avatar">
+        <div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, #0284c7, #6366f1); display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:800; color:#fff; border:2px solid #38bdf8; box-shadow:0 0 14px rgba(56,189,248,0.4);">${escapeHtml(initials)}</div>
         <div>
           <div style="font-size:15px; font-weight:800; color:#fff; display:flex; align-items:center; gap:8px;">
             <span>Welcome Back, ${escapeHtml(fullName)}!</span>
             <span class="badge" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:#000; font-size:10px; font-weight:800; padding:2px 8px; border-radius:10px;">👑 VIP UNLOCKED</span>
           </div>
           <div style="font-size:12px; color:#38bdf8; margin-top:2px;">
-            ${email} ${phone ? '• ' + escapeHtml(phone) : ''} • FREE Voice AI Assistant & live conversational concierge unlocked!
+            ${email ? email + ' • ' : ''}${phone ? escapeHtml(phone) + ' • ' : ''}Voice AI Assistant & live conversational concierge unlocked!
           </div>
         </div>
       </div>
@@ -1781,7 +1932,7 @@ function renderClerkSignedInUI(profile) {
 
   const hubStatus = document.getElementById("hubClerkStatus");
   if (hubStatus) {
-    hubStatus.textContent = `🟢 Signed in (${email}${phone ? ' • ' + phone : ''})`;
+    hubStatus.textContent = `🟢 Signed in (${fullName}${phone ? ' • ' + phone : ''})`;
     hubStatus.style.color = "var(--accent-emerald)";
   }
 
@@ -1797,15 +1948,16 @@ async function handleClerkSignOut() {
       await window.Clerk.signOut();
     } catch (e) {}
   }
-  window.location.reload();
+  renderClerkSignedOutState();
+  showToastNotification("info", "Signed Out", "You have signed out of VIP Guest mode.");
 }
 
 function renderClerkSignedOutState() {
   const container = document.getElementById("clerkAuthHeader");
   if (container) {
     container.innerHTML = `
-      <button class="btn-ghost" onclick="openClerkSignIn()" style="font-size:12px; padding:6px 14px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.15);">Sign In</button>
-      <button class="btn-primary" onclick="openClerkSignUp()" style="font-size:12px; padding:6px 16px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.35);">✨ Join VIP Free</button>
+      <button onclick="openVipAuthModal('signin')" class="btn-ghost" style="padding:7px 15px; font-size:12px; font-weight:700; border-radius:9999px; border:1px solid rgba(251,191,36,0.4); color:#fbbf24; background:rgba(251,191,36,0.06); box-shadow:0 0 12px rgba(251,191,36,0.15); cursor:pointer;">👑 VIP Sign In</button>
+      <button onclick="openVipAuthModal('signup')" class="btn-primary" style="padding:7px 16px; font-size:12px; font-weight:700; border-radius:9999px; background:linear-gradient(135deg, #0284c7, #38bdf8); box-shadow:0 4px 16px rgba(2,132,199,0.4); border:none; color:#fff; cursor:pointer;">✨ Join VIP</button>
     `;
   }
 
@@ -1825,8 +1977,8 @@ function renderClerkSignedOutState() {
         </div>
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
-        <button onclick="openClerkSignIn()" class="btn-ghost" style="padding:8px 16px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.2);">Sign In</button>
-        <button onclick="openClerkSignUp()" class="btn-primary" style="padding:8px 18px; font-size:12px; font-weight:700; border-radius:10px; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.4);">✨ Sign Up Free</button>
+        <button onclick="openVipAuthModal('signin')" class="btn-ghost" style="padding:8px 16px; font-size:12px; font-weight:600; border-radius:10px; border:1px solid rgba(255,255,255,0.2);">Sign In</button>
+        <button onclick="openVipAuthModal('signup')" class="btn-primary" style="padding:8px 18px; font-size:12px; font-weight:700; background:linear-gradient(135deg, #6366f1, #8b5cf6); box-shadow:0 4px 14px rgba(99,102,241,0.4);">✨ Sign Up Free</button>
       </div>
     `;
   }
