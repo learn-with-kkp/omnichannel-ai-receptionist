@@ -1770,15 +1770,15 @@ function handleMobbinSearch(query) {
 }
 
 function focusMobbinSearch() {
-  const input = document.getElementById("mobbinGlobalSearch");
-  if (input) input.focus();
+  const flock = document.getElementById("flock-gallery");
+  if (flock) flock.scrollIntoView({ behavior: "smooth" });
 }
 
 function filterMobbinCategory(cat, btn) {
   document.querySelectorAll(".mobbin-tab-btn").forEach(b => b.classList.remove("active"));
   if (btn) btn.classList.add("active");
 
-  const cards = document.querySelectorAll(".mobbin-card");
+  const cards = document.querySelectorAll(".mobbin-card, .flock-bird-card");
   cards.forEach(card => {
     const c = card.getAttribute("data-category");
     if (cat === "all" || c === cat) {
@@ -1793,11 +1793,12 @@ function filterMobbinCategory(cat, btn) {
   if (cat === "services") document.getElementById("services-section")?.scrollIntoView({ behavior: "smooth" });
 }
 
-// Global keyboard shortcut: Cmd+K or Ctrl+K focuses on Mobbin Search
+// Global keyboard shortcut: Cmd+K or Ctrl+K glides to the Cascading Showcase
 document.addEventListener("keydown", (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
     e.preventDefault();
-    focusMobbinSearch();
+    const flock = document.getElementById("flock-gallery") || document.getElementById("mobbin-gallery");
+    if (flock) flock.scrollIntoView({ behavior: "smooth" });
   }
 });
 
@@ -1932,16 +1933,16 @@ function dismissLuxePreloader() {
     preloader.classList.add("fade-out");
     setTimeout(() => {
       preloader.style.display = "none";
-    }, 450);
+    }, 300);
   }
 }
 
 if (document.readyState === "loading") {
   window.addEventListener("DOMContentLoaded", () => {
-    setTimeout(dismissLuxePreloader, 350);
+    setTimeout(dismissLuxePreloader, 100);
   });
 } else {
-  setTimeout(dismissLuxePreloader, 350);
+  setTimeout(dismissLuxePreloader, 100);
 }
 
 function renderClerkSignedInUI(profile) {

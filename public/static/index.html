@@ -5,7 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Luxe Saloon & Spa — 24/7 AI Voice & Omnichannel Concierge</title>
   <meta name="description" content="Luxe Saloon & Spa premier AI Voice Receptionist. Ultra-responsive WebRTC voice calls, WhatsApp booking, Instagram & Messenger automation, synchronized with Google Calendar and Neon PostgreSQL.">
-  <link rel="stylesheet" href="/static/style.css?v=7.0">
+
+  <!-- ⚡ High-Performance Resource Preconnect & Preload Directives -->
+  <link rel="preconnect" href="https://images.unsplash.com" crossorigin>
+  <link rel="dns-prefetch" href="https://images.unsplash.com">
+  <link rel="preconnect" href="https://clerk.kishor.tech" crossorigin>
+  <link rel="dns-prefetch" href="https://clerk.kishor.tech">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Preload Critical CSS & JavaScript SDKs -->
+  <link rel="preload" href="/static/style.css?v=8.0" as="style">
+  <link rel="preload" href="/vapi-sdk.js" as="script">
+  <link rel="preload" href="https://clerk.kishor.tech/npm/@clerk/clerk-js@5/dist/clerk.browser.js" as="script" crossorigin="anonymous">
+
+  <!-- Preload High-Res Hero & Cascading Flock Visual Assets for Instant Non-Blocking Render -->
+  <link rel="preload" href="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80" as="image" fetchpriority="high">
+  <link rel="preload" href="https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80" as="image" fetchpriority="high">
+  <link rel="preload" href="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80" as="image" fetchpriority="high">
+  <link rel="preload" href="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80" as="image">
+  <link rel="preload" href="https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=800&q=80" as="image">
+  <link rel="preload" href="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80" as="image">
+
+  <link rel="stylesheet" href="/static/style.css?v=8.0">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220%22%20%220%22%20%22100%22%20%22100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
   
   <!-- Self-Hosted Resilient Vapi Web SDK -->
@@ -55,7 +77,7 @@
 
   <div class="app-container">
 
-    <!-- 🌌 Mobbin-Inspired Minimal Luxury Navbar -->
+    <!-- 🌌 Elegant Minimal Luxury Navbar -->
     <header class="cosmic-navbar mobbin-navbar">
       <a class="brand-wrapper" href="#top" style="text-decoration:none; display:flex; align-items:center; gap:10px;">
         <span class="brand-mark" style="display:flex; align-items:center; gap:7px;">
@@ -68,16 +90,9 @@
         </div>
       </a>
 
-      <!-- Mobbin-Style Global Search Bar -->
-      <div class="mobbin-nav-search">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="mobbinGlobalSearch" placeholder="Search voice flows, balayage, phone, WhatsApp..." oninput="handleMobbinSearch(this.value)">
-        <span class="search-kbd">⌘K</span>
-      </div>
-
       <!-- Streamlined Minimal Nav Links -->
-      <nav class="nav-links" style="display:flex; gap:6px; align-items:center;">
-        <a href="#mobbin-gallery" class="nav-pill-link">Directory</a>
+      <nav class="nav-links" style="display:flex; gap:8px; align-items:center;">
+        <a href="#flock-gallery" class="nav-pill-link">✦ Cascading Showcase</a>
         <a href="#voice-highlight" class="nav-pill-link">Voice Studio</a>
         <a href="#instant-callback-section" class="nav-pill-link">WhatsApp &amp; Telnyx</a>
         <a href="#services-section" class="nav-pill-link">Services</a>
@@ -251,18 +266,202 @@
       </div>
     </div>
 
-    <!-- 📱 Mobbin-Style AI Screen & Flow Gallery -->
-    <section class="mobbin-gallery-section" id="mobbin-gallery">
-      <div class="mobbin-gallery-header">
-        <div style="font-size:11px; font-weight:800; color:#38bdf8; letter-spacing:0.1em; text-transform:uppercase;">
-          ✦ MOBBIN-STYLE AI INTERACTIVE DIRECTORY
+    <!-- 🦅 Cascading Flock of Birds 3D Formation & Flow Showcase -->
+    <section class="flock-gallery-section mobbin-gallery-section" id="flock-gallery">
+      <div id="mobbin-gallery" style="position:relative; top:-20px;"></div>
+      <div class="flock-gallery-header">
+        <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(56,189,248,0.14); border:1px solid rgba(56,189,248,0.35); padding:4px 14px; border-radius:999px; font-size:11px; font-weight:800; color:#38bdf8; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:12px;">
+          ✦ CASCADING FLIGHT SHOWCASE • AESTHETICS &amp; ARCHITECTURE
         </div>
-        <h2 style="font-size:24px; font-weight:800; color:#fff; margin:4px 0;">
-          Explore Autonomous Voice &amp; Omnichannel Flows
+        <h2 style="font-size:30px; font-weight:900; color:#fff; letter-spacing:-0.5px; margin:6px 0 10px 0; line-height:1.2;">
+          Pictures Cascading in Flight — <span class="gradient-text-luxury">Like a Flock of Birds</span>
         </h2>
-        <p style="font-size:13.5px; color:#94a3b8; max-width:620px;">
-          Curated reference flows demonstrating live conversational AI, zero-wait telephony, and atomic calendar booking.
+        <p style="font-size:14.5px; color:#94a3b8; max-width:680px; margin:0 auto; line-height:1.6;">
+          Watch Sofia's multi-agent voice workflows, signature salon artistry, and zero-wait telephony hover and drift in aerodynamic 3D formation with organic gliding physics.
         </p>
+      </div>
+
+      <!-- 3D Aerodynamic V-Formation Stage -->
+      <div class="flock-stage-perspective">
+        <div class="flock-birds-formation">
+          
+          <!-- Bird 1: Left Wing Lead (Marcus Balayage Blonde) -->
+          <div class="flock-bird-card bird-card-1" data-category="services" onclick="quickBookService('Signature Balayage & Foilayage', 280, 'Marcus Vance')">
+            <img src="https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=800&q=80" alt="Signature Balayage & Blonde Couture" class="bird-card-image" loading="eager" fetchpriority="high">
+            <div class="bird-card-gradient"></div>
+            <div class="bird-card-badge cyan">✦ Left Wing &bull; Marcus</div>
+            <div class="bird-card-meta">
+              <div class="bird-service-name">Signature Balayage</div>
+              <div class="bird-service-sub">Foilayage &amp; Gloss &bull; $280 &bull; 150m</div>
+              <button class="bird-service-action">✨ Book Balayage</button>
+            </div>
+          </div>
+
+          <!-- Bird 2: Left Flanker (Chloe Japanese Gel Nail Art) -->
+          <div class="flock-bird-card bird-card-2" data-category="services" onclick="quickBookService('Japanese Gel Luxury Manicure', 85, 'Chloe Laurent')">
+            <img src="https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=800&q=80" alt="Japanese Gel Luxury Manicure" class="bird-card-image" loading="eager" fetchpriority="high">
+            <div class="bird-card-gradient"></div>
+            <div class="bird-card-badge rose">💅 Left Flanker &bull; Chloe</div>
+            <div class="bird-card-meta">
+              <div class="bird-service-name">Japanese Gel Art</div>
+              <div class="bird-service-sub">Builder Gel &amp; Rose Oil &bull; $85 &bull; 45m</div>
+              <button class="bird-service-action">💅 Book Nails</button>
+            </div>
+          </div>
+
+          <!-- Bird 3: Apex V-Leader (Sofia AI Voice Concierge Centerpiece) -->
+          <div class="flock-bird-card bird-card-3" data-category="voice" onclick="handleHeroVoiceClick()">
+            <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80" alt="Sofia AI Live Voice Studio" class="bird-card-image" loading="eager" fetchpriority="high">
+            <div class="bird-card-gradient"></div>
+            <div class="bird-card-badge gold">👑 APEX LEADER &bull; &lt;120ms</div>
+            <div class="bird-card-meta">
+              <div class="bird-service-name">Sofia AI Live Voice</div>
+              <div class="bird-service-sub">Sonic-3.5 + Deepgram &bull; Zero Lag</div>
+              <button class="bird-service-action" style="background:linear-gradient(135deg, #f59e0b, #d97706); border-color:#f59e0b; color:#000; font-weight:800;">🎙️ Launch Live Voice</button>
+            </div>
+          </div>
+
+          <!-- Bird 4: Right Flanker (Elena HydraFacial MD) -->
+          <div class="flock-bird-card bird-card-4" data-category="services" onclick="quickBookService('HydraFacial MD Elite Facial', 225, 'Elena Rostova')">
+            <img src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=800&q=80" alt="HydraFacial MD Skin Radiance" class="bird-card-image" loading="eager">
+            <div class="bird-card-gradient"></div>
+            <div class="bird-card-badge emerald">✨ Right Flanker &bull; Elena</div>
+            <div class="bird-card-meta">
+              <div class="bird-service-name">HydraFacial MD</div>
+              <div class="bird-service-sub">Vortex Lymphatic &bull; $225 &bull; 60m</div>
+              <button class="bird-service-action">💎 Book Facial</button>
+            </div>
+          </div>
+
+          <!-- Bird 5: Right Wing Lead (Newbury St Flagship Studio) -->
+          <div class="flock-bird-card bird-card-5" data-category="squad" onclick="document.getElementById('services-section')?.scrollIntoView({behavior:'smooth'})">
+            <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80" alt="Luxe Newbury St Flagship Studio" class="bird-card-image" loading="eager" fetchpriority="high">
+            <div class="bird-card-gradient"></div>
+            <div class="bird-card-badge cyan">✦ Right Wing &bull; 120 Newbury</div>
+            <div class="bird-card-meta">
+              <div class="bird-service-name">Newbury Sanctuary</div>
+              <div class="bird-service-sub">14 Suites &bull; Curated Soundscape</div>
+              <button class="bird-service-action">🏛️ Explore Suites</button>
+            </div>
+          </div>
+
+          <!-- Bird 6: Gliding Escort (Botanical Scalp Spa & Blowout) -->
+          <div class="flock-bird-card bird-card-6" data-category="services" onclick="quickBookService('Botanical Scalp Therapy & Blowout', 120, 'Marcus Vance')">
+            <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=800&q=80" alt="Botanical Scalp Spa & Wellness" class="bird-card-image" loading="eager">
+            <div class="bird-card-gradient"></div>
+            <div class="bird-card-badge gold">🌿 Gliding &bull; Head Spa</div>
+            <div class="bird-card-meta">
+              <div class="bird-service-name">Botanical Scalp Spa</div>
+              <div class="bird-service-sub">Herbal Detox &bull; $120 &bull; 60m</div>
+              <button class="bird-service-action">💆 Book Head Spa</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 🌊 Infinite Cascading Picture Stream ("Pictures One After Another") -->
+      <div class="cascading-stream-wrapper" aria-label="Pictures Cascading One After Another">
+        <div class="cascading-stream-track">
+          <!-- Flow Sequence -->
+          <div class="stream-card-mini" onclick="quickBookService('Signature Balayage & Foilayage', 280, 'Marcus Vance')">
+            <img src="https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=120&q=80" alt="Balayage" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Signature Balayage</div>
+              <div style="font-size:10.5px; color:#38bdf8;">Marcus Vance &bull; $280</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="quickBookService('Japanese Gel Luxury Manicure', 85, 'Chloe Laurent')">
+            <img src="https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=120&q=80" alt="Nails" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Japanese Gel Art</div>
+              <div style="font-size:10.5px; color:#f43f5e;">Chloe Laurent &bull; $85</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="handleHeroVoiceClick()">
+            <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=120&q=80" alt="Voice" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Sofia Voice AI</div>
+              <div style="font-size:10.5px; color:#34d399;">WebRTC &bull; &lt;120ms</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="quickBookService('HydraFacial MD Elite Facial', 225, 'Elena Rostova')">
+            <img src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=120&q=80" alt="HydraFacial" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">HydraFacial MD</div>
+              <div style="font-size:10.5px; color:#fbbf24;">Elena Rostova &bull; $225</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="quickBookService('Precision Designer Haircut & Blowout', 130, 'Marcus Vance')">
+            <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=120&q=80" alt="Haircut" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Precision Cut &amp; Style</div>
+              <div style="font-size:10.5px; color:#38bdf8;">Marcus Vance &bull; $130</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="quickBookService('Botanical Scalp Therapy & Blowout', 120, 'Marcus Vance')">
+            <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=120&q=80" alt="Head Spa" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Botanical Scalp Spa</div>
+              <div style="font-size:10.5px; color:#a855f7;">Herbal Detox &bull; $120</div>
+            </div>
+          </div>
+
+          <!-- Duplicate track for seamless infinite stream loop -->
+          <div class="stream-card-mini" onclick="quickBookService('Signature Balayage & Foilayage', 280, 'Marcus Vance')">
+            <img src="https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&w=120&q=80" alt="Balayage" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Signature Balayage</div>
+              <div style="font-size:10.5px; color:#38bdf8;">Marcus Vance &bull; $280</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="quickBookService('Japanese Gel Luxury Manicure', 85, 'Chloe Laurent')">
+            <img src="https://images.unsplash.com/photo-1632345031435-8727f6897d53?auto=format&fit=crop&w=120&q=80" alt="Nails" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Japanese Gel Art</div>
+              <div style="font-size:10.5px; color:#f43f5e;">Chloe Laurent &bull; $85</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="handleHeroVoiceClick()">
+            <img src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=120&q=80" alt="Voice" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Sofia Voice AI</div>
+              <div style="font-size:10.5px; color:#34d399;">WebRTC &bull; &lt;120ms</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="quickBookService('HydraFacial MD Elite Facial', 225, 'Elena Rostova')">
+            <img src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=120&q=80" alt="HydraFacial" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">HydraFacial MD</div>
+              <div style="font-size:10.5px; color:#fbbf24;">Elena Rostova &bull; $225</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="quickBookService('Precision Designer Haircut & Blowout', 130, 'Marcus Vance')">
+            <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=120&q=80" alt="Haircut" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Precision Cut &amp; Style</div>
+              <div style="font-size:10.5px; color:#38bdf8;">Marcus Vance &bull; $130</div>
+            </div>
+          </div>
+
+          <div class="stream-card-mini" onclick="quickBookService('Botanical Scalp Therapy & Blowout', 120, 'Marcus Vance')">
+            <img src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?auto=format&fit=crop&w=120&q=80" alt="Head Spa" class="stream-thumb" loading="lazy">
+            <div>
+              <div style="font-size:12px; font-weight:800; color:#fff;">Botanical Scalp Spa</div>
+              <div style="font-size:10.5px; color:#a855f7;">Herbal Detox &bull; $120</div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
       <div class="mobbin-grid">
